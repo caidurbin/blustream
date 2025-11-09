@@ -24,29 +24,34 @@ pip install -e ".[dev]"
 ## Library Usage
 
 ```python
+import asyncio
 from bluestream import DMP168
 
-# Connect to device
-device = DMP168(host='192.168.1.100', port=23)
-device.connect()
+async def main():
+    # Connect to device
+    device = DMP168(host='192.168.1.100', port=23)
+    await device.connect()
 
-# Read status
-status = device.get_status()
-print(f"Temperature: {status.temperature}°C")
-print(f"DSP Usage: {status.dsp_usage}%")
+    # Read status
+    status = await device.get_status()
+    print(f"Temperature: {status.temperature}°C")
+    print(f"DSP Usage: {status.dsp_usage}%")
 
-# Control device
-device.power_on()
-device.set_output_volume(1, 75, unit='percent')
-device.route_input_to_output(input=2, output=1)
+    # Control device
+    await device.power_on()
+    await device.set_output_volume(1, 75, unit='percent')
+    await device.route_input_to_output(input_ch=2, output=1)
 
-# Context manager support
-with DMP168(host='192.168.1.100') as device:
-    status = device.get_status()
-    device.power_on()
+    # Context manager support
+    async with DMP168(host='192.168.1.100') as device:
+        status = await device.get_status()
+        await device.power_on()
 
-# Disconnect
-device.disconnect()
+    # Disconnect
+    await device.disconnect()
+
+# Run the async function
+asyncio.run(main())
 ```
 
 ## CLI Usage
