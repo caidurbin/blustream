@@ -1,0 +1,176 @@
+# Bluestream Device Control Library and CLI
+
+Python library and command-line tool for controlling Bluestream audio devices, starting with the DMP168 digital audio matrix processor.
+
+## Features
+
+- **Library API**: Clean Python API for programmatic device control
+- **CLI Tool**: Command-line interface for device management
+- **Extensible**: Architecture supports multiple Bluestream device types
+- **TCP/IP Communication**: Network-based device control
+
+## Installation
+
+```bash
+pip install -e .
+```
+
+Or install in development mode:
+
+```bash
+pip install -e ".[dev]"
+```
+
+## Library Usage
+
+```python
+from bluestream import DMP168
+
+# Connect to device
+device = DMP168(host='192.168.1.100', port=23)
+device.connect()
+
+# Read status
+status = device.get_status()
+print(f"Temperature: {status.temperature}°C")
+print(f"DSP Usage: {status.dsp_usage}%")
+
+# Control device
+device.power_on()
+device.set_output_volume(1, 75, unit='percent')
+device.route_input_to_output(input=2, output=1)
+
+# Context manager support
+with DMP168(host='192.168.1.100') as device:
+    status = device.get_status()
+    device.power_on()
+
+# Disconnect
+device.disconnect()
+```
+
+## CLI Usage
+
+### Get Device Status
+
+```bash
+bluestream --host 192.168.1.100 status
+```
+
+### Power Control
+
+```bash
+bluestream --host 192.168.1.100 power on
+bluestream --host 192.168.1.100 power off
+```
+
+### Volume Control
+
+```bash
+# Set output 1 volume to 75%
+bluestream --host 192.168.1.100 volume --output 1 --level 75
+
+# Set output 1 volume to -10 dB
+bluestream --host 192.168.1.100 volume --output 1 --level -10 --unit dB
+```
+
+### Mute Control
+
+```bash
+# Mute output 1
+bluestream --host 192.168.1.100 mute --output 1 on
+
+# Unmute output 1
+bluestream --host 192.168.1.100 mute --output 1 off
+```
+
+### Routing
+
+```bash
+# Route input 2 to output 1
+bluestream --host 192.168.1.100 route --input 2 --output 1
+```
+
+### Presets
+
+```bash
+# Save current configuration to preset 1
+bluestream --host 192.168.1.100 preset save --preset 1
+
+# Recall preset 1
+bluestream --host 192.168.1.100 preset recall --preset 1
+```
+
+### JSON Output
+
+```bash
+# Get status as JSON
+bluestream --host 192.168.1.100 status --json
+```
+
+### List Available Commands
+
+```bash
+bluestream --host 192.168.1.100 list-commands
+```
+
+## Command Line Options
+
+- `--device`: Device type (default: dmp168)
+- `--host`: Device hostname or IP address (default: localhost)
+- `--port`: TCP port (default: 23)
+- `--timeout`: Connection timeout in seconds (default: 5.0)
+- `--verbose`, `-v`: Enable verbose output
+- `--debug`: Enable debug output
+- `--json`: Output results as JSON
+- `--yes`, `-y`: Skip confirmations
+
+## Architecture
+
+The library is designed with extensibility in mind:
+
+- **Base Framework**: Abstract base classes for devices and connections
+- **Device Implementations**: Device-specific code in separate modules
+- **Command Registry**: Commands are registered with metadata for introspection
+- **Connection Layer**: Pluggable connection implementations (TCP/IP, serial, etc.)
+
+## Supported Devices
+
+- **DMP168**: Digital audio matrix processor (16 inputs, 8 outputs)
+
+## Development
+
+### Project Structure
+
+```
+bluestream/
+├── bluestream/              # Main package
+│   ├── base/                # Base classes and interfaces
+│   ├── connection/          # Connection implementations
+│   ├── devices/             # Device-specific implementations
+│   │   └── dmp168/          # DMP168 device
+│   └── cli/                 # CLI implementation
+├── tests/                   # Test suite
+├── main.py                  # CLI entry point
+├── setup.py                 # Package setup
+└── README.md               # This file
+```
+
+### Running Tests
+
+```bash
+pytest tests/
+```
+
+## License
+
+MIT License
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Future Enhancements
+
+See [FUTURE_ENHANCEMENTS.md](FUTURE_ENHANCEMENTS.md) for planned features and improvements.
+

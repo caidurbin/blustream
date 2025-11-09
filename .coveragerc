@@ -1,0 +1,29 @@
+# Coverage configuration file
+# This file provides coverage settings for pytest-cov
+
+[run]
+source = bluestream
+omit =
+    */tests/*
+    */test_*.py
+    */__pycache__/*
+    */setup.py
+    */main.py
+    */__init__.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstractmethod
+show_missing = True
+skip_covered = False
+precision = 2
+
+[html]
+directory = htmlcov
+
