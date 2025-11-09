@@ -1,0 +1,130 @@
+# Bluestream Device Control Library - Cursor Rules
+
+## Project Overview
+Python library and CLI for controlling Bluestream audio devices (starting with DMP168). Uses extensible architecture with abstract base classes, command registry pattern, and TCP/IP communication.
+
+## Safety
+
+### Device Control Safety
+- **NEVER run real, mutable commands against real devices without explicit user verification**
+- **AGENT VERIFICATION REQUIRED**: Before executing ANY CLI command that modifies device state, the agent MUST:
+  1. Clearly state what command will be executed and what it will do
+  2. Explicitly ask for user confirmation
+  3. Wait for explicit user approval before executing
+- Mutable commands that require verification include:
+  - Powering devices on/off (`power on/off`)
+  - Changing volume/gain settings (`volume`, `input-gain`)
+  - Modifying routing configurations (`route`)
+  - Muting/unmuting inputs or outputs (`mute`, `input-mute`)
+  - Saving/deleting presets (`preset save/delete`)
+  - Any other state-changing operations
+- Read-only commands (like `status`, `list-commands`) do NOT require verification
+- When executing Python scripts that control devices, always confirm with the user before executing mutable commands
+- Prefer read-only operations (like `get_status()`) for testing and exploration
+
+## Code Style
+
+### Python & Type Hints
+- Target Python 3.7+
+- Always use type hints for function parameters and return types
+- Use `typing` module types (`Optional`, `Union`, `List`, `Dict`, `Any`)
+
+### Documentation
+- Google-style docstrings for all public functions, classes, and methods
+- Include Args, Returns, and Raises sections where applicable
+
+### Naming
+- Classes: PascalCase (`BluestreamDevice`, `DMP168`)
+- Functions/methods: snake_case (`get_status`, `power_on`)
+- Private: prefix with `_` (`_connection`, `_register_commands`)
+- CLI: kebab-case (`input-gain`), internal: snake_case (`input_gain`)
+
+## Architecture Patterns
+
+### Command Registry
+- Commands registered via `CommandRegistry` class
+- Command builders as separate functions (e.g., `build_status_command()`)
+- Register in `_register_commands()` function with metadata: name, description, parameters, handler, return_type
+
+### Abstract Base Classes
+- Devices inherit from `BluestreamDevice` ABC
+- Connections inherit from `Connection` ABC
+- Use `@abstractmethod` for required methods
+- Implement context manager protocol (`__enter__`, `__exit__`)
+
+### Error Handling
+- Use custom exceptions from `bluestream.base.exceptions`
+- `ValidationError` for invalid parameters
+- `ConnectionError` for connection issues
+- `CommandError` for command execution failures
+- Chain exceptions: `raise CommandError(...) from e`
+
+### Data Structures
+- Use `@dataclass` for simple data structures
+- Prefer dataclasses over dictionaries for structured data
+
+## Project Structure
+
+```
+bluestream/
+├── base/              # Abstract base classes and interfaces
+├── connection/        # Connection implementations
+├── devices/           # Device-specific implementations
+│   └── dmp168/        # Each device in own subdirectory
+│       ├── device.py  # Device class (inherits BluestreamDevice)
+│       ├── commands.py # Command builders and registration
+│       ├── parser.py  # Response parsing
+│       └── models.py  # Data models (dataclasses)
+└── cli/               # CLI interface
+```
+
+## Implementation Guidelines
+
+### Device Initialization Pattern
+```python
+def __init__(self, host: str, port: int = 23, connection: Optional[Connection] = None, timeout: float = 5.0):
+    if connection is None:
+        connection = TCPConnection(host=host, port=port, timeout=timeout)
+    super().__init__(connection)
+```
+
+### Command Building
+- Validate parameters and raise `ValidationError` for invalid values
+- Return command strings matching device protocol exactly
+- Handle edge cases (e.g., channel="LR" vs "L"/"R")
+
+### Connection Handling
+- Check connection state before sending commands
+- Use context managers when possible
+- Handle timeouts appropriately (STATUS commands may need longer timeouts)
+
+### Response Parsing
+- Create parser classes per device (e.g., `DMP168Parser`)
+- Parse into structured dataclass models
+- Handle multi-line responses (especially STATUS commands)
+
+## Testing
+- Use pytest in `tests/` directory
+- Test files: `test_*.py`
+- Use fixtures for common test data
+- Mock connections for unit tests
+
+## CLI Development
+- Use `argparse` with subparsers
+- Support `--json`, `--verbose`, `--debug` flags
+- Provide helpful help text for all options
+
+## Logging
+- Use `logging` module with module-level loggers: `logger = logging.getLogger(__name__)`
+- Set appropriate log levels
+- Don't log sensitive information
+
+## Things to Avoid
+- External dependencies without discussion
+- Mutable default arguments
+- Bare `Exception` catches - be specific
+- Silent exception ignoring
+- `print()` for logging - use `logging` module
+- Hardcoded device-specific values in base classes
+- Skipping parameter validation
+
