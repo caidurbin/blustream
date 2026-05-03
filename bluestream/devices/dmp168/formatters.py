@@ -5,7 +5,7 @@ from typing import Any
 
 from bluestream.base.commands import RenderContext
 
-OUTPUT_MIX_MODE_NAMES = [
+OUTPUT_MIX_MODE_NAMES = (
     "None",
     "Swap",
     "Mono L+R",
@@ -13,7 +13,7 @@ OUTPUT_MIX_MODE_NAMES = [
     "Mono All R",
     "Mono L-R",
     "Mono R-L",
-]
+)
 
 
 def format_status(result: Any, ctx: RenderContext) -> str:
