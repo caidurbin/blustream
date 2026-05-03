@@ -8,7 +8,9 @@ import sys
 from typing import Any, Optional
 
 from bluestream import DMP168
+from bluestream.base.commands import RenderContext
 from bluestream.base.exceptions import BluestreamError, ConnectionError
+from bluestream.devices.dmp168.formatters import OUTPUT_MIX_MODE_NAMES
 
 
 def suppress_telnetlib3_errors(loop, context):
@@ -134,78 +136,11 @@ def setup_logging(verbose: bool = False, debug: bool = False) -> None:
     )
 
 
-def format_status(status: Any, json_output: bool = False) -> str:
-    """Format status output.
-
-    Args:
-        status: SystemStatus object
-        json_output: Output as JSON
-
-    Returns:
-        Formatted string
-    """
-    if json_output:
-        return json.dumps(
-            {
-                "power": status.power,
-                "baud": status.baud,
-                "level_unit": status.level_unit,
-                "auto_standby_time": status.auto_standby_time,
-                "dsp_usage": status.dsp_usage,
-                "fade": status.fade,
-                "temperature": status.temperature,
-                "uptime": status.uptime,
-                "firmware_version": status.firmware_version,
-                "inputs": [
-                    {
-                        "port": inp.port,
-                        "lock": inp.lock,
-                        "gain_l": inp.gain_l,
-                        "gain_r": inp.gain_r,
-                        "mute_l": inp.mute_l,
-                        "mute_r": inp.mute_r,
-                    }
-                    for inp in status.inputs
-                ],
-                "routing": [
-                    {
-                        "output": r.output,
-                        "channel": r.channel,
-                        "from_input": r.from_input,
-                    }
-                    for r in status.routing
-                ],
-            },
-            indent=2,
-        )
-    else:
-        lines = [
-            f"Power: {status.power}",
-            f"Baud: {status.baud}",
-            f"Level Unit: {status.level_unit}",
-            f"Auto Standby: {status.auto_standby_time} mins",
-            f"DSP Usage: {status.dsp_usage}%",
-            f"Fade: {'On' if status.fade else 'Off'}",
-            f"Temperature: {status.temperature}°C",
-            f"Uptime: {status.uptime}",
-            f"Firmware: {status.firmware_version}",
-            "",
-            "Input Settings:",
-        ]
-        for inp in status.inputs:
-            lines.append(
-                f"  In{inp.port}: Gain L={inp.gain_l} R={inp.gain_r}, "
-                f"Mute L={'On' if inp.mute_l else 'Off'} R={'On' if inp.mute_r else 'Off'}, "
-                f"Lock={'On' if inp.lock else 'Off'}"
-            )
-        lines.append("")
-        lines.append("Output Routing:")
-        for r in status.routing:
-            if r.from_input:
-                lines.append(f"  Out{r.output} {r.channel}: From In{r.from_input}")
-            else:
-                lines.append(f"  Out{r.output} {r.channel}: Not routed")
-        return "\n".join(lines)
+def _format_command_result(device: Any, command_name: str, result: Any, ctx: RenderContext) -> str:
+    cmd = device._registry.get(command_name)
+    if cmd and cmd.format_result:
+        return cmd.format_result(result, ctx)
+    return str(result)
 
 
 def add_global_options(parser: argparse.ArgumentParser) -> None:
@@ -730,9 +665,11 @@ async def main_async() -> int:
 
         try:
             # Handle commands
+            ctx = RenderContext(json=args.json)
+
             if args.command == "status":
                 status = await device.get_status()
-                print(format_status(status, json_output=args.json))
+                print(_format_command_result(device, "status", status, ctx))
 
             elif args.command == "power":
                 if args.state == "on":
@@ -807,16 +744,7 @@ async def main_async() -> int:
                     print(f"Deleted preset {args.preset}")
                 elif args.action == "status":
                     preset_status = await device.get_preset_status(args.preset)
-                    if args.json:
-                        print(json.dumps({
-                            "preset_number": preset_status.preset_number,
-                            "exists": preset_status.exists,
-                            "description": preset_status.description,
-                        }, indent=2))
-                    else:
-                        print(f"Preset {preset_status.preset_number}: {'Exists' if preset_status.exists else 'Not found'}")
-                        if preset_status.description:
-                            print(f"Description: {preset_status.description}")
+                    print(_format_command_result(device, "preset_status", preset_status, ctx))
 
             elif args.command == "unroute":
                 await device.remove_input_from_output(
@@ -837,8 +765,7 @@ async def main_async() -> int:
 
             elif args.command == "mix":
                 await device.set_output_mix(output=args.output, mode=args.mode)
-                mode_names = ["None", "Swap", "Mono L+R", "Mono All L", "Mono All R", "Mono L-R", "Mono R-L"]
-                print(f"Set output {args.output} mix mode to {args.mode} ({mode_names[args.mode]})")
+                print(f"Set output {args.output} mix mode to {args.mode} ({OUTPUT_MIX_MODE_NAMES[args.mode]})")
 
             elif args.command == "master-volume":
                 await device.set_output_master_volume(
