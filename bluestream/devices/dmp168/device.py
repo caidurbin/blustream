@@ -4,7 +4,7 @@ import logging
 import re
 from typing import Any, List, Optional, Union
 
-from bluestream.base.commands import CommandRegistry
+from bluestream.base.commands import Command, CommandRegistry
 from bluestream.base.connection import Connection
 from bluestream.base.device import BluestreamDevice
 from bluestream.base.exceptions import CommandError, ValidationError
