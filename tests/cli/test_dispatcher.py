@@ -17,7 +17,7 @@ def _registry(*commands):
 
 
 class TestConfirmCommand:
-    """Tests for confirm_command — replacement for check_and_confirm_command."""
+    """Tests for confirm_command."""
 
     def test_static_string_message(self):
         cmd = Command(

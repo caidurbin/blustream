@@ -93,15 +93,10 @@ def extract_kwargs(namespace: argparse.Namespace, command: Command) -> Dict[str,
     kwargs: Dict[str, Any] = {}
 
     for param in command.parameters:
-        if param.supports_relative:
-            if getattr(namespace, f"increase_{param.name}", False):
-                kwargs[param.name] = "+"
-            elif getattr(namespace, f"decrease_{param.name}", False):
-                kwargs[param.name] = "-"
-            else:
-                value = getattr(namespace, param.name, None)
-                if value is not None:
-                    kwargs[param.name] = value
+        if param.supports_relative and getattr(namespace, f"increase_{param.name}", False):
+            kwargs[param.name] = "+"
+        elif param.supports_relative and getattr(namespace, f"decrease_{param.name}", False):
+            kwargs[param.name] = "-"
         else:
             value = getattr(namespace, param.name, None)
             if value is not None:

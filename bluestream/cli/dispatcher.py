@@ -21,14 +21,14 @@ def confirm_command(command: Command, yes: bool, kwargs: dict) -> bool:
         return True
 
     msg = command.confirmation_message
-    if msg is None:
-        prompt = f"Execute {command.name}? (yes/no): "
-    elif callable(msg):
-        prompt = f"{msg(kwargs)} (yes/no): "
+    if callable(msg):
+        text = msg(kwargs)
+    elif msg is not None:
+        text = msg
     else:
-        prompt = f"{msg} (yes/no): "
+        text = f"Execute {command.name}?"
 
-    confirm = input(prompt)
+    confirm = input(f"{text} (yes/no): ")
     if confirm.lower() not in ("yes", "y"):
         print("Cancelled")
         return False
