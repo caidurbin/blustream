@@ -56,6 +56,9 @@ asyncio.run(main())
 
 ## CLI Usage
 
+Subcommand names are derived from the command registry. Use `bluestream --help`
+to list all commands and `bluestream <command> --help` for parameter details.
+
 ### Get Device Status
 
 ```bash
@@ -65,28 +68,34 @@ bluestream --host 192.168.1.100 status
 ### Power Control
 
 ```bash
-bluestream --host 192.168.1.100 power on
-bluestream --host 192.168.1.100 power off
+bluestream --host 192.168.1.100 power-on
+bluestream --host 192.168.1.100 power-off
 ```
 
 ### Volume Control
 
 ```bash
 # Set output 1 volume to 75%
-bluestream --host 192.168.1.100 volume --output 1 --level 75
+bluestream --host 192.168.1.100 output-volume --output 1 --level 75
 
 # Set output 1 volume to -10 dB
-bluestream --host 192.168.1.100 volume --output 1 --level -10 --unit dB
+bluestream --host 192.168.1.100 output-volume --output 1 --level -10 --unit dB
+
+# Increase output 1 volume by one step
+bluestream --host 192.168.1.100 output-volume --output 1 --increase-level
+
+# Decrease output 1 volume by one step
+bluestream --host 192.168.1.100 output-volume --output 1 --decrease-level
 ```
 
 ### Mute Control
 
 ```bash
 # Mute output 1
-bluestream --host 192.168.1.100 mute --output 1 on
+bluestream --host 192.168.1.100 output-mute --output 1 --mute
 
 # Unmute output 1
-bluestream --host 192.168.1.100 mute --output 1 off
+bluestream --host 192.168.1.100 output-mute --output 1 --no-mute
 ```
 
 ### Routing
@@ -100,10 +109,13 @@ bluestream --host 192.168.1.100 route --input 2 --output 1
 
 ```bash
 # Save current configuration to preset 1
-bluestream --host 192.168.1.100 preset save --preset 1
+bluestream --host 192.168.1.100 preset-save --preset 1
 
 # Recall preset 1
-bluestream --host 192.168.1.100 preset recall --preset 1
+bluestream --host 192.168.1.100 preset-recall --preset 1
+
+# Get preset status
+bluestream --host 192.168.1.100 preset-status --preset 1
 ```
 
 ### JSON Output
@@ -111,12 +123,6 @@ bluestream --host 192.168.1.100 preset recall --preset 1
 ```bash
 # Get status as JSON
 bluestream --host 192.168.1.100 status --json
-```
-
-### List Available Commands
-
-```bash
-bluestream --host 192.168.1.100 list-commands
 ```
 
 ## Command Line Options

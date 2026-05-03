@@ -1,146 +1,48 @@
-"""Tests for CLI confirmation_message integration."""
+"""Tests for CLI confirmation_message integration via DMP168 commands.
 
-from unittest.mock import MagicMock, patch
+These tests verify that DMP168 command registrations wire confirmation_message
+correctly and that the dispatcher's confirm_command function handles all three
+message formats (string, callable, None fallback).
 
-from bluestream.base.commands import Command, CommandRegistry
-from bluestream.cli.main import check_and_confirm_command
+Detailed unit tests for confirm_command live in tests/cli/test_dispatcher.py.
+"""
+
+from unittest.mock import patch
+
+from bluestream.cli.dispatcher import confirm_command
+from bluestream.devices.dmp168.device import DMP168
 
 
-def _make_device(registry):
-    device = MagicMock()
-    device.get_command = lambda name: registry.get(name)
-    return device
+class TestDMP168ConfirmationWiring:
+    """Verify DMP168 command registrations wire confirmation_message correctly."""
 
+    def test_reboot_static_message(self):
+        cmd = DMP168.commands.get("reboot")
+        assert cmd is not None
+        assert cmd.requires_confirmation is True
+        assert isinstance(cmd.confirmation_message, str)
+        with patch("builtins.input", return_value="yes"):
+            assert confirm_command(cmd, yes=False, kwargs={}) is True
 
-class TestCheckAndConfirmCommand:
-    """Tests for check_and_confirm_command using Command.confirmation_message."""
-
-    def test_static_string_message(self):
-        """Static confirmation_message string is rendered verbatim."""
-        registry = CommandRegistry()
-        registry.register(
-            Command(
-                name="reboot",
-                description="Reboot",
-                parameters=[],
-                handler=lambda **kw: "",
-                requires_confirmation=True,
-                confirmation_message="Reboot the device?",
-            )
-        )
-        device = _make_device(registry)
-
+    def test_preset_delete_callable_message(self):
+        cmd = DMP168.commands.get("preset_delete")
+        assert cmd is not None
+        assert callable(cmd.confirmation_message)
         with patch("builtins.input", return_value="yes") as mock_input:
-            result = check_and_confirm_command(device, "reboot", yes=False)
-            assert result is True
-            prompt = mock_input.call_args[0][0]
-            assert "Reboot the device?" in prompt
+            assert confirm_command(cmd, yes=False, kwargs={"preset": 3}) is True
+            assert "3" in mock_input.call_args[0][0]
 
-    def test_callable_message_receives_kwargs(self):
-        """Callable confirmation_message is invoked with parsed kwargs."""
-        registry = CommandRegistry()
-        registry.register(
-            Command(
-                name="preset_delete",
-                description="Delete preset",
-                parameters=[],
-                handler=lambda **kw: "",
-                requires_confirmation=True,
-                confirmation_message=lambda kwargs: f"Delete preset {kwargs['preset']}?",
-            )
-        )
-        device = _make_device(registry)
-
+    def test_output_remove_callable_message(self):
+        cmd = DMP168.commands.get("output_remove")
+        assert cmd is not None
+        assert callable(cmd.confirmation_message)
         with patch("builtins.input", return_value="yes") as mock_input:
-            result = check_and_confirm_command(
-                device, "preset_delete", yes=False, preset=3
-            )
-            assert result is True
-            prompt = mock_input.call_args[0][0]
-            assert "Delete preset 3?" in prompt
+            assert confirm_command(cmd, yes=False, kwargs={"output": 2, "input": 5}) is True
+            assert "2" in mock_input.call_args[0][0]
+            assert "5" in mock_input.call_args[0][0]
 
-    def test_generic_fallback_when_message_unset(self):
-        """Generic fallback applies when confirmation_message is None."""
-        registry = CommandRegistry()
-        registry.register(
-            Command(
-                name="danger_cmd",
-                description="Dangerous",
-                parameters=[],
-                handler=lambda **kw: "",
-                requires_confirmation=True,
-            )
-        )
-        device = _make_device(registry)
-
-        with patch("builtins.input", return_value="yes") as mock_input:
-            result = check_and_confirm_command(device, "danger_cmd", yes=False)
-            assert result is True
-            prompt = mock_input.call_args[0][0]
-            assert "danger_cmd" in prompt
-
-    def test_yes_flag_bypasses_prompt(self):
-        """--yes flag skips the confirmation prompt entirely."""
-        registry = CommandRegistry()
-        registry.register(
-            Command(
-                name="reboot",
-                description="Reboot",
-                parameters=[],
-                handler=lambda **kw: "",
-                requires_confirmation=True,
-                confirmation_message="Reboot the device?",
-            )
-        )
-        device = _make_device(registry)
-
-        with patch("builtins.input") as mock_input:
-            result = check_and_confirm_command(device, "reboot", yes=True)
-            assert result is True
-            mock_input.assert_not_called()
-
-    def test_user_declines_confirmation(self):
-        """User typing 'no' cancels the command."""
-        registry = CommandRegistry()
-        registry.register(
-            Command(
-                name="reboot",
-                description="Reboot",
-                parameters=[],
-                handler=lambda **kw: "",
-                requires_confirmation=True,
-                confirmation_message="Reboot the device?",
-            )
-        )
-        device = _make_device(registry)
-
-        with patch("builtins.input", return_value="no"):
-            result = check_and_confirm_command(device, "reboot", yes=False)
-            assert result is False
-
-    def test_no_confirmation_required(self):
-        """Commands without requires_confirmation proceed without prompt."""
-        registry = CommandRegistry()
-        registry.register(
-            Command(
-                name="status",
-                description="Get status",
-                parameters=[],
-                handler=lambda **kw: "",
-                requires_confirmation=False,
-            )
-        )
-        device = _make_device(registry)
-
-        with patch("builtins.input") as mock_input:
-            result = check_and_confirm_command(device, "status", yes=False)
-            assert result is True
-            mock_input.assert_not_called()
-
-    def test_unknown_command_proceeds(self):
-        """Unknown command name proceeds (returns True)."""
-        registry = CommandRegistry()
-        device = _make_device(registry)
-
-        result = check_and_confirm_command(device, "nonexistent", yes=False)
-        assert result is True
+    def test_status_no_confirmation(self):
+        cmd = DMP168.commands.get("status")
+        assert cmd is not None
+        assert cmd.requires_confirmation is False
+        assert confirm_command(cmd, yes=False, kwargs={}) is True

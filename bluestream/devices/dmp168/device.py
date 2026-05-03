@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 class DMP168(BluestreamDevice):
     """DMP168 digital audio matrix processor device."""
 
+    commands: CommandRegistry = CommandRegistry()
+
     def __init__(
         self,
         host: str,
@@ -42,12 +44,7 @@ class DMP168(BluestreamDevice):
         self.host = host
         self.port = port
         self._parser = DMP168Parser()
-        self._registry = CommandRegistry()
-        self._register_all_commands()
-
-    def _register_all_commands(self) -> None:
-        """Register all DMP168 commands."""
-        cmd_module._register_commands(self._registry)
+        self._registry = self.__class__.commands
 
     def get_commands(self) -> List[str]:
         """Get list of available command names.
@@ -264,7 +261,7 @@ class DMP168(BluestreamDevice):
             unit: Unit type ("percent" or "dB"), None for percent
         """
         kwargs: Dict[str, Any] = {
-            "input_ch": input_ch,
+            "input": input_ch,
             "gain": gain,
             "channel": channel,
         }
@@ -280,7 +277,7 @@ class DMP168(BluestreamDevice):
             mute: True to mute, False to unmute
             channel: Channel ("L", "R", or "LR")
         """
-        await self.execute_command("input_mute", input_ch=input_ch, mute=mute, channel=channel)
+        await self.execute_command("input_mute", input=input_ch, mute=mute, channel=channel)
 
     async def get_preset_status(self, preset: int) -> PresetStatus:
         """Get preset status.
@@ -425,4 +422,7 @@ class DMP168(BluestreamDevice):
             channel: Channel ("L", "R", or "LR")
         """
         await self.execute_command("group_mute", group=group, mute=mute, channel=channel)
+
+
+cmd_module._register_commands(DMP168.commands)
 

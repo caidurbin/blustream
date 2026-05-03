@@ -268,7 +268,7 @@ class TestDMP168UnitDependency:
             validate(
                 dmp168_registry,
                 "input_gain",
-                {"input_ch": 1, "gain": "-", "unit": "dB"},
+                {"input": 1, "gain": "-", "unit": "dB"},
             )
         error = exc_info.value
         assert any("unit" == name for name, _ in error.errors)
@@ -280,7 +280,7 @@ class TestDMP168UnitDependency:
         validate(
             dmp168_registry,
             "input_gain",
-            {"input_ch": 1, "gain": 5, "unit": "dB"},
+            {"input": 1, "gain": 5, "unit": "dB"},
         )
 
     def test_output_master_volume_unit_rejected_relative(

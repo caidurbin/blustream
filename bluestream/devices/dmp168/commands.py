@@ -627,7 +627,7 @@ def _register_commands(registry: CommandRegistry) -> None:
             description="Set output volume",
             parameters=[
                 Parameter("output", int, required=True, choices=list(range(9)), help_text="Output channel (0-8, 0=All)"),
-                Parameter("level", Any, required=True, help_text="Volume level (0-100 for percent, -76 to +24 for dB, or +/- for relative)"),
+                Parameter("level", Any, required=True, help_text="Volume level (0-100 for percent, -76 to +24 for dB, or +/- for relative)", supports_relative=True),
                 Parameter("unit", str, required=False, default="percent", choices=["percent", "dB"], help_text="Volume unit", depends_on=Dependency(on="level", when=_is_relative_adjustment)),
                 Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Channel to adjust"),
             ],
@@ -698,12 +698,17 @@ def _register_commands(registry: CommandRegistry) -> None:
             name="input_gain",
             description="Set input gain",
             parameters=[
-                Parameter("input_ch", int, required=True, choices=list(range(17)), help_text="Input channel (0-16, 0=All)"),
-                Parameter("gain", Any, required=True, help_text="Gain value (0-100 for percent, -76 to +24 for dB, or +/- for relative)"),
+                Parameter("input", int, required=True, choices=list(range(17)), help_text="Input channel (0-16, 0=All)"),
+                Parameter("gain", Any, required=True, help_text="Gain value (0-100 for percent, -76 to +24 for dB, or +/- for relative)", supports_relative=True),
                 Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Channel to adjust"),
                 Parameter("unit", str, required=False, default=None, choices=["percent", "dB"], help_text="Gain unit (None for percent)", depends_on=Dependency(on="gain", when=_is_relative_adjustment)),
             ],
-            handler=lambda **kwargs: build_input_gain_command(**kwargs),
+            handler=lambda **kwargs: build_input_gain_command(
+                input_ch=kwargs["input"],
+                gain=kwargs["gain"],
+                channel=kwargs.get("channel", "LR"),
+                unit=kwargs.get("unit"),
+            ),
         )
     )
 
@@ -713,11 +718,15 @@ def _register_commands(registry: CommandRegistry) -> None:
             name="input_mute",
             description="Set input mute on or off",
             parameters=[
-                Parameter("input_ch", int, required=True, choices=list(range(17)), help_text="Input channel (0-16, 0=All)"),
+                Parameter("input", int, required=True, choices=list(range(17)), help_text="Input channel (0-16, 0=All)"),
                 Parameter("mute", bool, required=True, help_text="True to mute, False to unmute"),
                 Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Channel to adjust"),
             ],
-            handler=lambda **kwargs: build_input_mute_command(**kwargs),
+            handler=lambda **kwargs: build_input_mute_command(
+                input_ch=kwargs["input"],
+                mute=kwargs["mute"],
+                channel=kwargs.get("channel", "LR"),
+            ),
         )
     )
 
@@ -814,7 +823,7 @@ def _register_commands(registry: CommandRegistry) -> None:
             name="output_master_volume",
             description="Set output master volume",
             parameters=[
-                Parameter("level", Any, required=True, help_text="Volume level (0-100 for percent, -76 to +24 for dB, or +/- for relative)"),
+                Parameter("level", Any, required=True, help_text="Volume level (0-100 for percent, -76 to +24 for dB, or +/- for relative)", supports_relative=True),
                 Parameter("unit", str, required=False, default="percent", choices=["percent", "dB"], help_text="Volume unit", depends_on=Dependency(on="level", when=_is_relative_adjustment)),
                 Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Channel to adjust"),
             ],
@@ -890,7 +899,7 @@ def _register_commands(registry: CommandRegistry) -> None:
             description="Set group volume",
             parameters=[
                 Parameter("group", int, required=True, choices=list(range(5)), help_text="Group number (0-4, 0=All)"),
-                Parameter("level", Any, required=True, help_text="Volume level (0-100 for percent, -76 to +24 for dB, or +/- for relative)"),
+                Parameter("level", Any, required=True, help_text="Volume level (0-100 for percent, -76 to +24 for dB, or +/- for relative)", supports_relative=True),
                 Parameter("unit", str, required=False, default="percent", choices=["percent", "dB"], help_text="Volume unit", depends_on=Dependency(on="level", when=_is_relative_adjustment)),
                 Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Channel to adjust"),
             ],

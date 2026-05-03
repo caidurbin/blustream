@@ -34,6 +34,7 @@ class Parameter:
     help_text: str = ""
     validation: Optional[Callable[[Any], Optional[str]]] = None
     depends_on: Optional[Union[str, Dependency, List[Dependency]]] = None
+    supports_relative: bool = False
 
 
 @dataclass
