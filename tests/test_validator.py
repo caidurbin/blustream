@@ -3,7 +3,7 @@
 import pytest
 
 from bluestream.base.commands import Command, CommandRegistry, Parameter
-from bluestream.base.exceptions import ValidationError
+from bluestream.base.exceptions import CommandError, ValidationError
 from bluestream.base.validator import validate
 
 
@@ -104,8 +104,6 @@ class TestValidate:
 
     def test_unknown_command_raises(self, registry):
         """Unknown command name should raise CommandError."""
-        from bluestream.base.exceptions import CommandError
-
         with pytest.raises(CommandError, match="Unknown command"):
             validate(registry, "nonexistent", {})
 

@@ -768,7 +768,17 @@ def _register_commands(registry: CommandRegistry) -> None:
             description="Set output delay time",
             parameters=[
                 Parameter("output", int, required=True, choices=list(range(9)), help_text="Output channel (0-8, 0=All)"),
-                Parameter("delay_ms", int, required=True, help_text="Delay time in milliseconds (0-500)", validation=lambda v: f"Delay must be between 0-500 milliseconds, got {v}" if not isinstance(v, int) or v < 0 or v > 500 else None),
+                Parameter(
+                    "delay_ms",
+                    int,
+                    required=True,
+                    help_text="Delay time in milliseconds (0-500)",
+                    validation=lambda v: (
+                        f"Delay must be between 0-500 milliseconds, got {v}"
+                        if not isinstance(v, int) or v < 0 or v > 500
+                        else None
+                    ),
+                ),
                 Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Channel to adjust"),
             ],
             handler=lambda **kwargs: build_output_delay_command(**kwargs),

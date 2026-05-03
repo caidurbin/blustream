@@ -84,14 +84,8 @@ class DMP168(BluestreamDevice):
             CommandError: If command execution fails
             ValidationError: If parameters are invalid
         """
-        command = self._registry.get(name)
-        if not command:
-            raise CommandError(
-                f"Unknown command '{name}'. Use 'get_commands()' to see available commands."
-            )
-
-        # Validate parameters via centralized validator
         validate(self._registry, name, kwargs)
+        command = self._registry.get(name)
 
         # Build command string
         try:

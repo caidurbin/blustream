@@ -1,5 +1,7 @@
 """Custom exception hierarchy for Bluestream devices."""
 
+from typing import List, Optional, Tuple
+
 
 class BluestreamError(Exception):
     """Base exception for all Bluestream errors."""
@@ -32,8 +34,10 @@ class ValidationError(BluestreamError):
         errors: List of (parameter_name, message) tuples.
     """
 
-    def __init__(self, message: str, errors=None):
-        self.errors = errors or []
+    def __init__(
+        self, message: str, errors: Optional[List[Tuple[str, str]]] = None
+    ):
+        self.errors: List[Tuple[str, str]] = errors or []
         super().__init__(message)
 
 
