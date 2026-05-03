@@ -5,7 +5,7 @@ import asyncio
 import json
 import logging
 import sys
-from typing import Any, Optional
+from typing import Any
 
 from bluestream import DMP168
 from bluestream.base.commands import RenderContext
@@ -24,90 +24,42 @@ def suppress_telnetlib3_errors(loop, context):
     loop.default_exception_handler(context)
 
 
-def get_internal_command_name(cli_command: str, action: Optional[str] = None) -> Optional[str]:
-    """Map CLI command name to internal command name.
-
-    Args:
-        cli_command: CLI command name (e.g., "power", "preset")
-        action: Optional action for commands that have sub-actions (e.g., "save", "recall")
-
-    Returns:
-        Internal command name or None if not found
-    """
-    # Map CLI commands to internal command names
-    command_map = {
-        "status": "status",
-        "power": "power_on" if action == "on" else "power_off" if action == "off" else None,
-        "volume": "output_volume",
-        "mute": "output_mute",
-        "route": "route",
-        "input-gain": "input_gain",
-        "input-mute": "input_mute",
-        "preset": {
-            "save": "preset_save",
-            "recall": "preset_recall",
-            "delete": "preset_delete",
-            "status": "preset_status",
-        }.get(action) if action else None,
-        "unroute": "output_remove",
-        "delay": "output_delay",
-        "mix": "output_mix",
-        "master-volume": "output_master_volume",
-        "master-mute": "output_master_mute",
-        "output-lock": "output_channel_lock",
-        "uptime": "uptime",
-        "temp": "temp",
-        "reboot": "reboot",
-        "group-volume": "group_volume",
-        "group-mute": "group_mute",
-    }
-
-    if cli_command == "preset" and action:
-        return command_map.get("preset", {}).get(action) if isinstance(command_map.get("preset"), dict) else None
-    elif cli_command == "power" and action:
-        return command_map.get("power")
-    else:
-        result = command_map.get(cli_command)
-        return result if isinstance(result, str) else None
-
-
 def check_and_confirm_command(
-    device: Any, cli_command: str, action: Optional[str] = None, yes: bool = False, preset: Optional[int] = None
+    device: Any, command_name: str, yes: bool = False, **kwargs: Any
 ) -> bool:
     """Check if command requires confirmation and prompt user if needed.
 
+    Consults Command.confirmation_message when requires_confirmation is True:
+    - str: used verbatim as the prompt
+    - callable: invoked with kwargs dict, returns the prompt string
+    - None: generic fallback using the command name
+
     Args:
-        device: Device instance with command_requires_confirmation method
-        cli_command: CLI command name
-        action: Optional action for commands with sub-actions
+        device: Device instance with get_command method
+        command_name: Internal command name (e.g. "reboot", "preset_delete")
         yes: If True, skip confirmation
-        preset: Optional preset number for preset commands
+        **kwargs: Parsed command kwargs (forwarded to callable confirmation_message)
 
     Returns:
         True if command should proceed, False if cancelled
     """
-    internal_name = get_internal_command_name(cli_command, action)
-    if not internal_name:
-        # If we can't map the command, proceed (for read-only commands)
+    command = device.get_command(command_name)
+    if not command:
         return True
 
-    if not device.command_requires_confirmation(internal_name):
+    if not command.requires_confirmation:
         return True
 
     if yes:
         return True
 
-    # Build confirmation message
-    if cli_command == "preset" and action == "save":
-        preset_str = f" {preset}" if preset else ""
-        confirm_msg = f"Save current configuration to preset{preset_str}? (yes/no): "
-    elif cli_command == "preset" and action == "delete":
-        preset_str = f" {preset}" if preset else ""
-        confirm_msg = f"Delete preset{preset_str}? (yes/no): "
-    elif cli_command == "reboot":
-        confirm_msg = "Reboot the device? (yes/no): "
+    msg = command.confirmation_message
+    if msg is None:
+        confirm_msg = f"Execute {command_name}? (yes/no): "
+    elif callable(msg):
+        confirm_msg = f"{msg(kwargs)} (yes/no): "
     else:
-        confirm_msg = f"Execute {cli_command}? (yes/no): "
+        confirm_msg = f"{msg} (yes/no): "
 
     confirm = input(confirm_msg)
     if confirm.lower() not in ["yes", "y"]:
@@ -727,18 +679,17 @@ async def main_async() -> int:
 
             elif args.command == "preset":
                 if args.action == "save":
-                    if not check_and_confirm_command(device, "preset", "save", args.yes, args.preset):
+                    if not check_and_confirm_command(device, "preset_save", args.yes, preset=args.preset):
                         return 0
                     await device.save_preset(args.preset)
                     print(f"Saved configuration to preset {args.preset}")
                 elif args.action == "recall":
-                    # Recall doesn't require confirmation, but check anyway for consistency
-                    if not check_and_confirm_command(device, "preset", "recall", args.yes):
+                    if not check_and_confirm_command(device, "preset_recall", args.yes, preset=args.preset):
                         return 0
                     await device.recall_preset(args.preset)
                     print(f"Recalled preset {args.preset}")
                 elif args.action == "delete":
-                    if not check_and_confirm_command(device, "preset", "delete", args.yes, args.preset):
+                    if not check_and_confirm_command(device, "preset_delete", args.yes, preset=args.preset):
                         return 0
                     await device.execute_command("preset_delete", preset=args.preset)
                     print(f"Deleted preset {args.preset}")
@@ -747,6 +698,11 @@ async def main_async() -> int:
                     print(_format_command_result(device, "preset_status", preset_status, ctx))
 
             elif args.command == "unroute":
+                if not check_and_confirm_command(
+                    device, "output_remove", args.yes,
+                    output=args.output, input=args.input,
+                ):
+                    return 0
                 await device.remove_input_from_output(
                     output=args.output,
                     input_ch=args.input,
@@ -805,7 +761,7 @@ async def main_async() -> int:
                     print(f"Temperature: {temp}")
 
             elif args.command == "reboot":
-                if not check_and_confirm_command(device, "reboot", None, args.yes):
+                if not check_and_confirm_command(device, "reboot", args.yes):
                     return 0
                 await device.reboot()
                 print("Rebooting device...")

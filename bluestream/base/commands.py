@@ -1,7 +1,7 @@
 """Command metadata and protocol interface."""
 
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Type
+from typing import Any, Callable, Dict, List, Optional, Type, Union
 
 # Type alias for command handlers
 CommandHandler = Callable[..., str]
@@ -39,6 +39,7 @@ class Command:
     return_type: Type = str
     requires_confirmation: bool = False
     format_result: Optional[Callable[[Any, RenderContext], str]] = None
+    confirmation_message: Optional[Union[str, Callable[[dict], str]]] = None
 
 
 class CommandRegistry:

@@ -483,8 +483,74 @@ class TestDMP168Device:
         device = DMP168(host="192.168.1.100")
         assert device.command_requires_confirmation("preset_delete") is True
         assert device.command_requires_confirmation("reboot") is True
+        assert device.command_requires_confirmation("output_remove") is True
         assert device.command_requires_confirmation("status") is False
         assert device.command_requires_confirmation("unknown_command") is False
+
+    @pytest.mark.asyncio
+    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    async def test_confirmation_message_static_string(self, mock_connection_class):
+        """Test that reboot has a static string confirmation_message."""
+        mock_conn = MagicMock()
+        mock_connection_class.return_value = mock_conn
+
+        device = DMP168(host="192.168.1.100")
+        command = device.get_command("reboot")
+        assert command is not None
+        assert isinstance(command.confirmation_message, str)
+        assert "reboot" in command.confirmation_message.lower()
+
+    @pytest.mark.asyncio
+    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    async def test_confirmation_message_callable(self, mock_connection_class):
+        """Test that preset_delete has a callable confirmation_message with kwarg substitution."""
+        mock_conn = MagicMock()
+        mock_connection_class.return_value = mock_conn
+
+        device = DMP168(host="192.168.1.100")
+        command = device.get_command("preset_delete")
+        assert command is not None
+        assert callable(command.confirmation_message)
+        msg = command.confirmation_message({"preset": 3})
+        assert "3" in msg
+        assert "preset" in msg.lower()
+
+    @pytest.mark.asyncio
+    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    async def test_confirmation_message_callable_output_remove(self, mock_connection_class):
+        """Test that output_remove has a callable confirmation_message with kwarg substitution."""
+        mock_conn = MagicMock()
+        mock_connection_class.return_value = mock_conn
+
+        device = DMP168(host="192.168.1.100")
+        command = device.get_command("output_remove")
+        assert command is not None
+        assert callable(command.confirmation_message)
+        msg = command.confirmation_message({"output": 2, "input": 5})
+        assert "2" in msg
+        assert "5" in msg
+
+    @pytest.mark.asyncio
+    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    async def test_confirmation_message_unset_is_none(self, mock_connection_class):
+        """Test that non-destructive commands have no confirmation_message."""
+        mock_conn = MagicMock()
+        mock_connection_class.return_value = mock_conn
+
+        device = DMP168(host="192.168.1.100")
+        command = device.get_command("status")
+        assert command is not None
+        assert command.confirmation_message is None
+
+    @pytest.mark.asyncio
+    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    async def test_get_command_unknown(self, mock_connection_class):
+        """Test get_command returns None for unknown commands."""
+        mock_conn = MagicMock()
+        mock_connection_class.return_value = mock_conn
+
+        device = DMP168(host="192.168.1.100")
+        assert device.get_command("nonexistent") is None
 
     @pytest.mark.asyncio
     @patch("bluestream.devices.dmp168.device.TCPConnection")

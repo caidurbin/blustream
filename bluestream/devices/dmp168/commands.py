@@ -727,6 +727,7 @@ def _register_commands(registry: CommandRegistry) -> None:
             ],
             handler=lambda **kwargs: build_preset_delete_command(**kwargs),
             requires_confirmation=True,
+            confirmation_message=lambda kwargs: f"Delete preset {kwargs['preset']}?",
         )
     )
 
@@ -761,6 +762,8 @@ def _register_commands(registry: CommandRegistry) -> None:
                 output_channel=kwargs.get("output_channel", "LR"),
                 input_channel=kwargs.get("input_channel", "LR"),
             ),
+            requires_confirmation=True,
+            confirmation_message=lambda kwargs: f"Remove input {kwargs['input']} from output {kwargs['output']}?",
         )
     )
 
@@ -872,6 +875,7 @@ def _register_commands(registry: CommandRegistry) -> None:
             parameters=[],
             handler=lambda **kwargs: build_reboot_command(),
             requires_confirmation=True,
+            confirmation_message="Reboot the device?",
         )
     )
 
