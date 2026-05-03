@@ -9,9 +9,6 @@ from bluestream.cli.main import check_and_confirm_command
 def _make_device(registry):
     device = MagicMock()
     device.get_command = lambda name: registry.get(name)
-    device.command_requires_confirmation = lambda name: (
-        registry.get(name).requires_confirmation if registry.get(name) else False
-    )
     return device
 
 

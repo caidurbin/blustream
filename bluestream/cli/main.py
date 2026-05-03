@@ -5,7 +5,7 @@ import asyncio
 import json
 import logging
 import sys
-from typing import Any, Optional
+from typing import Any
 
 from bluestream import DMP168
 from bluestream.base.exceptions import BluestreamError, ConnectionError
@@ -22,53 +22,6 @@ def suppress_telnetlib3_errors(loop, context):
     loop.default_exception_handler(context)
 
 
-def get_internal_command_name(cli_command: str, action: Optional[str] = None) -> Optional[str]:
-    """Map CLI command name to internal command name.
-
-    Args:
-        cli_command: CLI command name (e.g., "power", "preset")
-        action: Optional action for commands that have sub-actions (e.g., "save", "recall")
-
-    Returns:
-        Internal command name or None if not found
-    """
-    # Map CLI commands to internal command names
-    command_map = {
-        "status": "status",
-        "power": "power_on" if action == "on" else "power_off" if action == "off" else None,
-        "volume": "output_volume",
-        "mute": "output_mute",
-        "route": "route",
-        "input-gain": "input_gain",
-        "input-mute": "input_mute",
-        "preset": {
-            "save": "preset_save",
-            "recall": "preset_recall",
-            "delete": "preset_delete",
-            "status": "preset_status",
-        }.get(action) if action else None,
-        "unroute": "output_remove",
-        "delay": "output_delay",
-        "mix": "output_mix",
-        "master-volume": "output_master_volume",
-        "master-mute": "output_master_mute",
-        "output-lock": "output_channel_lock",
-        "uptime": "uptime",
-        "temp": "temp",
-        "reboot": "reboot",
-        "group-volume": "group_volume",
-        "group-mute": "group_mute",
-    }
-
-    if cli_command == "preset" and action:
-        return command_map.get("preset", {}).get(action) if isinstance(command_map.get("preset"), dict) else None
-    elif cli_command == "power" and action:
-        return command_map.get("power")
-    else:
-        result = command_map.get(cli_command)
-        return result if isinstance(result, str) else None
-
-
 def check_and_confirm_command(
     device: Any, command_name: str, yes: bool = False, **kwargs: Any
 ) -> bool:
@@ -80,7 +33,7 @@ def check_and_confirm_command(
     - None: generic fallback using the command name
 
     Args:
-        device: Device instance with get_command / command_requires_confirmation
+        device: Device instance with get_command method
         command_name: Internal command name (e.g. "reboot", "preset_delete")
         yes: If True, skip confirmation
         **kwargs: Parsed command kwargs (forwarded to callable confirmation_message)
@@ -98,7 +51,6 @@ def check_and_confirm_command(
     if yes:
         return True
 
-    # Build confirmation message from Command metadata
     msg = command.confirmation_message
     if msg is None:
         confirm_msg = f"Execute {command_name}? (yes/no): "
