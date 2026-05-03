@@ -15,6 +15,14 @@ class RenderContext:
 
 
 @dataclass
+class Dependency:
+    """Cross-parameter dependency rule."""
+
+    on: str
+    when: Optional[Callable[[Any], bool]] = None
+
+
+@dataclass
 class Parameter:
     """Command parameter metadata."""
 
@@ -25,7 +33,7 @@ class Parameter:
     choices: Optional[List[Any]] = None
     help_text: str = ""
     validation: Optional[Callable[[Any], Optional[str]]] = None
-    depends_on: Optional[str] = None  # Parameter name this depends on
+    depends_on: Optional[Union[str, Dependency, List[Dependency]]] = None
 
 
 @dataclass

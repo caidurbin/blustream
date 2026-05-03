@@ -2,7 +2,7 @@
 
 import logging
 import re
-from typing import Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from bluestream.base.commands import Command, CommandRegistry
 from bluestream.base.connection import Connection
@@ -189,13 +189,14 @@ class DMP168(BluestreamDevice):
             unit: Unit type ("percent" or "dB")
             channel: Channel ("L", "R", or "LR")
         """
-        await self.execute_command(
-            "output_volume",
-            output=output,
-            level=level,
-            unit=unit,
-            channel=channel,
-        )
+        kwargs: Dict[str, Any] = {
+            "output": output,
+            "level": level,
+            "channel": channel,
+        }
+        if not (isinstance(level, str) and level in ("+", "-")):
+            kwargs["unit"] = unit
+        await self.execute_command("output_volume", **kwargs)
 
     async def set_output_mute(self, output: int, mute: bool, channel: str = "LR") -> None:
         """Set output mute.
@@ -261,13 +262,14 @@ class DMP168(BluestreamDevice):
             channel: Channel ("L", "R", or "LR")
             unit: Unit type ("percent" or "dB"), None for percent
         """
-        await self.execute_command(
-            "input_gain",
-            input_ch=input_ch,
-            gain=gain,
-            channel=channel,
-            unit=unit,
-        )
+        kwargs: Dict[str, Any] = {
+            "input_ch": input_ch,
+            "gain": gain,
+            "channel": channel,
+        }
+        if not (isinstance(gain, str) and gain in ("+", "-")):
+            kwargs["unit"] = unit
+        await self.execute_command("input_gain", **kwargs)
 
     async def set_input_mute(self, input_ch: int, mute: bool, channel: str = "LR") -> None:
         """Set input mute.
@@ -345,12 +347,10 @@ class DMP168(BluestreamDevice):
             unit: Unit type ("percent" or "dB")
             channel: Channel ("L", "R", or "LR")
         """
-        await self.execute_command(
-            "output_master_volume",
-            level=level,
-            unit=unit,
-            channel=channel,
-        )
+        kwargs: Dict[str, Any] = {"level": level, "channel": channel}
+        if not (isinstance(level, str) and level in ("+", "-")):
+            kwargs["unit"] = unit
+        await self.execute_command("output_master_volume", **kwargs)
 
     async def set_output_master_mute(self, mute: bool, channel: str = "LR") -> None:
         """Set output master mute.
@@ -406,13 +406,14 @@ class DMP168(BluestreamDevice):
             unit: Unit type ("percent" or "dB")
             channel: Channel ("L", "R", or "LR")
         """
-        await self.execute_command(
-            "group_volume",
-            group=group,
-            level=level,
-            unit=unit,
-            channel=channel,
-        )
+        kwargs: Dict[str, Any] = {
+            "group": group,
+            "level": level,
+            "channel": channel,
+        }
+        if not (isinstance(level, str) and level in ("+", "-")):
+            kwargs["unit"] = unit
+        await self.execute_command("group_volume", **kwargs)
 
     async def set_group_mute(self, group: int, mute: bool, channel: str = "LR") -> None:
         """Set group mute.

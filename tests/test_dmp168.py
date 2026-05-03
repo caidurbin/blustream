@@ -694,9 +694,9 @@ class TestDMP168Device:
         await device.connect()
 
         # Test relative volume increase
-        await device.set_output_volume(1, "+", unit="percent")
+        await device.set_output_volume(1, "+")
         # Test relative volume decrease
-        await device.set_output_volume(1, "-", unit="percent")
+        await device.set_output_volume(1, "-")
 
     @pytest.mark.asyncio
     @patch("bluestream.devices.dmp168.device.TCPConnection")

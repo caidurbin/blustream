@@ -2,10 +2,14 @@
 
 from typing import Any, Optional, Union
 
-from bluestream.base.commands import Command, CommandRegistry, Parameter
+from bluestream.base.commands import Command, CommandRegistry, Dependency, Parameter
 from bluestream.base.exceptions import ValidationError
 from bluestream.devices.dmp168.formatters import format_preset_status, format_status
 from bluestream.devices.dmp168.models import PresetStatus, SystemStatus
+
+
+def _is_relative_adjustment(value: Any) -> bool:
+    return isinstance(value, str) and value in ("+", "-")
 
 
 def build_status_command() -> str:
@@ -624,7 +628,7 @@ def _register_commands(registry: CommandRegistry) -> None:
             parameters=[
                 Parameter("output", int, required=True, choices=list(range(9)), help_text="Output channel (0-8, 0=All)"),
                 Parameter("level", Any, required=True, help_text="Volume level (0-100 for percent, -76 to +24 for dB, or +/- for relative)"),
-                Parameter("unit", str, required=False, default="percent", choices=["percent", "dB"], help_text="Volume unit"),
+                Parameter("unit", str, required=False, default="percent", choices=["percent", "dB"], help_text="Volume unit", depends_on=Dependency(on="level", when=_is_relative_adjustment)),
                 Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Channel to adjust"),
             ],
             handler=lambda **kwargs: build_output_volume_command(**kwargs),
@@ -697,7 +701,7 @@ def _register_commands(registry: CommandRegistry) -> None:
                 Parameter("input_ch", int, required=True, choices=list(range(17)), help_text="Input channel (0-16, 0=All)"),
                 Parameter("gain", Any, required=True, help_text="Gain value (0-100 for percent, -76 to +24 for dB, or +/- for relative)"),
                 Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Channel to adjust"),
-                Parameter("unit", str, required=False, default=None, choices=["percent", "dB"], help_text="Gain unit (None for percent)"),
+                Parameter("unit", str, required=False, default=None, choices=["percent", "dB"], help_text="Gain unit (None for percent)", depends_on=Dependency(on="gain", when=_is_relative_adjustment)),
             ],
             handler=lambda **kwargs: build_input_gain_command(**kwargs),
         )
@@ -811,7 +815,7 @@ def _register_commands(registry: CommandRegistry) -> None:
             description="Set output master volume",
             parameters=[
                 Parameter("level", Any, required=True, help_text="Volume level (0-100 for percent, -76 to +24 for dB, or +/- for relative)"),
-                Parameter("unit", str, required=False, default="percent", choices=["percent", "dB"], help_text="Volume unit"),
+                Parameter("unit", str, required=False, default="percent", choices=["percent", "dB"], help_text="Volume unit", depends_on=Dependency(on="level", when=_is_relative_adjustment)),
                 Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Channel to adjust"),
             ],
             handler=lambda **kwargs: build_output_master_volume_command(**kwargs),
@@ -887,7 +891,7 @@ def _register_commands(registry: CommandRegistry) -> None:
             parameters=[
                 Parameter("group", int, required=True, choices=list(range(5)), help_text="Group number (0-4, 0=All)"),
                 Parameter("level", Any, required=True, help_text="Volume level (0-100 for percent, -76 to +24 for dB, or +/- for relative)"),
-                Parameter("unit", str, required=False, default="percent", choices=["percent", "dB"], help_text="Volume unit"),
+                Parameter("unit", str, required=False, default="percent", choices=["percent", "dB"], help_text="Volume unit", depends_on=Dependency(on="level", when=_is_relative_adjustment)),
                 Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Channel to adjust"),
             ],
             handler=lambda **kwargs: build_group_volume_command(**kwargs),

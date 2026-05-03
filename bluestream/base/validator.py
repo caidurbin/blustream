@@ -2,8 +2,17 @@
 
 from typing import Any, Dict, List, Tuple
 
-from bluestream.base.commands import CommandRegistry
+from bluestream.base.commands import CommandRegistry, Dependency
 from bluestream.base.exceptions import CommandError, ValidationError
+
+
+def _normalize_depends_on(depends_on) -> List[Dependency]:
+    """Normalize depends_on field to a list of Dependency objects."""
+    if isinstance(depends_on, str):
+        return [Dependency(on=depends_on)]
+    if isinstance(depends_on, Dependency):
+        return [depends_on]
+    return list(depends_on)
 
 
 def validate(
@@ -11,8 +20,11 @@ def validate(
 ) -> None:
     """Validate parameters for a command.
 
-    Runs per-parameter checks (required, choices, validation callable),
-    collecting all failures into a single ValidationError.
+    Two-pass validation:
+      Pass one: per-parameter checks (required, choices, validation callable),
+        collecting all failures.
+      Pass two: cross-parameter dependency checks, short-circuiting on first
+        failure. Only runs when pass one collected zero failures.
 
     Args:
         registry: Command registry to look up the command.
@@ -33,6 +45,7 @@ def validate(
 
     errors: List[Tuple[str, str]] = []
 
+    # Pass one: per-parameter checks
     for param in command.parameters:
         if param.required and param.name not in kwargs:
             errors.append((
@@ -73,3 +86,46 @@ def validate(
             f"Validation failed for '{command_name}': {messages}",
             errors=errors,
         )
+
+    # Pass two: cross-parameter dependency checks (short-circuits on first failure)
+    for param in command.parameters:
+        if param.depends_on is None:
+            continue
+
+        if param.name not in kwargs:
+            continue
+
+        value = kwargs[param.name]
+        if value is None and not param.required:
+            continue
+
+        for dep in _normalize_depends_on(param.depends_on):
+            dep_value = kwargs.get(dep.on)
+
+            if dep.when is None:
+                # Presence-based: the target param must be present and non-None
+                if dep_value is None:
+                    errors.append((
+                        param.name,
+                        f"Parameter '{param.name}' requires "
+                        f"'{dep.on}' to be provided.",
+                    ))
+                    break
+            else:
+                # Predicate-based: rejected when predicate returns True
+                if dep_value is not None and dep.when(dep_value):
+                    errors.append((
+                        param.name,
+                        f"Parameter '{param.name}' cannot be used when "
+                        f"'{dep.on}' is a relative adjustment.",
+                    ))
+                    break
+
+        if errors:
+            messages = "; ".join(
+                f"{name}: {msg}" for name, msg in errors
+            )
+            raise ValidationError(
+                f"Validation failed for '{command_name}': {messages}",
+                errors=errors,
+            )
