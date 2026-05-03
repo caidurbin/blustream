@@ -2,14 +2,16 @@
 
 import logging
 import re
-from typing import Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from bluestream.base.commands import Command, CommandRegistry
 from bluestream.base.connection import Connection
 from bluestream.base.device import BluestreamDevice
 from bluestream.base.exceptions import CommandError, ValidationError
+from bluestream.base.validator import validate
 from bluestream.connection.tcp import TCPConnection
 from bluestream.devices.dmp168 import commands as cmd_module
+from bluestream.devices.dmp168.commands import _is_relative_adjustment
 from bluestream.devices.dmp168.models import PresetStatus, SystemStatus
 from bluestream.devices.dmp168.parser import DMP168Parser
 
@@ -18,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 class DMP168(BluestreamDevice):
     """DMP168 digital audio matrix processor device."""
+
+    commands: CommandRegistry = CommandRegistry()
 
     def __init__(
         self,
@@ -40,12 +44,7 @@ class DMP168(BluestreamDevice):
         self.host = host
         self.port = port
         self._parser = DMP168Parser()
-        self._registry = CommandRegistry()
-        self._register_all_commands()
-
-    def _register_all_commands(self) -> None:
-        """Register all DMP168 commands."""
-        cmd_module._register_commands(self._registry)
+        self._registry = self.__class__.commands
 
     def get_commands(self) -> List[str]:
         """Get list of available command names.
@@ -54,6 +53,17 @@ class DMP168(BluestreamDevice):
             List of command names
         """
         return self._registry.list_commands()
+
+    def get_command(self, name: str) -> Optional[Command]:
+        """Get command metadata by name.
+
+        Args:
+            name: Command name
+
+        Returns:
+            Command metadata or None if not found
+        """
+        return self._registry.get(name)
 
     def command_requires_confirmation(self, name: str) -> bool:
         """Check if a command requires confirmation before execution.
@@ -83,14 +93,8 @@ class DMP168(BluestreamDevice):
             CommandError: If command execution fails
             ValidationError: If parameters are invalid
         """
+        validate(self._registry, name, kwargs)
         command = self._registry.get(name)
-        if not command:
-            raise CommandError(
-                f"Unknown command '{name}'. Use 'get_commands()' to see available commands."
-            )
-
-        # Validate parameters
-        self._validate_parameters(command, kwargs)
 
         # Build command string
         try:
@@ -151,47 +155,6 @@ class DMP168(BluestreamDevice):
         else:
             return self._parser.parse_simple_response(response)
 
-    def _validate_parameters(self, command: Command, kwargs: dict) -> None:
-        """Validate command parameters.
-
-        Args:
-            command: Command metadata
-            kwargs: Provided parameters
-
-        Raises:
-            ValidationError: If validation fails
-        """
-        # Check required parameters
-        for param in command.parameters:
-            if param.required and param.name not in kwargs:
-                raise ValidationError(
-                    f"Missing required parameter '{param.name}' for command '{command.name}'. "
-                    f"Please provide this parameter and try again."
-                )
-
-        # Check parameter values
-        for param in command.parameters:
-            if param.name in kwargs:
-                value = kwargs[param.name]
-                # Skip validation for None values on optional parameters
-                if value is None and not param.required:
-                    continue
-                # Check choices
-                if param.choices and value not in param.choices:
-                    choices_str = ", ".join(str(c) for c in param.choices[:5])
-                    if len(param.choices) > 5:
-                        choices_str += f", ... (total {len(param.choices)} options)"
-                    raise ValidationError(
-                        f"Invalid value '{value}' for parameter '{param.name}'. "
-                        f"Valid options are: {choices_str}. Please choose a valid value and try again."
-                    )
-                # Run custom validation
-                if param.validation and not param.validation(value):
-                    raise ValidationError(
-                        f"Parameter '{param.name}' with value '{value}' failed validation. "
-                        f"Please check the parameter value and try again."
-                    )
-
     async def get_status(self) -> SystemStatus:
         """Get device status.
 
@@ -224,13 +187,14 @@ class DMP168(BluestreamDevice):
             unit: Unit type ("percent" or "dB")
             channel: Channel ("L", "R", or "LR")
         """
-        await self.execute_command(
-            "output_volume",
-            output=output,
-            level=level,
-            unit=unit,
-            channel=channel,
-        )
+        kwargs: Dict[str, Any] = {
+            "output": output,
+            "level": level,
+            "channel": channel,
+        }
+        if not _is_relative_adjustment(level):
+            kwargs["unit"] = unit
+        await self.execute_command("output_volume", **kwargs)
 
     async def set_output_mute(self, output: int, mute: bool, channel: str = "LR") -> None:
         """Set output mute.
@@ -296,13 +260,14 @@ class DMP168(BluestreamDevice):
             channel: Channel ("L", "R", or "LR")
             unit: Unit type ("percent" or "dB"), None for percent
         """
-        await self.execute_command(
-            "input_gain",
-            input_ch=input_ch,
-            gain=gain,
-            channel=channel,
-            unit=unit,
-        )
+        kwargs: Dict[str, Any] = {
+            "input": input_ch,
+            "gain": gain,
+            "channel": channel,
+        }
+        if not _is_relative_adjustment(gain):
+            kwargs["unit"] = unit
+        await self.execute_command("input_gain", **kwargs)
 
     async def set_input_mute(self, input_ch: int, mute: bool, channel: str = "LR") -> None:
         """Set input mute.
@@ -312,7 +277,7 @@ class DMP168(BluestreamDevice):
             mute: True to mute, False to unmute
             channel: Channel ("L", "R", or "LR")
         """
-        await self.execute_command("input_mute", input_ch=input_ch, mute=mute, channel=channel)
+        await self.execute_command("input_mute", input=input_ch, mute=mute, channel=channel)
 
     async def get_preset_status(self, preset: int) -> PresetStatus:
         """Get preset status.
@@ -380,12 +345,10 @@ class DMP168(BluestreamDevice):
             unit: Unit type ("percent" or "dB")
             channel: Channel ("L", "R", or "LR")
         """
-        await self.execute_command(
-            "output_master_volume",
-            level=level,
-            unit=unit,
-            channel=channel,
-        )
+        kwargs: Dict[str, Any] = {"level": level, "channel": channel}
+        if not _is_relative_adjustment(level):
+            kwargs["unit"] = unit
+        await self.execute_command("output_master_volume", **kwargs)
 
     async def set_output_master_mute(self, mute: bool, channel: str = "LR") -> None:
         """Set output master mute.
@@ -441,13 +404,14 @@ class DMP168(BluestreamDevice):
             unit: Unit type ("percent" or "dB")
             channel: Channel ("L", "R", or "LR")
         """
-        await self.execute_command(
-            "group_volume",
-            group=group,
-            level=level,
-            unit=unit,
-            channel=channel,
-        )
+        kwargs: Dict[str, Any] = {
+            "group": group,
+            "level": level,
+            "channel": channel,
+        }
+        if not _is_relative_adjustment(level):
+            kwargs["unit"] = unit
+        await self.execute_command("group_volume", **kwargs)
 
     async def set_group_mute(self, group: int, mute: bool, channel: str = "LR") -> None:
         """Set group mute.
@@ -458,4 +422,7 @@ class DMP168(BluestreamDevice):
             channel: Channel ("L", "R", or "LR")
         """
         await self.execute_command("group_mute", group=group, mute=mute, channel=channel)
+
+
+cmd_module._register_commands(DMP168.commands)
 
