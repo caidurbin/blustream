@@ -55,6 +55,17 @@ class DMP168(BluestreamDevice):
         """
         return self._registry.list_commands()
 
+    def get_command(self, name: str) -> Optional[Command]:
+        """Get command metadata by name.
+
+        Args:
+            name: Command name
+
+        Returns:
+            Command metadata or None if not found
+        """
+        return self._registry.get(name)
+
     def command_requires_confirmation(self, name: str) -> bool:
         """Check if a command requires confirmation before execution.
 
