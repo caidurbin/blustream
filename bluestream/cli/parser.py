@@ -53,6 +53,7 @@ def _add_parameter(parser: argparse.ArgumentParser, param: Parameter) -> None:
             help=param.help_text or None,
         )
     elif param.supports_relative:
+        kebab_name = _snake_to_kebab(param.name)
         group = parser.add_mutually_exclusive_group(required=param.required)
         group.add_argument(
             flag,
@@ -61,14 +62,16 @@ def _add_parameter(parser: argparse.ArgumentParser, param: Parameter) -> None:
             help=param.help_text or None,
         )
         group.add_argument(
-            f"--increase-{_snake_to_kebab(param.name)}",
+            f"--increase-{kebab_name}",
             action="store_true",
             default=False,
+            help=f"Increase {param.name} by one step",
         )
         group.add_argument(
-            f"--decrease-{_snake_to_kebab(param.name)}",
+            f"--decrease-{kebab_name}",
             action="store_true",
             default=False,
+            help=f"Decrease {param.name} by one step",
         )
     else:
         kw: Dict[str, Any] = {}

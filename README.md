@@ -127,6 +127,8 @@ bluestream --host 192.168.1.100 status --json
 
 ## Command Line Options
 
+Global flags must appear **before** the subcommand (e.g. `bluestream --yes reboot`, not `bluestream reboot --yes`).
+
 - `--device`: Device type (default: dmp168)
 - `--host`: Device hostname or IP address (default: localhost)
 - `--port`: TCP port (default: 23)

@@ -2,83 +2,6 @@
 
 This document tracks planned future enhancements to the Bluestream device control library and CLI.
 
-## Command Metadata System
-
-**Current State**: Simple command registry with name -> builder function mapping
-
-**Future Enhancement**: Full command metadata system with:
-- `Command` dataclass: name, description, parameters, return_type, handler, requires_confirmation
-- `Parameter` dataclass: name, type, required, default, choices, help_text, validation, depends_on
-- Command parameter dependencies (conditional parameters)
-- Parameter validation rules
-- Command aliases support
-
-**Benefits**:
-- Enables fully dynamic CLI generation
-- Self-documenting commands
-- Better type checking and validation
-- Automatic help text generation
-
-**Implementation Notes**:
-- Can be added incrementally
-- Start with basic metadata (name, description, parameters)
-- Add advanced features (dependencies, validation) later
-- Maintain backward compatibility with simple registry
-
-## Dynamic CLI Generation
-
-**Current State**: Manual CLI command definitions for each command
-
-**Future Enhancement**: Fully dynamic CLI that:
-- Introspects device commands via metadata
-- Generates argparse subcommands and arguments automatically
-- Handles conditional parameters based on dependencies
-- Auto-generates help text from command metadata
-- Supports command aliases
-
-**Benefits**:
-- No hardcoded CLI commands
-- Adding new device commands automatically extends CLI
-- Consistent CLI interface across devices
-- Less maintenance overhead
-
-**Implementation Notes**:
-- Requires command metadata system first
-- May need to switch from argparse to click for better dynamic support
-- Consider hybrid approach: metadata-driven with manual overrides
-
-## Telnet Protocol Support
-
-**Current State**: Raw TCP with Telnet negotiation byte filtering
-
-**Future Enhancement**: Full Telnet protocol support:
-- Proper Telnet negotiation handling
-- Support for Telnet options (echo, line mode, etc.)
-- Better handling of special Telnet sequences
-- Support for devices that require full Telnet compliance
-
-**Implementation Notes**:
-- Python's `telnetlib` is deprecated in 3.13+
-- Consider third-party library like `telnetlib3` or `pytelnet`
-- Or implement minimal Telnet negotiation ourselves
-- Current approach (filtering bytes) works for DMP168 but may not for all devices
-
-## Async/Await Support
-
-**Current State**: Synchronous operations only
-
-**Future Enhancement**: Async/await support for:
-- Non-blocking device operations
-- Concurrent command execution
-- Better integration with async frameworks
-- Async context manager support
-
-**Implementation Notes**:
-- Would require async connection implementation
-- Consider `asyncio` and `aiohttp` or `asyncio` sockets
-- Maintain synchronous API for backward compatibility
-- Add async methods alongside sync methods
-
 ## Connection Pooling
 
 **Current State**: One connection per device instance
@@ -144,23 +67,20 @@ This document tracks planned future enhancements to the Bluestream device contro
 
 ## Device Version Detection
 
-**Current State**: No version detection
+**Current State**: `firmware_version` is parsed from STATUS responses but nothing is keyed off it.
 
 **Future Enhancement**: Device version detection:
-- Query device firmware version
 - Command availability based on version
 - Version-specific command implementations
 - Compatibility checking
 
 **Implementation Notes**:
-- DMP168 returns version in STATUS response
-- Can use this to determine available commands
 - May need version-specific parsers
 - Document version compatibility
 
 ## Advanced Error Handling
 
-**Current State**: Basic error handling
+**Current State**: Basic exception hierarchy (`BluestreamError`, `ConnectionError`, `TimeoutError`, `ValidationError`); no retry logic.
 
 **Future Enhancement**: Enhanced error handling:
 - Error response parsing from device
@@ -191,29 +111,21 @@ This document tracks planned future enhancements to the Bluestream device contro
 
 ## Testing Enhancements
 
-**Current State**: Basic test structure planned
+**Current State**: ~1,400 lines across `tests/test_base_device.py`, `tests/test_connection.py`, `tests/test_dmp168.py`, `tests/test_parser.py`, with a `MockConnection` and a `status_response.txt` fixture. Coverage is being collected.
 
-**Future Enhancement**: Comprehensive testing:
-- Test dynamic CLI builder
-- Test error conditions and edge cases
-- Test response parsing edge cases
-- Performance testing
-- Integration test fixtures
-- Mock device server for testing
-
-**Implementation Notes**:
-- Create comprehensive test fixtures
-- Mock device that responds like real device
-- Test all error paths
-- Consider property-based testing
+**Future Enhancement**:
+- CLI tests (no `tests/test_cli.py` today; the ~700-line `cli/main.py` is uncovered)
+- Full mock device server that speaks the wire protocol, for end-to-end tests against `TCPConnection`
+- Response parsing edge cases and error-path coverage
+- Performance / property-based testing
 
 ## Documentation Enhancements
 
-**Current State**: Basic README and docstrings planned
+**Current State**: Substantial README; docstrings present throughout the package.
 
-**Future Enhancement**: Comprehensive documentation:
+**Future Enhancement**:
 - API reference documentation (Sphinx)
-- Tutorials and examples
+- Tutorials and worked examples
 - Architecture documentation
 - Contributing guide
 - Troubleshooting guide with common issues
@@ -241,37 +153,6 @@ This document tracks planned future enhancements to the Bluestream device contro
 - Share common patterns where possible
 - Document device differences
 
-## Command Aliases
-
-**Current State**: No alias support
-
-**Future Enhancement**: Command aliases:
-- Short command names (e.g., "vol" -> "volume")
-- Device-specific aliases
-- User-configurable aliases
-- Alias resolution in CLI and library
-
-**Implementation Notes**:
-- Add to command metadata
-- Support in command registry
-- CLI should show aliases in help
-- Library should accept aliases
-
-## Increment/Decrement Operations
-
-**Current State**: Absolute value setting only
-
-**Future Enhancement**: Relative operations:
-- Support for "+" and "-" values (increment/decrement)
-- Relative volume changes
-- Step-based adjustments
-- Smart defaults for step sizes
-
-**Implementation Notes**:
-- DMP168 API supports "+" and "-" for relative changes
-- Need special handling in parameter validation
-- Consider convenience methods in library API
-
 ## Interactive Command Mode
 
 **Current State**: One command at a time
@@ -288,4 +169,3 @@ This document tracks planned future enhancements to the Bluestream device contro
 - Consider using `prompt_toolkit` or `readline`
 - Maintain command history
 - Support both interactive and script modes
-
