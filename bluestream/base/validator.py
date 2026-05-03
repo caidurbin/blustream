@@ -1,12 +1,14 @@
 """Centralized parameter validation."""
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 from bluestream.base.commands import CommandRegistry, Dependency
 from bluestream.base.exceptions import CommandError, ValidationError
 
 
-def _normalize_depends_on(depends_on) -> List[Dependency]:
+def _normalize_depends_on(
+    depends_on: Union[str, Dependency, List[Dependency]],
+) -> List[Dependency]:
     """Normalize depends_on field to a list of Dependency objects."""
     if isinstance(depends_on, str):
         return [Dependency(on=depends_on)]
@@ -103,7 +105,6 @@ def validate(
             dep_value = kwargs.get(dep.on)
 
             if dep.when is None:
-                # Presence-based: the target param must be present and non-None
                 if dep_value is None:
                     errors.append((
                         param.name,
@@ -112,12 +113,11 @@ def validate(
                     ))
                     break
             else:
-                # Predicate-based: rejected when predicate returns True
                 if dep_value is not None and dep.when(dep_value):
                     errors.append((
                         param.name,
-                        f"Parameter '{param.name}' cannot be used when "
-                        f"'{dep.on}' is a relative adjustment.",
+                        f"Parameter '{param.name}' cannot be used "
+                        f"with the current value of '{dep.on}'.",
                     ))
                     break
 

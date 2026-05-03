@@ -11,6 +11,7 @@ from bluestream.base.exceptions import CommandError, ValidationError
 from bluestream.base.validator import validate
 from bluestream.connection.tcp import TCPConnection
 from bluestream.devices.dmp168 import commands as cmd_module
+from bluestream.devices.dmp168.commands import _is_relative_adjustment
 from bluestream.devices.dmp168.models import PresetStatus, SystemStatus
 from bluestream.devices.dmp168.parser import DMP168Parser
 
@@ -194,7 +195,7 @@ class DMP168(BluestreamDevice):
             "level": level,
             "channel": channel,
         }
-        if not (isinstance(level, str) and level in ("+", "-")):
+        if not _is_relative_adjustment(level):
             kwargs["unit"] = unit
         await self.execute_command("output_volume", **kwargs)
 
@@ -267,7 +268,7 @@ class DMP168(BluestreamDevice):
             "gain": gain,
             "channel": channel,
         }
-        if not (isinstance(gain, str) and gain in ("+", "-")):
+        if not _is_relative_adjustment(gain):
             kwargs["unit"] = unit
         await self.execute_command("input_gain", **kwargs)
 
@@ -348,7 +349,7 @@ class DMP168(BluestreamDevice):
             channel: Channel ("L", "R", or "LR")
         """
         kwargs: Dict[str, Any] = {"level": level, "channel": channel}
-        if not (isinstance(level, str) and level in ("+", "-")):
+        if not _is_relative_adjustment(level):
             kwargs["unit"] = unit
         await self.execute_command("output_master_volume", **kwargs)
 
@@ -411,7 +412,7 @@ class DMP168(BluestreamDevice):
             "level": level,
             "channel": channel,
         }
-        if not (isinstance(level, str) and level in ("+", "-")):
+        if not _is_relative_adjustment(level):
             kwargs["unit"] = unit
         await self.execute_command("group_volume", **kwargs)
 
