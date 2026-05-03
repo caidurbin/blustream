@@ -26,9 +26,15 @@ class ParseError(BluestreamError):
 
 
 class ValidationError(BluestreamError):
-    """Raised when parameter validation fails."""
+    """Raised when parameter validation fails.
 
-    pass
+    Attributes:
+        errors: List of (parameter_name, message) tuples.
+    """
+
+    def __init__(self, message: str, errors=None):
+        self.errors = errors or []
+        super().__init__(message)
 
 
 class TimeoutError(BluestreamError):

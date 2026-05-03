@@ -4,10 +4,11 @@ import logging
 import re
 from typing import Any, List, Optional, Union
 
-from bluestream.base.commands import Command, CommandRegistry
+from bluestream.base.commands import CommandRegistry
 from bluestream.base.connection import Connection
 from bluestream.base.device import BluestreamDevice
 from bluestream.base.exceptions import CommandError, ValidationError
+from bluestream.base.validator import validate
 from bluestream.connection.tcp import TCPConnection
 from bluestream.devices.dmp168 import commands as cmd_module
 from bluestream.devices.dmp168.models import PresetStatus, SystemStatus
@@ -89,8 +90,8 @@ class DMP168(BluestreamDevice):
                 f"Unknown command '{name}'. Use 'get_commands()' to see available commands."
             )
 
-        # Validate parameters
-        self._validate_parameters(command, kwargs)
+        # Validate parameters via centralized validator
+        validate(self._registry, name, kwargs)
 
         # Build command string
         try:
@@ -150,47 +151,6 @@ class DMP168(BluestreamDevice):
             return response.strip()
         else:
             return self._parser.parse_simple_response(response)
-
-    def _validate_parameters(self, command: Command, kwargs: dict) -> None:
-        """Validate command parameters.
-
-        Args:
-            command: Command metadata
-            kwargs: Provided parameters
-
-        Raises:
-            ValidationError: If validation fails
-        """
-        # Check required parameters
-        for param in command.parameters:
-            if param.required and param.name not in kwargs:
-                raise ValidationError(
-                    f"Missing required parameter '{param.name}' for command '{command.name}'. "
-                    f"Please provide this parameter and try again."
-                )
-
-        # Check parameter values
-        for param in command.parameters:
-            if param.name in kwargs:
-                value = kwargs[param.name]
-                # Skip validation for None values on optional parameters
-                if value is None and not param.required:
-                    continue
-                # Check choices
-                if param.choices and value not in param.choices:
-                    choices_str = ", ".join(str(c) for c in param.choices[:5])
-                    if len(param.choices) > 5:
-                        choices_str += f", ... (total {len(param.choices)} options)"
-                    raise ValidationError(
-                        f"Invalid value '{value}' for parameter '{param.name}'. "
-                        f"Valid options are: {choices_str}. Please choose a valid value and try again."
-                    )
-                # Run custom validation
-                if param.validation and not param.validation(value):
-                    raise ValidationError(
-                        f"Parameter '{param.name}' with value '{value}' failed validation. "
-                        f"Please check the parameter value and try again."
-                    )
 
     async def get_status(self) -> SystemStatus:
         """Get device status.

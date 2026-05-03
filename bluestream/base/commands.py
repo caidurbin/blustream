@@ -17,7 +17,7 @@ class Parameter:
     default: Any = None
     choices: Optional[List[Any]] = None
     help_text: str = ""
-    validation: Optional[Callable[[Any], bool]] = None
+    validation: Optional[Callable[[Any], Optional[str]]] = None
     depends_on: Optional[str] = None  # Parameter name this depends on
 
 
