@@ -1,10 +1,25 @@
 """Command metadata and protocol interface."""
 
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Type
+from typing import Any, Callable, Dict, List, Optional, Type, Union
 
 # Type alias for command handlers
 CommandHandler = Callable[..., str]
+
+
+@dataclass
+class RenderContext:
+    """Context passed to format_result callables."""
+
+    json: bool = False
+
+
+@dataclass
+class Dependency:
+    """Cross-parameter dependency rule."""
+
+    on: str
+    when: Optional[Callable[[Any], bool]] = None
 
 
 @dataclass
@@ -17,8 +32,9 @@ class Parameter:
     default: Any = None
     choices: Optional[List[Any]] = None
     help_text: str = ""
-    validation: Optional[Callable[[Any], bool]] = None
-    depends_on: Optional[str] = None  # Parameter name this depends on
+    validation: Optional[Callable[[Any], Optional[str]]] = None
+    depends_on: Optional[Union[str, Dependency, List[Dependency]]] = None
+    supports_relative: bool = False
 
 
 @dataclass
@@ -31,6 +47,8 @@ class Command:
     handler: CommandHandler
     return_type: Type = str
     requires_confirmation: bool = False
+    format_result: Optional[Callable[[Any, RenderContext], str]] = None
+    confirmation_message: Optional[Union[str, Callable[[dict], str]]] = None
 
 
 class CommandRegistry:
