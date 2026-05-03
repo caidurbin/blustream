@@ -8,6 +8,13 @@ CommandHandler = Callable[..., str]
 
 
 @dataclass
+class RenderContext:
+    """Context passed to format_result callables."""
+
+    json: bool = False
+
+
+@dataclass
 class Parameter:
     """Command parameter metadata."""
 
@@ -31,6 +38,7 @@ class Command:
     handler: CommandHandler
     return_type: Type = str
     requires_confirmation: bool = False
+    format_result: Optional[Callable[[Any, RenderContext], str]] = None
 
 
 class CommandRegistry:

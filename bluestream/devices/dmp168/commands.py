@@ -4,6 +4,7 @@ from typing import Any, Optional, Union
 
 from bluestream.base.commands import Command, CommandRegistry, Parameter
 from bluestream.base.exceptions import ValidationError
+from bluestream.devices.dmp168.formatters import format_preset_status, format_status
 from bluestream.devices.dmp168.models import PresetStatus, SystemStatus
 
 
@@ -592,6 +593,7 @@ def _register_commands(registry: CommandRegistry) -> None:
             parameters=[],
             handler=lambda **kwargs: build_status_command(),
             return_type=SystemStatus,
+            format_result=format_status,
         )
     )
 
@@ -738,6 +740,7 @@ def _register_commands(registry: CommandRegistry) -> None:
             ],
             handler=lambda **kwargs: build_preset_status_command(**kwargs),
             return_type=PresetStatus,
+            format_result=format_preset_status,
         )
     )
 
