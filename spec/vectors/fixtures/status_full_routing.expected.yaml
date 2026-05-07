@@ -1,0 +1,43 @@
+power: "On"
+baud: 57600
+level_unit: "%"
+auto_standby_time: 0
+dsp_usage: 22.0
+fade: true
+temperature: 40.0
+uptime: "0000:01:00:00"
+firmware_version: "MCU_Main V1.5.0/Web_GUI V1.5.0"
+inputs:
+  - {port: 1, lock: true, gain_l: 50, gain_r: 50, mute_l: false, mute_r: false}
+  - {port: 2, lock: true, gain_l: 60, gain_r: 60, mute_l: false, mute_r: false}
+  - {port: 3, lock: true, gain_l: 75, gain_r: 75, mute_l: false, mute_r: false}
+  - {port: 4, lock: true, gain_l: 80, gain_r: 80, mute_l: true, mute_r: true}
+  - {port: 5, lock: true, gain_l: 45, gain_r: 45, mute_l: false, mute_r: false}
+  - {port: 6, lock: true, gain_l: 50, gain_r: 50, mute_l: false, mute_r: false}
+  - {port: 7, lock: true, gain_l: 55, gain_r: 55, mute_l: false, mute_r: false}
+  - {port: 8, lock: false, gain_l: 40, gain_r: 60, mute_l: false, mute_r: false}
+  - {port: 9, lock: true, gain_l: 50, gain_r: 50, mute_l: false, mute_r: false}
+  - {port: 10, lock: true, gain_l: 50, gain_r: 50, mute_l: false, mute_r: false}
+  - {port: 11, lock: true, gain_l: 50, gain_r: 50, mute_l: false, mute_r: false}
+  - {port: 12, lock: true, gain_l: 50, gain_r: 50, mute_l: false, mute_r: false}
+  - {port: 13, lock: true, gain_l: 50, gain_r: 50, mute_l: false, mute_r: false}
+  - {port: 14, lock: true, gain_l: 50, gain_r: 50, mute_l: false, mute_r: false}
+  - {port: 15, lock: true, gain_l: 65, gain_r: 65, mute_l: false, mute_r: false}
+  - {port: 16, lock: true, gain_l: 50, gain_r: 50, mute_l: true, mute_r: true}
+routing:
+  - {output: 1, channel: "L", from_input: 1}
+  - {output: 1, channel: "R", from_input: 1}
+  - {output: 2, channel: "L", from_input: 3}
+  - {output: 2, channel: "R", from_input: 3}
+  - {output: 3, channel: "L", from_input: 5}
+  - {output: 3, channel: "R", from_input: 5}
+  - {output: 4, channel: "L", from_input: 7}
+  - {output: 4, channel: "R", from_input: 7}
+  - {output: 5, channel: "L", from_input: 9}
+  - {output: 5, channel: "R", from_input: 9}
+  - {output: 6, channel: "L", from_input: 11}
+  - {output: 6, channel: "R", from_input: 11}
+  - {output: 7, channel: "L", from_input: 13}
+  - {output: 7, channel: "R", from_input: 13}
+  - {output: 8, channel: "L", from_input: 15}
+  - {output: 8, channel: "R", from_input: 15}

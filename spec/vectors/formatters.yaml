@@ -1,0 +1,11 @@
+# Shared wire-formatter test vectors.
+#
+# Each entry asserts that calling format_<op>(**args) in either the Python or
+# the Lua generated module produces `expected_wire` byte-for-byte. Both
+# language test runners load this same file; CI fails if either disagrees.
+
+vectors:
+  - name: power_on emits literal PON
+    op: power_on
+    args: {}
+    expected_wire: "PON"

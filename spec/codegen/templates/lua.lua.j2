@@ -1,0 +1,22 @@
+-- Generated wire-protocol formatters for the {{ device.name }}.
+--
+-- DO NOT EDIT. Regenerate with: python -m spec.codegen.emit_lua
+-- Source: spec/protocol.yaml
+-- Spec hash: {{ spec_hash }}
+-- Device: {{ device.manufacturer }} {{ device.name }}
+-- Firmware baseline: {{ device.firmware_baseline }}
+
+local M = {}
+
+M.DEFAULT_PORT = {{ transport.default_port }}
+M.ALTERNATIVE_PORT = {{ transport.alternative_port }}
+M.TERMINATOR = {{ transport.terminator | lua_str }}
+{% for op_name, cmd in commands.items() %}
+
+-- {{ cmd.description }}
+function M.format_{{ op_name }}()
+    return {{ cmd.wire | lua_str }}
+end
+{% endfor %}
+
+return M
