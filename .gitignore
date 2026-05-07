@@ -210,6 +210,12 @@ $RECYCLE.BIN/
 .Trash-*
 .nfs*
 
+# Node
+node_modules/
+
+# Claude Code (machine-local agent state)
+.claude/
+
 # Project-specific
 # Reference documents (not committed, but available locally for agents)
 references/
