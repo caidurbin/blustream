@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from blustream.devices.dmp168.device import DMP168
-from tests.integration.conftest import output_l_input
+from tests.integration._helpers import output_l_input
 
 # Pick the highest output and input channels — least likely to collide with a
 # room a homeowner is actually listening to during a test run. Adjust via
@@ -37,9 +37,7 @@ async def test_route_change_appears_in_status(device: DMP168) -> None:
         )
     finally:
         if prior_input is not None and prior_input != target_input:
-            await device.route_input_to_output(
-                input_ch=prior_input, output=TEST_OUTPUT
-            )
+            await device.route_input_to_output(input_ch=prior_input, output=TEST_OUTPUT)
         elif prior_input is None:
             await device.remove_input_from_output(
                 output=TEST_OUTPUT, input_ch=target_input

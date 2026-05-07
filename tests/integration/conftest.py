@@ -16,7 +16,6 @@ import pytest
 import pytest_asyncio
 
 from blustream.devices.dmp168.device import DMP168
-from blustream.devices.dmp168.models import OutputRouting, SystemStatus
 
 INTEGRATION_HOST_ENV = "BLUSTREAM_INTEGRATION_HOST"
 INTEGRATION_PORT_ENV = "BLUSTREAM_INTEGRATION_PORT"
@@ -67,16 +66,3 @@ async def device(host: str, port: int) -> AsyncIterator[DMP168]:
         yield dmp
     finally:
         await dmp.disconnect()
-
-
-def output_l_input(status: SystemStatus, output: int) -> int | None:
-    """Return the input currently routed to ``output``'s L channel, or None.
-
-    The driver treats the L row as canonical for the channel-locked proxy
-    (see ``polling_coordinator.lua``); test assertions follow the same
-    convention so they stay comparable across Python and Lua surfaces.
-    """
-    for row in status.routing:
-        if isinstance(row, OutputRouting) and row.output == output and row.channel == "L":
-            return row.from_input
-    return None
