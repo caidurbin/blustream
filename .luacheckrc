@@ -4,6 +4,7 @@
 -- sandbox; later slices generate driver code under control4/dmp168/src/.
 
 std = "lua51"
+max_line_length = false
 
 exclude_files = {
     ".luarocks",

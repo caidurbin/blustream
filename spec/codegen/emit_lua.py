@@ -182,8 +182,9 @@ def _render_function_lua(name: str, cmd: dict) -> str:
     params = cmd.get("params") or []
     body: list[str] = []
     body.append(f"{INDENT}-- {cmd['description']}")
-    body.append(f"{INDENT}args = args or {{}}")
-    body.extend(_render_args_unpack(params))
+    if params:
+        body.append(f"{INDENT}args = args or {{}}")
+        body.extend(_render_args_unpack(params))
 
     for rule in cmd.get("validate") or []:
         body.extend(_render_validation_lua(rule))
@@ -199,7 +200,8 @@ def _render_function_lua(name: str, cmd: dict) -> str:
             body.extend(_render_wire_step_lua(step))
         body.append(f"{INDENT}return cmd")
 
-    header = f"function M.format_{name}(args)"
+    arg_name = "args" if params else "_"
+    header = f"function M.format_{name}({arg_name})"
     return header + "\n" + "\n".join(body) + "\nend"
 
 
