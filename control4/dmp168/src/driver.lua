@@ -28,8 +28,6 @@ local polling_coordinator = require("polling_coordinator")
 local status_parser = require("status_parser")
 
 local NETWORK_BINDING = 6001  -- matches <connection><id>6001</id></connection> in driver.xml
-local OUTPUT_BINDING_BASE = 2001
-local INPUT_BINDING_BASE = 1001
 
 local DEFAULT_PORT = 8000
 local DEFAULT_POLL_INTERVAL_S = 15
@@ -130,12 +128,12 @@ local function notify_routing_change(output, prev_input, new_input)  -- luacheck
     -- SendToProxy(<output_binding>, "SELECT_AUDIO_DEVICE", { BINDID = <input> }).
     -- BINDID = 0 is the documented unbind sentinel that bound Rooms inspect
     -- to clear their source selection.
-    local out_binding = OUTPUT_BINDING_BASE + output - 1
+    local out_binding = proxy_handler.OUTPUT_BINDING_BASE + output - 1
     local input_binding
     if new_input == nil then
         input_binding = 0
     else
-        input_binding = INPUT_BINDING_BASE + new_input - 1
+        input_binding = proxy_handler.INPUT_BINDING_BASE + new_input - 1
     end
     if C4 ~= nil then
         C4:SendToProxy(out_binding, "SELECT_AUDIO_DEVICE", { BINDID = input_binding }, "NOTIFY")
