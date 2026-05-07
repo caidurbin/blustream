@@ -14,7 +14,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/caidurbin/blustream",
-    packages=find_packages(),
+    packages=find_packages(exclude=["custom_components", "custom_components.*", "tests", "tests.*"]),
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",

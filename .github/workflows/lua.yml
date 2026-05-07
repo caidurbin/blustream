@@ -1,0 +1,40 @@
+name: Lua
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+  push:
+    branches:
+      - main
+      - master
+      - develop
+
+# Lua 5.1 is pinned because Control4 drivers run inside the Composer Lua 5.1
+# sandbox; CI must lint and test against the same version the driver targets.
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Lua 5.1
+        uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: "5.1.5"
+
+      - name: Set up LuaRocks
+        uses: leafo/gh-actions-luarocks@v4
+
+      - name: Install luacheck and busted
+        run: |
+          luarocks install luacheck 1.2.0
+          luarocks install busted 2.2.0
+
+      - name: Run luacheck
+        run: luacheck .
+
+      - name: Run busted
+        run: busted --verbose --pattern=_spec control4/

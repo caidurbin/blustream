@@ -175,6 +175,35 @@ blustream/
 pytest tests/
 ```
 
+### Lua development
+
+The Control4 driver lives under `control4/` and targets Lua 5.1 (the version
+the Control4 Composer sandbox runs). CI lints all Lua sources with
+[`luacheck`](https://github.com/lunarmodules/luacheck) and runs the unit
+tests with [`busted`](https://lunarmodules.github.io/busted/) — see
+[`.github/workflows/lua.yml`](.github/workflows/lua.yml).
+
+To install the toolchain locally:
+
+```bash
+# macOS
+brew install lua@5.1 luarocks
+luarocks --lua-version=5.1 install luacheck
+luarocks --lua-version=5.1 install busted
+
+# Debian / Ubuntu
+sudo apt-get install lua5.1 liblua5.1-0-dev luarocks
+sudo luarocks --lua-version=5.1 install luacheck
+sudo luarocks --lua-version=5.1 install busted
+```
+
+Then, from the repo root:
+
+```bash
+luacheck .                              # lint all Lua source
+busted --pattern=_spec control4/        # run Lua unit tests
+```
+
 ## License
 
 MIT License
