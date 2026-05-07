@@ -157,7 +157,7 @@ blustream/                             ← repo root
 
 ## 6. Architectural decisions (in order locked)
 
-Each entry below summarizes a decision, the alternatives considered, and the reasoning. These are candidates for ADR promotion later.
+Decisions that cleared the ADR-worthy bar (hard-to-reverse + surprising + real trade-off) have been promoted to standalone ADRs under [`docs/adr/`](adr/). The rest stay here as the canonical record.
 
 ### D1. Access path: friendly dealer + planned own Composer Pro license
 
@@ -165,45 +165,27 @@ The user is a homeowner with a Control4 system and a friendly dealer who will lo
 
 ### D2. Driver scope: minimum viable matrix (routing only)
 
-The DMP168 has a large feature surface (DSP, EQ, ducking, presets, audio sensing, etc.). The Control4 driver exposes only audio routing. Setup-time concerns (DSP, EQ, etc.) remain in the device's web GUI. Runtime concerns beyond routing (volume, mute) are owned by other devices in the audio chain.
+→ Promoted to [ADR-0001](adr/0001-c4-routing-only-scope.md).
 
 ### D3. Implementation strategy: pure Lua port (no Python sidecar)
 
-Rejected: a sidecar pattern in which the Lua driver shells out to a Python process running the existing library. The protocol surface is small enough that a fresh Lua implementation is cheaper than the operational complexity of a sidecar (separate process lifecycle, no Composer Lua-console debugging, additional latency). The Python library remains the runtime for the CLI and (eventually) the HA integration; the Lua driver is independent.
+→ Promoted to [ADR-0002](adr/0002-lua-driver-no-python-sidecar.md).
 
 ### D4. Proxy choice: `audio_matrix_switch`, no volume capability
 
-The DMP168 is audio-only with no integrated amplification. The natural Control4 proxy is `audio_matrix_switch` (used by Russound, Triad, Autonomic-style audio matrices). Volume capability is *not* declared on the proxy: in the user's topology, the matrix is a routing fabric and the downstream amplifier (1:1 with zones, with its own Control4 driver) owns user-facing volume. With volume capability undeclared, Composer Pro's Room model routes volume requests to the amplifier driver as expected.
+→ Promoted to [ADR-0003](adr/0003-c4-audio-matrix-proxy-shape.md) (folded with D5 and D9).
 
 ### D5. Power: lifecycle-managed internally, no proxy capability
 
-The proxy does not declare `has_power`. Control4 cannot send `OFF` to the matrix; no Room-Off macro can silence the entire house's audio. Internally, the driver asserts power on every connect and reconnect:
-
-1. `PON`
-2. `STANDBY 0` (set Sleep mode rather than Standby — Sleep is documented as keeping the API and web GUI active)
-3. `AUTO STB 0` (disable auto-standby — keep the device fully responsive instead of paying wake-from-standby latency on the next routing command)
-4. `STATUS` (seed driver state)
-
-A Composer Action exposing `Power Off` may be added later as a dealer-only escape hatch (e.g., for scheduled rack shutdown). It is *not* on the runtime path.
+→ Promoted to [ADR-0003](adr/0003-c4-audio-matrix-proxy-shape.md) (folded with D4 and D9).
 
 ### D6. State feedback: periodic poll + on-demand refresh
 
-Multiple control surfaces will operate the matrix concurrently (Control4 driver, future HA integration, the device's web GUI). Out-of-band routing changes must be reflected in Control4's view.
-
-- Background poll every 15 s (configurable Property; range 5–60 s).
-- Each poll re-issues `STATUS` and reconciles routing fields.
-- Optimistic local update on commands: when the proxy issues a routing command, update local state immediately and send the wire command. Don't wait for the next poll.
-- Command lockout: ~2 s after issuing a command, ignore poll responses for that output (avoids race where a stale poll undoes the optimistic update).
-- Composer Action `Refresh Matrix State` exposed for force-refresh ("C" flavor on top of the periodic "B" flavor).
-- Diff-based notification: when a poll detects routing different from internal state, fire proxy notifications so bound rooms/UI update.
+→ Promoted to [ADR-0004](adr/0004-c4-polling-with-optimistic-lockout.md).
 
 ### D7. Connection: persistent TCP on port 8000
 
-- Port **8000** (the device's "TCP" listener) is used by the driver. Rationale: port 8000 speaks raw text — no telnet IAC negotiation overhead — whereas port 23 sends telnet escape codes that complicate Lua parsing. Port 23 stays available for the Python CLI, future HA integration, ad-hoc telnet sessions, and any other tools.
-- Single persistent connection, reconnect with backoff (1 s → 2 s → 5 s → 15 s → 30 s steady).
-- One in-flight command at a time, FIFO queue. The DMP168 has been observed to handle pipelining inconsistently; a single-flight queue keeps the driver simple and responses correlated.
-- Connection state machine: `OFFLINE` → `CONNECTING` → `ONLINE` (init: `PON`, `STANDBY 0`, `AUTO STB 0`, `STATUS`-seed) → poll loop.
-- The polling itself serves as a keep-alive; no separate heartbeat needed.
+→ Promoted to [ADR-0005](adr/0005-c4-tcp-port-8000.md).
 
 ### D8. Discovery / IP setup: single Host property
 
@@ -213,39 +195,15 @@ SDDP is not supported (Blustream does not implement Snap One's SDDP protocol; au
 
 ### D9. Binding model: 16 stereo input + 8 stereo output, buses hidden
 
-The proxy declares 16 audio input bindings and 8 audio output bindings, all stereo (channel-lock always on). The DMP168's internal Bus channels (which support multi-input mixing) are not exposed as bindable Control4 sources. They remain available via the web GUI for advanced setup-time configuration (paging mixes, ducking sources). Independent L/R control is not exposed.
-
-This matches the device's "16x8 stereo audio matrix" marketing and aligns with what Composer Pro dealers expect to see.
+→ Promoted to [ADR-0003](adr/0003-c4-audio-matrix-proxy-shape.md) (folded with D4 and D5).
 
 ### D10. Iteration topology: offline-first, dealer-load for integration
 
-With Composer Pro acquisition uncertain (D1), the dev workflow is optimized for the slow dealer-load loop:
-
-- VS Code with Lua syntax highlighting + `luacheck` configured for the Control4 Lua subset.
-- `snap-one/drivers-driverpackager` (Python, cross-platform) to build `.c4z` locally on macOS.
-- Two build flavors: `--allowexecute` (`-ae`) for dev (keeps Composer Lua console hot-pasteable) and a clean encrypted build for production.
-- Local Lua interpreter for unit-testing protocol-layer code without Control4.
-- A `DEBUG_MODE` Property on the driver, default off, gating verbose `print()` logging. The dealer toggles it on, copies Lua-window output, sends back to the user. This is the primary debug channel given DriverEditor's broken debug port on OS 3.
-- Builds shipped with `-ae` flag during dev so the dealer can paste hot function patches into the Composer Lua console without a fresh `.c4z` round-trip.
-- Each delivery includes a short smoke-test script the dealer runs.
-
-No dedicated dev controller (HC-250 / EA-1) at this stage. Re-evaluate after Composer Pro arrives, when Virtual Director becomes the primary fast loop.
+→ Promoted to [ADR-0006](adr/0006-c4-offline-first-dealer-load.md).
 
 ### D11. Spec source of truth: codegen with shared vectors (Stages 1 and 2)
 
-A single YAML spec under `spec/protocol.yaml` describes the protocol primitives. Codegen emits Python and Lua source files. A shared YAML test-vector format under `spec/vectors/` is consumed by both implementations' test runners. CI gates ensure (a) committed generated files match what the codegen produces, (b) Python tests pass, (c) Lua tests pass.
-
-What's generated:
-
-- Wire formatters (`OUT N FR M`, `PON`, `AUTO STB 0`, `STANDBY 0`, `STATUS`).
-- Parameter validators (range checks).
-- Protocol constants (default port, line terminator).
-
-What's hand-written:
-
-- Response parsers. STATUS output is irregular enough that a generated parser costs more than two hand-written ones; shared response fixtures provide the cross-impl conformance check.
-- Connection-layer logic (asyncio in Python, `C4:CreateNetworkConnection` in Lua).
-- Higher-level driver/integration glue (Control4 proxy callbacks, HA `DataUpdateCoordinator`).
+→ Promoted to [ADR-0007](adr/0007-codegen-with-shared-test-vectors.md).
 
 ### D12. Project name: `blustream` (rename from `bluestream`)
 
@@ -253,7 +211,7 @@ See section 2 above.
 
 ### D13. Distribution: public open source
 
-See section 3 above.
+→ Promoted to [ADR-0008](adr/0008-public-oss-no-snap-one-cert.md).
 
 ---
 
