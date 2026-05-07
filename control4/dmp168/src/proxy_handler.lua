@@ -5,8 +5,10 @@
 -- (the only verb the audio_matrix_switch proxy emits for routing) into
 -- OUT/FR (or OUT/REM) wire strings via the codegen-emitted formatters in
 -- generated.lua, enqueues each on the connection's FIFO send queue, and
--- applies an optimistic update to its own routing table so subsequent
--- get_routing() calls reflect the latest commanded state.
+-- records the commanded routing on the shared OptimisticStateTracker
+-- (with the current monotonic time) so subsequent get_routing() calls
+-- reflect the latest commanded state and the tracker's per-output 2s
+-- lockout window keeps a stale STATUS poll from undoing it.
 --
 -- Per ADR-0003 the matrix exposes 16 stereo input bindings (1001..1016)
 -- and 8 stereo output bindings (2001..2008) on the LR pair only; bus
@@ -16,15 +18,17 @@
 -- match the proxy contract.
 --
 -- Deliberately does not own:
---   * the lockout-window arithmetic (ADR-0004; later slice),
---   * STATUS poll reconciliation / diff-and-notify (later slice),
+--   * the lockout-window arithmetic itself (lives in optimistic_tracker.lua),
+--   * STATUS poll reconciliation / diff-and-notify (polling_coordinator.lua),
 --   * volume / mute / power (out of scope per ADR-0003).
 --
--- The connection dependency is injected so busted specs can mock the
--- transport surface; production code in driver.lua passes the live
--- ConnectionStateMachine.
+-- The connection and tracker dependencies are injected so busted specs
+-- can mock the transport surface; production code in driver.lua passes
+-- the live ConnectionStateMachine and the tracker shared with the
+-- PollingCoordinator.
 
 local generated = require("generated")
+local optimistic_tracker = require("optimistic_tracker")
 
 local M = {}
 
@@ -48,6 +52,14 @@ local function noop() end
 --   connection   Object with a `send(self, wire)` method (the
 --                ConnectionStateMachine in production; a recorder in tests).
 -- Optional:
+--   tracker      OptimisticStateTracker the handler shares with the polling
+--                coordinator. If omitted, the handler creates a private
+--                tracker so older call sites (and unit tests that don't care
+--                about the lockout window) keep working unchanged.
+--   now_ms       Monotonic clock returning milliseconds. Used to stamp every
+--                command's lockout reference time. Defaults to () -> 0 — fine
+--                without a polling coordinator, which is the only consumer of
+--                the timestamp.
 --   log          Function called with a single string when debug_mode is on.
 --   debug_mode   Boolean; gates verbose logging.
 function M.new(opts)
@@ -58,7 +70,8 @@ function M.new(opts)
     self._conn = opts.connection
     self._log = opts.log or noop
     self._debug_mode = opts.debug_mode and true or false
-    self._routing = {}  -- routing[output_index_1based] = input_index_1based | nil
+    self._tracker = opts.tracker or optimistic_tracker.new()
+    self._now_ms = opts.now_ms or function() return 0 end
     return self
 end
 
@@ -67,11 +80,7 @@ end
 -- Snapshot of the optimistic routing table. Output indices are 1..8;
 -- absent outputs are simply missing keys (treat as unrouted).
 function PH:get_routing()
-    local snapshot = {}
-    for k, v in pairs(self._routing) do
-        snapshot[k] = v
-    end
-    return snapshot
+    return self._tracker:get_routing()
 end
 
 function PH:set_debug_mode(enabled)
@@ -141,13 +150,14 @@ function PH:_route(output, input)
     self:_emit(("route output %d <- input %d (%s)"):format(output, input, wire))
     self._conn:send(wire)
     -- Optimistic update: reflect the commanded state immediately so
-    -- subsequent reads (and a future poll-coordinator's diff check) see
+    -- subsequent reads (and the polling coordinator's diff check) see
     -- the new mapping without waiting for the device's STATUS response.
-    self._routing[output] = input
+    -- The timestamp arms the per-output 2s lockout window in the tracker.
+    self._tracker:note_command(output, input, self._now_ms())
 end
 
 function PH:_unroute(output)
-    local prev = self._routing[output]
+    local prev = self._tracker:get_routing()[output]
     if prev == nil then
         -- Already unrouted; no wire command to send. The matrix's REM
         -- requires the source-input number, so we cannot synthesize one
@@ -158,7 +168,7 @@ function PH:_unroute(output)
     local wire = generated.format_output_remove({ output = output, input_ch = prev })
     self:_emit(("unroute output %d (was input %d): %s"):format(output, prev, wire))
     self._conn:send(wire)
-    self._routing[output] = nil
+    self._tracker:note_command(output, nil, self._now_ms())
 end
 
 return M

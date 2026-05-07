@@ -1,14 +1,21 @@
 -- Blustream DMP168 Control4 driver entry point.
 --
 -- This file is the thin Composer-bound shell. The deep, testable logic
--- lives in connection.lua (TCP lifecycle + FIFO command queue + reconnect
--- backoff) and will live in coordinator/proxy modules in later slices.
+-- lives in:
+--   * connection.lua          TCP lifecycle + FIFO queue + reconnect backoff
+--   * proxy_handler.lua       audio_matrix_switch SELECT_AUDIO_DEVICE → wire
+--   * optimistic_tracker.lua  routing state + 2s lockout reconciliation
+--   * polling_coordinator.lua periodic STATUS poll + diff-based notifications
+--   * status_parser.lua       multi-section STATUS text → structured state
+--
 -- driver.lua is responsible for:
 --
 --   * lifecycle hooks (OnDriverInit / OnDriverLateInit / OnDriverDestroyed),
 --   * reading driver Properties (Host, Port, Debug Mode, Poll Interval (s)),
---   * binding the C4: namespace into the connection state machine,
---   * delivering Composer Action invocations (Refresh Matrix State).
+--   * binding the C4: namespace into the connection / coordinator,
+--   * delivering Composer Action invocations (Refresh Matrix State),
+--   * dispatching parsed STATUS responses into the polling coordinator,
+--   * firing C4:SendToProxy notifications for diff-detected routing changes.
 --
 -- C4:AllowExecute(true) is injected by drivers-driverpackager when the
 -- archive is built with -ae (the dev flavor); release builds omit it.
@@ -16,8 +23,13 @@
 
 local connection = require("connection")
 local proxy_handler = require("proxy_handler")
+local optimistic_tracker = require("optimistic_tracker")
+local polling_coordinator = require("polling_coordinator")
+local status_parser = require("status_parser")
 
 local NETWORK_BINDING = 6001  -- matches <connection><id>6001</id></connection> in driver.xml
+local OUTPUT_BINDING_BASE = 2001
+local INPUT_BINDING_BASE = 1001
 
 local DEFAULT_PORT = 8000
 local DEFAULT_POLL_INTERVAL_S = 15
@@ -25,6 +37,20 @@ local DEFAULT_DEBUG_MODE = false
 
 local cs = nil
 local ph = nil
+local tracker = nil
+local pc = nil
+local status_buffer = ""
+
+local function now_ms()
+    -- Composer exposes C4:GetTime() returning seconds since epoch on most
+    -- firmwares; fall back to os.time() for the smoke specs that load this
+    -- file outside the Composer sandbox. Multiply to milliseconds so the
+    -- tracker's lockout arithmetic is in its native unit.
+    if C4 ~= nil and type(C4.GetTime) == "function" then
+        return C4:GetTime() * 1000
+    end
+    return os.time() * 1000
+end
 
 local function debug_log(msg)
     -- print() routes to the Composer Lua console under DriverWorks.
@@ -99,11 +125,29 @@ local function read_poll_interval()
     return n
 end
 
+local function notify_routing_change(output, prev_input, new_input)  -- luacheck: no unused args
+    -- Composer's audio_matrix_switch proxy reflects routing state via
+    -- SendToProxy(<output_binding>, "SELECT_AUDIO_DEVICE", { BINDID = <input> }).
+    -- BINDID = 0 is the documented unbind sentinel that bound Rooms inspect
+    -- to clear their source selection.
+    local out_binding = OUTPUT_BINDING_BASE + output - 1
+    local input_binding
+    if new_input == nil then
+        input_binding = 0
+    else
+        input_binding = INPUT_BINDING_BASE + new_input - 1
+    end
+    if C4 ~= nil then
+        C4:SendToProxy(out_binding, "SELECT_AUDIO_DEVICE", { BINDID = input_binding }, "NOTIFY")
+    end
+end
+
 function OnDriverInit(driverInitType)  -- luacheck: no unused args
     -- Constructed up-front so the C4 callbacks below always have a valid
     -- target. Actual TCP work waits until OnDriverLateInit so Composer has
     -- finished populating Properties.
     local net, timer = make_dependencies()
+    tracker = optimistic_tracker.new()
     cs = connection.new({
         binding_id = NETWORK_BINDING,
         host = read_property("Host", nil),
@@ -115,6 +159,18 @@ function OnDriverInit(driverInitType)  -- luacheck: no unused args
     })
     ph = proxy_handler.new({
         connection = cs,
+        tracker = tracker,
+        now_ms = now_ms,
+        log = debug_log,
+        debug_mode = read_debug_mode(),
+    })
+    pc = polling_coordinator.new({
+        connection = cs,
+        timer = timer,
+        tracker = tracker,
+        interval_ms = read_poll_interval() * 1000,
+        on_routing_change = notify_routing_change,
+        now_ms = now_ms,
         log = debug_log,
         debug_mode = read_debug_mode(),
     })
@@ -125,18 +181,26 @@ function OnDriverLateInit(driverInitType)  -- luacheck: no unused args
     cs:set_host(read_property("Host", nil))
     cs:set_port(read_port())
     cs:set_debug_mode(read_debug_mode())
-    -- Polling itself lands in a separate slice; the read here just makes
-    -- sure the property exists so Composer surfaces it on the driver page.
-    read_poll_interval()
+    if pc ~= nil then
+        pc:set_interval_ms(read_poll_interval() * 1000)
+        pc:set_debug_mode(read_debug_mode())
+    end
     cs:start()
+    if pc ~= nil then pc:start() end
 end
 
 function OnDriverDestroyed()
+    if pc ~= nil then
+        pc:stop()
+        pc = nil
+    end
     if cs ~= nil then
         cs:stop()
         cs = nil
     end
     ph = nil
+    tracker = nil
+    status_buffer = ""
 end
 
 -- Composer fires this when a Property edit lands. Re-read the affected
@@ -152,9 +216,10 @@ function OnPropertyChanged(strProperty)
         local enabled = read_debug_mode()
         cs:set_debug_mode(enabled)
         if ph ~= nil then ph:set_debug_mode(enabled) end
+        if pc ~= nil then pc:set_debug_mode(enabled) end
+    elseif strProperty == "Poll Interval (s)" then
+        if pc ~= nil then pc:set_interval_ms(read_poll_interval() * 1000) end
     end
-    -- Poll Interval (s) is consumed by the polling coordinator — added in
-    -- a later slice. No-op here.
 end
 
 -- Composer's network event: status ∈ {"ONLINE", "OFFLINE"}.
@@ -165,11 +230,22 @@ function OnConnectionStatusChanged(idBinding, nPort, strStatus)  -- luacheck: no
 end
 
 -- Composer's network data callback. The state machine buffers and
--- splits on \r\n internally.
+-- splits on \r\n internally for inflight-slot accounting; we *also*
+-- accumulate every byte into status_buffer here so a complete STATUS
+-- response can be parsed and handed to the polling coordinator. The
+-- parser tolerates trailing junk, so we attempt a parse on every chunk
+-- and clear the buffer once a valid (non-empty routing) response lands.
 function ReceivedFromNetwork(idBinding, nPort, strData)  -- luacheck: no unused args
     if cs == nil then return end
     if idBinding ~= NETWORK_BINDING then return end
     cs:on_received(strData)
+
+    status_buffer = status_buffer .. strData
+    local ok, parsed = pcall(status_parser.parse, status_buffer)
+    if ok and parsed.routing and #parsed.routing > 0 then
+        if pc ~= nil then pc:on_status(parsed) end
+        status_buffer = ""
+    end
 end
 
 -- Composer Action handlers. Action names are configured in driver.xml
@@ -177,7 +253,15 @@ end
 -- strCommand (no params for Refresh Matrix State).
 function ExecuteCommand(strCommand, tParams)  -- luacheck: no unused args
     if strCommand == "Refresh Matrix State" or strCommand == "REFRESH_MATRIX_STATE" then
-        if cs ~= nil then cs:refresh_matrix_state() end
+        -- Route through the polling coordinator so the next periodic poll
+        -- re-arms relative to *now*, avoiding a double-pummel inside one
+        -- interval. Falls through to the connection's queue if for some
+        -- reason the coordinator hasn't been initialized yet.
+        if pc ~= nil then
+            pc:refresh_now()
+        elseif cs ~= nil then
+            cs:refresh_matrix_state()
+        end
     end
 end
 
