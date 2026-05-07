@@ -1,0 +1,312 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Blustream DMP168 Control4 driver descriptor — minimal shell.
+
+  Declares the audio_matrix_switch proxy with 16 stereo input + 8 stereo
+  output bindings (see ADR-0003) so the driver registers in Composer Pro
+  with the right Connections-view shape. Lua handlers in driver.lua are
+  no-ops at this slice; functional behavior arrives in later issues.
+
+  Versioning starts at 0 — the first dealer-loadable build will tag c4-v0.1.0
+  per docs/control4-driver-plan.md §3.
+-->
+<devicedata>
+  <copyright>Copyright 2026 Cai Durbin</copyright>
+  <creator>Cai Durbin</creator>
+  <manufacturer>Blustream</manufacturer>
+  <model>DMP168</model>
+  <name>Blustream DMP168 Audio Matrix</name>
+  <created>2026-05-07</created>
+  <modified>2026-05-07</modified>
+  <version>0</version>
+  <combo>False</combo>
+
+  <control>lua_gen</control>
+  <controlmethod>ip</controlmethod>
+  <driver>DriverWorks</driver>
+  <agent>False</agent>
+
+  <config>
+    <script file="driver.lua"/>
+  </config>
+
+  <capabilities>
+    <audio_consumers>16</audio_consumers>
+    <audio_providers>8</audio_providers>
+    <has_discrete_volume>false</has_discrete_volume>
+  </capabilities>
+
+  <proxies>
+    <proxy proxybindingid="5001" name="Blustream DMP168">audio_matrix_switch</proxy>
+  </proxies>
+
+  <connections>
+    <!-- 16 stereo audio inputs (consumers) — channel-lock always on. -->
+    <connection>
+      <id>1001</id>
+      <facing>6</facing>
+      <connectionname>Input 1</connectionname>
+      <type>1</type>
+      <consumer>True</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>1002</id>
+      <facing>6</facing>
+      <connectionname>Input 2</connectionname>
+      <type>1</type>
+      <consumer>True</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>1003</id>
+      <facing>6</facing>
+      <connectionname>Input 3</connectionname>
+      <type>1</type>
+      <consumer>True</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>1004</id>
+      <facing>6</facing>
+      <connectionname>Input 4</connectionname>
+      <type>1</type>
+      <consumer>True</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>1005</id>
+      <facing>6</facing>
+      <connectionname>Input 5</connectionname>
+      <type>1</type>
+      <consumer>True</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>1006</id>
+      <facing>6</facing>
+      <connectionname>Input 6</connectionname>
+      <type>1</type>
+      <consumer>True</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>1007</id>
+      <facing>6</facing>
+      <connectionname>Input 7</connectionname>
+      <type>1</type>
+      <consumer>True</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>1008</id>
+      <facing>6</facing>
+      <connectionname>Input 8</connectionname>
+      <type>1</type>
+      <consumer>True</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>1009</id>
+      <facing>6</facing>
+      <connectionname>Input 9</connectionname>
+      <type>1</type>
+      <consumer>True</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>1010</id>
+      <facing>6</facing>
+      <connectionname>Input 10</connectionname>
+      <type>1</type>
+      <consumer>True</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>1011</id>
+      <facing>6</facing>
+      <connectionname>Input 11</connectionname>
+      <type>1</type>
+      <consumer>True</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>1012</id>
+      <facing>6</facing>
+      <connectionname>Input 12</connectionname>
+      <type>1</type>
+      <consumer>True</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>1013</id>
+      <facing>6</facing>
+      <connectionname>Input 13</connectionname>
+      <type>1</type>
+      <consumer>True</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>1014</id>
+      <facing>6</facing>
+      <connectionname>Input 14</connectionname>
+      <type>1</type>
+      <consumer>True</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>1015</id>
+      <facing>6</facing>
+      <connectionname>Input 15</connectionname>
+      <type>1</type>
+      <consumer>True</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>1016</id>
+      <facing>6</facing>
+      <connectionname>Input 16</connectionname>
+      <type>1</type>
+      <consumer>True</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+
+    <!-- 8 stereo audio outputs (providers) — channel-lock always on. -->
+    <connection>
+      <id>2001</id>
+      <facing>1</facing>
+      <connectionname>Output 1</connectionname>
+      <type>1</type>
+      <consumer>False</consumer>
+      <audiosource>True</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>2002</id>
+      <facing>1</facing>
+      <connectionname>Output 2</connectionname>
+      <type>1</type>
+      <consumer>False</consumer>
+      <audiosource>True</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>2003</id>
+      <facing>1</facing>
+      <connectionname>Output 3</connectionname>
+      <type>1</type>
+      <consumer>False</consumer>
+      <audiosource>True</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>2004</id>
+      <facing>1</facing>
+      <connectionname>Output 4</connectionname>
+      <type>1</type>
+      <consumer>False</consumer>
+      <audiosource>True</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>2005</id>
+      <facing>1</facing>
+      <connectionname>Output 5</connectionname>
+      <type>1</type>
+      <consumer>False</consumer>
+      <audiosource>True</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>2006</id>
+      <facing>1</facing>
+      <connectionname>Output 6</connectionname>
+      <type>1</type>
+      <consumer>False</consumer>
+      <audiosource>True</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>2007</id>
+      <facing>1</facing>
+      <connectionname>Output 7</connectionname>
+      <type>1</type>
+      <consumer>False</consumer>
+      <audiosource>True</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+    <connection>
+      <id>2008</id>
+      <facing>1</facing>
+      <connectionname>Output 8</connectionname>
+      <type>1</type>
+      <consumer>False</consumer>
+      <audiosource>True</audiosource>
+      <videosource>False</videosource>
+      <linelevel>True</linelevel>
+      <classes><class><classname>STEREO</classname></class></classes>
+    </connection>
+  </connections>
+</devicedata>

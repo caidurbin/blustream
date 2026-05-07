@@ -1,0 +1,19 @@
+"""Generated wire-protocol formatters for the {{ device.name }}.
+
+DO NOT EDIT. Regenerate with: python -m spec.codegen.emit_python
+Source: spec/protocol.yaml
+Spec hash: {{ spec_hash }}
+Device: {{ device.manufacturer }} {{ device.name }}
+Firmware baseline: {{ device.firmware_baseline }}
+"""
+
+DEFAULT_PORT = {{ transport.default_port }}
+ALTERNATIVE_PORT = {{ transport.alternative_port }}
+TERMINATOR = {{ transport.terminator | py_str }}
+
+{% for op_name, cmd in commands.items() %}
+
+def format_{{ op_name }}() -> str:
+    """{{ cmd.description }}"""
+    return {{ cmd.wire | py_str }}
+{% endfor %}

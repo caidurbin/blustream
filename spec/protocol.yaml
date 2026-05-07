@@ -1,0 +1,32 @@
+# Wire-protocol source of truth for Blustream devices.
+#
+# Codegen reads this file and emits language-specific protocol primitives:
+#   - blustream/devices/dmp168/_generated.py (Python)
+#   - control4/dmp168/src/generated.lua     (Lua)
+#
+# Generated files MUST be committed (CI re-runs codegen and fails on diff).
+# See docs/adr/0007-codegen-with-shared-test-vectors.md for the rationale.
+
+device:
+  name: dmp168
+  manufacturer: Blustream
+  firmware_baseline: "1.5.0"
+
+# Wire transport defaults. The DMP168 listens on two ports concurrently:
+#   * default_port (8000) — raw TCP, the canonical port for automation clients
+#   * alternative_port (23) — telnet, intentionally left free for ad-hoc use
+# `terminator` is the line ending appended to every outbound command.
+transport:
+  default_port: 8000
+  alternative_port: 23
+  terminator: "\r\n"
+
+# Each entry maps an operation name (the formatter function name suffix) to:
+#   wire:        the literal wire payload (no terminator)
+#   params:      ordered list of {name, type} for parameterized commands
+#   description: short docstring for the generated formatter
+commands:
+  power_on:
+    wire: "PON"
+    params: []
+    description: "Power the device on."

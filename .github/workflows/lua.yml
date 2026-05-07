@@ -28,13 +28,22 @@ jobs:
       - name: Set up LuaRocks
         uses: leafo/gh-actions-luarocks@v4
 
-      - name: Install luacheck and busted
+      - name: Install libyaml (lyaml build dep)
+        # lyaml binds libyaml; the Lua VectorRunner uses it to load the same
+        # spec/vectors/formatters.yaml the Python runner consumes.
+        run: sudo apt-get install -y libyaml-dev
+
+      - name: Install luacheck, busted, lyaml
         run: |
           luarocks install luacheck 1.2.0
           luarocks install busted 2.2.0
+          luarocks install lyaml
 
       - name: Run luacheck
         run: luacheck .
 
       - name: Run busted
+        # Includes control4/dmp168/spec/vector_runner_spec.lua, which calls
+        # vector_runner.run_vectors("spec/vectors/formatters.yaml") — the
+        # Lua-side acceptance gate that mirrors tests/test_vector_runner.py.
         run: busted --verbose --pattern=_spec control4/

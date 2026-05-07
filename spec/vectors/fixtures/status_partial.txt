@@ -1,0 +1,6 @@
+================================================================
+                      DMP168 Status
+      FW Version:MCU_Main V1.5.0/Web_GUI V1.5.0
+
+Power         Baud    Level Unit    Auto Standby Time(mins)    DSP(%)    Fade    Temp(C)   Uptime(Day:Hour:Min:Sec)
+On            57600   %             0                          10        Off     25.0C     0000:01:00:00

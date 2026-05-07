@@ -1,0 +1,11 @@
+power: "On"
+baud: 57600
+level_unit: "%"
+auto_standby_time: 0
+dsp_usage: 10.0
+fade: false
+temperature: 25.0
+uptime: "0000:01:00:00"
+firmware_version: "MCU_Main V1.5.0/Web_GUI V1.5.0"
+inputs: []
+routing: []

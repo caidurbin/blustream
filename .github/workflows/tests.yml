@@ -45,7 +45,15 @@ jobs:
     - name: Run linter
       run: |
         ruff check .
-    
+
+    - name: Codegen drift gate (regenerate; fail on diff)
+      # Mirrors the runtime test_committed_*_generated_is_fresh assertions
+      # so a stale checkout fails CI even before pytest collects.
+      run: |
+        python -m spec.codegen.emit_python
+        python -m spec.codegen.emit_lua
+        git diff --exit-code -- blustream/devices/dmp168/_generated.py control4/dmp168/src/generated.lua
+
     - name: Run tests with coverage
       run: |
         pytest -v --tb=short \

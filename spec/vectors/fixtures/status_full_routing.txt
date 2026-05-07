@@ -1,0 +1,54 @@
+================================================================
+Welcome to DMP168 Terminal Control System
+FW Version: 1.5.0
+
+Type "HELP" For More Information
+================================================================
+STATUS
+
+================================================================
+                      DMP168 Status
+      FW Version:MCU_Main V1.5.0/Web_GUI V1.5.0
+                 DSP V1.5.7
+
+Power         Baud    Level Unit    Auto Standby Time(mins)    DSP(%)    Fade    Temp(C)   Uptime(Day:Hour:Min:Sec)
+On            57600   %             0                          22        On      40.0C     0000:01:00:00
+
+Matrix Config Status
+Output        FromIn
+Out1 L        In1 L
+Out1 R        In1 R
+Out2 L        In3 L
+Out2 R        In3 R
+Out3 L        In5 L
+Out3 R        In5 R
+Out4 L        In7 L
+Out4 R        In7 R
+Out5 L        In9 L
+Out5 R        In9 R
+Out6 L        In11 L
+Out6 R        In11 R
+Out7 L        In13 L
+Out7 R        In13 R
+Out8 L        In15 L
+Out8 R        In15 R
+
+Input Settings Status
+Port    Lock   %       Mute
+        LR   L   R    L   R
+In1     On   50  50   Off Off
+In2     On   60  60   Off Off
+In3     On   75  75   Off Off
+In4     On   80  80   On  On
+In5     On   45  45   Off Off
+In6     On   50  50   Off Off
+In7     On   55  55   Off Off
+In8     Off  40  60   Off Off
+In9     On   50  50   Off Off
+In10    On   50  50   Off Off
+In11    On   50  50   Off Off
+In12    On   50  50   Off Off
+In13    On   50  50   Off Off
+In14    On   50  50   Off Off
+In15    On   65  65   Off Off
+In16    On   50  50   On  On

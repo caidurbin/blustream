@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  drivers-driverpackager input for the Blustream DMP168 .c4z.
+
+  `name` is the output basename: `<name>.c4z`. `squishLua="false"` keeps
+  Lua source unminified so the dev-flavor build is hot-pasteable into the
+  Composer Lua console (see ADR-0006).
+
+  Item paths are relative to this manifest's directory. driverpackager
+  hardcodes `driver.lua` at the manifest directory root for its -ae
+  injection logic, so the manifest sits alongside driver.lua / driver.xml
+  rather than one level above them.
+-->
+<Driver type="c4z" name="blustream-dmp168" squishLua="false">
+  <Items>
+    <Item type="file" name="driver.xml"/>
+    <Item type="file" name="driver.lua"/>
+  </Items>
+</Driver>
