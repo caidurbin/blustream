@@ -18,7 +18,6 @@ local proxy_handler = require("proxy_handler")
 local generated = require("generated")
 
 local OUTPUT_BASE = 2001  -- matches driver.xml audio_providers
-local INPUT_BASE = 1001   -- matches driver.xml audio_consumers
 
 local function make_harness(opts)
     opts = opts or {}
