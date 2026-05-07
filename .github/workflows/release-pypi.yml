@@ -1,0 +1,62 @@
+name: Release (PyPI)
+
+# Publishes the blustream Python library + CLI to PyPI on `v*` tags.
+#
+# The `v*` prefix is the library's release lane; the Control4 driver
+# uses the disjoint `c4-v*` prefix in release-c4z.yml so the two
+# components version independently (PRD #9, README "Independent
+# versioning"). Listing only `v*` here keeps a `c4-v1.2.3` push from
+# accidentally firing a PyPI publish against driver-only changes.
+#
+# Account creation, the PyPI Trusted Publisher binding, and any
+# fallback API-token secrets are explicitly out of scope for issue
+# #19. The workflow ships ready to fire as soon as those credentials
+# land in repo settings.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  # Required for PyPI Trusted Publishing (OIDC). Harmless if a token
+  # fallback is configured instead.
+  id-token: write
+
+jobs:
+  build-and-publish:
+    name: Build sdist + wheel and publish to PyPI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+
+      - name: Build sdist and wheel
+        # `python -m build` produces both dist/*.tar.gz and dist/*.whl;
+        # PyPI rejects releases that ship only one or the other.
+        run: |
+          python -m build
+
+      - name: Upload distribution artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: blustream-pypi-dist
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish to PyPI
+        # Uses Trusted Publishing by default; falls back to a token if
+        # PYPI_API_TOKEN is set in repo secrets. Neither is configured
+        # in this slice — see issue #19 acceptance criteria.
+        uses: pypa/gh-action-pypi-publish@release/v1

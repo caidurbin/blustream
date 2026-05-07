@@ -22,11 +22,429 @@ transport:
   terminator: "\r\n"
 
 # Each entry maps an operation name (the formatter function name suffix) to:
-#   wire:        the literal wire payload (no terminator)
-#   params:      ordered list of {name, type} for parameterized commands
 #   description: short docstring for the generated formatter
+#   params:      ordered list of {name, type, default?} for parameterized commands
+#                  type ∈ {int, bool, str, any}
+#                  default omitted ⇒ parameter is required
+#   validate:    optional list of validation rules (raised before wire assembly)
+#                  rule shapes:
+#                    {param: <name>, range: [lo, hi], message: "..."}    -- inclusive int range
+#                    {param: <name>, choices: [...], message: "..."}     -- exact-membership
+#                  message can include the placeholder "{value}" to interpolate the bad value.
+#   wire:        list of fragment steps appended in order to build the wire payload.
+#                  step shapes:
+#                    {lit: "TEXT"}                                       -- always emit literal
+#                    {var: <name>}                                       -- always emit str(value)
+#                    {var: <name>, prefix: " ", when_ne: <literal>}      -- emit prefix + str(value)
+#                                                                            only when value != literal
+#                    {lit: " ON",  when_true: <name>}                    -- emit only if bool param is true
+#                    {lit: " OFF", when_false: <name>}                   -- emit only if bool param is false
+#                    {lit: " dB", when_eq: {<name>: <literal>},          -- emit if both: param == literal
+#                                 when_not_in: {<name>: [..]}}              and other param ∉ list
+#                Strings (vs the structured list) are accepted as a shorthand for a
+#                single literal step — e.g. wire: "PON".
 commands:
-  power_on:
-    wire: "PON"
+
+  # --------- Status / introspection ---------
+
+  status:
+    description: "Get system status and port status."
     params: []
-    description: "Power the device on."
+    wire: "STATUS"
+
+  uptime:
+    description: "Get system uptime."
+    params: []
+    wire: "UPTIME"
+
+  temp:
+    description: "Get system temperature."
+    params: []
+    wire: "TEMP"
+
+  # --------- Power / standby / lifecycle ---------
+
+  power_on:
+    description: "Power on, system run on normal state."
+    params: []
+    wire: "PON"
+
+  power_off:
+    description: "Power off, system run on power save state."
+    params: []
+    wire: "POFF"
+
+  standby:
+    description: "Set device standby mode (0=Sleep, 1=Standby)."
+    params:
+      - {name: mode, type: int}
+    validate:
+      - param: mode
+        choices: [0, 1]
+        message: "Invalid standby mode '{value}'. Valid options are: 0 (Sleep) or 1 (Standby). Please choose a valid mode."
+    wire:
+      - {lit: "STANDBY "}
+      - {var: mode}
+
+  reboot:
+    description: "Reboot system."
+    params: []
+    wire: "REBOOT"
+
+  # --------- Output volume / mute / channel lock / delay / mix ---------
+
+  output_volume:
+    description: "Set output volume."
+    params:
+      - {name: output, type: int}
+      - {name: level, type: any}
+      - {name: unit, type: str, default: "percent"}
+      - {name: channel, type: str, default: "LR"}
+    validate:
+      - param: output
+        range: [0, 8]
+        message: "Invalid output channel '{value}'. Output must be between 0-8 (0=All outputs). Please choose a valid output."
+      - param: channel
+        choices: [L, R, LR]
+        message: "Invalid channel '{value}'. Valid options are: L (Left), R (Right), or LR (Both). Please choose a valid channel."
+      - param: unit
+        choices: [percent, dB]
+        message: "Invalid unit '{value}'. Valid options are: 'percent' or 'dB'. Please choose a valid unit."
+    wire:
+      - {lit: "OUT "}
+      - {var: output}
+      - {var: channel, prefix: " ", when_ne: "LR"}
+      - {lit: " VOL"}
+      - {var: channel, prefix: " ", when_ne: "LR"}
+      - {lit: " "}
+      - {var: level}
+      - {lit: " dB", when_eq: {unit: "dB"}, when_not_in: {level: ["+", "-"]}}
+
+  output_mute:
+    description: "Set output mute on or off."
+    params:
+      - {name: output, type: int}
+      - {name: mute, type: bool}
+      - {name: channel, type: str, default: "LR"}
+    validate:
+      - param: output
+        range: [0, 8]
+        message: "Invalid output channel '{value}'. Output must be between 0-8 (0=All outputs). Please choose a valid output."
+      - param: channel
+        choices: [L, R, LR]
+        message: "Invalid channel '{value}'. Valid options are: L (Left), R (Right), or LR (Both). Please choose a valid channel."
+    wire:
+      - {lit: "OUT "}
+      - {var: output}
+      - {var: channel, prefix: " ", when_ne: "LR"}
+      - {lit: " MUTE"}
+      - {var: channel, prefix: " ", when_ne: "LR"}
+      - {lit: " ON", when_true: mute}
+      - {lit: " OFF", when_false: mute}
+
+  output_channel_lock:
+    description: "Set output channel lock on or off."
+    params:
+      - {name: output, type: int}
+      - {name: lock, type: bool}
+      - {name: channel, type: str, default: "LR"}
+    validate:
+      - param: output
+        range: [0, 8]
+        message: "Invalid output channel '{value}'. Output must be between 0-8 (0=All outputs). Please choose a valid output."
+      - param: channel
+        choices: [L, R, LR]
+        message: "Invalid channel '{value}'. Valid options are: L (Left), R (Right), or LR (Both). Please choose a valid channel."
+    wire:
+      - {lit: "OUT "}
+      - {var: output}
+      - {lit: " CH LOCK"}
+      - {var: channel, prefix: " ", when_ne: "LR"}
+      - {lit: " ON", when_true: lock}
+      - {lit: " OFF", when_false: lock}
+
+  output_delay:
+    description: "Set output delay time."
+    params:
+      - {name: output, type: int}
+      - {name: delay_ms, type: int}
+      - {name: channel, type: str, default: "LR"}
+    validate:
+      - param: output
+        range: [0, 8]
+        message: "Invalid output channel '{value}'. Output must be between 0-8 (0=All outputs). Please choose a valid output."
+      - param: delay_ms
+        range: [0, 500]
+        message: "Invalid delay value '{value}'. Delay must be between 0-500 milliseconds. Please choose a valid delay."
+      - param: channel
+        choices: [L, R, LR]
+        message: "Invalid channel '{value}'. Valid options are: L (Left), R (Right), or LR (Both). Please choose a valid channel."
+    wire:
+      - {lit: "OUT "}
+      - {var: output}
+      - {var: channel, prefix: " ", when_ne: "LR"}
+      - {lit: " DELAY "}
+      - {var: delay_ms}
+
+  output_mix:
+    description: "Set output mixing mode."
+    params:
+      - {name: output, type: int}
+      - {name: mode, type: int}
+    validate:
+      - param: output
+        range: [0, 8]
+        message: "Invalid output channel '{value}'. Output must be between 0-8 (0=All outputs). Please choose a valid output."
+      - param: mode
+        range: [0, 6]
+        message: "Invalid mix mode '{value}'. Mix mode must be between 0-6. Please choose a valid mode."
+    wire:
+      - {lit: "OUT "}
+      - {var: output}
+      - {lit: " MIX "}
+      - {var: mode}
+
+  # --------- Output master volume / mute (no per-output channel index) ---------
+
+  output_master_volume:
+    description: "Set output master volume."
+    params:
+      - {name: level, type: any}
+      - {name: unit, type: str, default: "percent"}
+      - {name: channel, type: str, default: "LR"}
+    validate:
+      - param: channel
+        choices: [L, R, LR]
+        message: "Invalid channel '{value}'. Valid options are: L (Left), R (Right), or LR (Both). Please choose a valid channel."
+      - param: unit
+        choices: [percent, dB]
+        message: "Invalid unit '{value}'. Valid options are: 'percent' or 'dB'. Please choose a valid unit."
+    wire:
+      - {lit: "OUT MASTER VOL"}
+      - {var: channel, prefix: " ", when_ne: "LR"}
+      - {lit: " "}
+      - {var: level}
+      - {lit: " dB", when_eq: {unit: "dB"}, when_not_in: {level: ["+", "-"]}}
+
+  output_master_mute:
+    description: "Set output master mute on or off."
+    params:
+      - {name: mute, type: bool}
+      - {name: channel, type: str, default: "LR"}
+    validate:
+      - param: channel
+        choices: [L, R, LR]
+        message: "Invalid channel '{value}'. Valid options are: L (Left), R (Right), or LR (Both). Please choose a valid channel."
+    wire:
+      - {lit: "OUT MASTER MUTE"}
+      - {var: channel, prefix: " ", when_ne: "LR"}
+      - {lit: " ON", when_true: mute}
+      - {lit: " OFF", when_false: mute}
+
+  # --------- Routing (FR / REM) ---------
+
+  route:
+    description: "Route input to output."
+    params:
+      - {name: output, type: int}
+      - {name: input_ch, type: int}
+      - {name: output_channel, type: str, default: "LR"}
+      - {name: input_channel, type: str, default: "LR"}
+    validate:
+      - param: output
+        range: [0, 8]
+        message: "Invalid output channel '{value}'. Output must be between 0-8 (0=All outputs). Please choose a valid output."
+      - param: input_ch
+        range: [1, 24]
+        message: "Invalid input channel '{value}'. Input must be between 1-24. Please choose a valid input."
+      - param: output_channel
+        choices: [L, R, LR]
+        message: "Invalid output channel '{value}'. Valid options are: L (Left), R (Right), or LR (Both). Please choose a valid channel."
+      - param: input_channel
+        choices: [L, R, LR]
+        message: "Invalid input channel '{value}'. Valid options are: L (Left), R (Right), or LR (Both). Please choose a valid channel."
+    wire:
+      - {lit: "OUT "}
+      - {var: output}
+      - {var: output_channel, prefix: " ", when_ne: "LR"}
+      - {lit: " FR "}
+      - {var: input_ch}
+      - {var: input_channel, prefix: " ", when_ne: "LR"}
+
+  output_remove:
+    description: "Remove input from output."
+    params:
+      - {name: output, type: int}
+      - {name: input_ch, type: int}
+      - {name: output_channel, type: str, default: "LR"}
+      - {name: input_channel, type: str, default: "LR"}
+    validate:
+      - param: output
+        range: [0, 8]
+        message: "Invalid output channel '{value}'. Output must be between 0-8 (0=All outputs). Please choose a valid output."
+      - param: input_ch
+        range: [1, 24]
+        message: "Invalid input channel '{value}'. Input must be between 1-24. Please choose a valid input."
+      - param: output_channel
+        choices: [L, R, LR]
+        message: "Invalid output channel '{value}'. Valid options are: L (Left), R (Right), or LR (Both). Please choose a valid channel."
+      - param: input_channel
+        choices: [L, R, LR]
+        message: "Invalid input channel '{value}'. Valid options are: L (Left), R (Right), or LR (Both). Please choose a valid channel."
+    wire:
+      - {lit: "OUT "}
+      - {var: output}
+      - {var: output_channel, prefix: " ", when_ne: "LR"}
+      - {lit: " REM "}
+      - {var: input_ch}
+      - {var: input_channel, prefix: " ", when_ne: "LR"}
+
+  # --------- Input gain / mute ---------
+
+  input_gain:
+    description: "Set input gain."
+    params:
+      - {name: input_ch, type: int}
+      - {name: gain, type: any}
+      - {name: channel, type: str, default: "LR"}
+      - {name: unit, type: str, default: null}
+    validate:
+      - param: input_ch
+        range: [0, 16]
+        message: "Invalid input channel '{value}'. Input must be between 0-16 (0=All inputs). Please choose a valid input."
+      - param: channel
+        choices: [L, R, LR]
+        message: "Invalid channel '{value}'. Valid options are: L (Left), R (Right), or LR (Both). Please choose a valid channel."
+    wire:
+      - {lit: "IN "}
+      - {var: input_ch}
+      - {var: channel, prefix: " ", when_ne: "LR"}
+      - {lit: " GAIN"}
+      - {lit: " "}
+      - {var: gain}
+      - {lit: " dB", when_eq: {unit: "dB"}, when_not_in: {gain: ["+", "-"]}}
+
+  input_mute:
+    description: "Set input mute on or off."
+    params:
+      - {name: input_ch, type: int}
+      - {name: mute, type: bool}
+      - {name: channel, type: str, default: "LR"}
+    validate:
+      - param: input_ch
+        range: [0, 16]
+        message: "Invalid input channel '{value}'. Input must be between 0-16 (0=All inputs). Please choose a valid input."
+      - param: channel
+        choices: [L, R, LR]
+        message: "Invalid channel '{value}'. Valid options are: L (Left), R (Right), or LR (Both). Please choose a valid channel."
+    wire:
+      - {lit: "IN "}
+      - {var: input_ch}
+      - {var: channel, prefix: " ", when_ne: "LR"}
+      - {lit: " MUTE"}
+      - {var: channel, prefix: " ", when_ne: "LR"}
+      - {lit: " ON", when_true: mute}
+      - {lit: " OFF", when_false: mute}
+
+  # --------- Presets ---------
+
+  preset_save:
+    description: "Save current config to preset."
+    params:
+      - {name: preset, type: int}
+    validate:
+      - param: preset
+        range: [1, 8]
+        message: "Invalid preset number '{value}'. Preset must be between 1-8. Please choose a valid preset."
+    wire:
+      - {lit: "PRESET "}
+      - {var: preset}
+      - {lit: " SAVE"}
+
+  preset_recall:
+    description: "Recall preset config to current setting."
+    params:
+      - {name: preset, type: int}
+    validate:
+      - param: preset
+        range: [1, 8]
+        message: "Invalid preset number '{value}'. Preset must be between 1-8. Please choose a valid preset."
+    wire:
+      - {lit: "PRESET "}
+      - {var: preset}
+      - {lit: " APPLY"}
+
+  preset_delete:
+    description: "Delete preset from system."
+    params:
+      - {name: preset, type: int}
+    validate:
+      - param: preset
+        range: [1, 8]
+        message: "Invalid preset number '{value}'. Preset must be between 1-8. Please choose a valid preset."
+    wire:
+      - {lit: "PRESET "}
+      - {var: preset}
+      - {lit: " DELETE"}
+
+  preset_status:
+    description: "Get preset configuration status."
+    params:
+      - {name: preset, type: int}
+    validate:
+      - param: preset
+        range: [1, 8]
+        message: "Invalid preset number '{value}'. Preset must be between 1-8. Please choose a valid preset."
+    wire:
+      - {lit: "PRESET "}
+      - {var: preset}
+      - {lit: " STATUS"}
+
+  # --------- Group volume / mute ---------
+
+  group_volume:
+    description: "Set group volume."
+    params:
+      - {name: group, type: int}
+      - {name: level, type: any}
+      - {name: unit, type: str, default: "percent"}
+      - {name: channel, type: str, default: "LR"}
+    validate:
+      - param: group
+        range: [0, 4]
+        message: "Invalid group number '{value}'. Group must be between 0-4 (0=All groups). Please choose a valid group."
+      - param: channel
+        choices: [L, R, LR]
+        message: "Invalid channel '{value}'. Valid options are: L (Left), R (Right), or LR (Both). Please choose a valid channel."
+      - param: unit
+        choices: [percent, dB]
+        message: "Invalid unit '{value}'. Valid options are: 'percent' or 'dB'. Please choose a valid unit."
+    wire:
+      - {lit: "GROUP "}
+      - {var: group}
+      - {lit: " VOL"}
+      - {var: channel, prefix: " ", when_ne: "LR"}
+      - {lit: " "}
+      - {var: level}
+      - {lit: " dB", when_eq: {unit: "dB"}, when_not_in: {level: ["+", "-"]}}
+
+  group_mute:
+    description: "Set group mute on or off."
+    params:
+      - {name: group, type: int}
+      - {name: mute, type: bool}
+      - {name: channel, type: str, default: "LR"}
+    validate:
+      - param: group
+        range: [0, 4]
+        message: "Invalid group number '{value}'. Group must be between 0-4 (0=All groups). Please choose a valid group."
+      - param: channel
+        choices: [L, R, LR]
+        message: "Invalid channel '{value}'. Valid options are: L (Left), R (Right), or LR (Both). Please choose a valid channel."
+    wire:
+      - {lit: "GROUP "}
+      - {var: group}
+      - {lit: " MUTE"}
+      - {var: channel, prefix: " ", when_ne: "LR"}
+      - {lit: " ON", when_true: mute}
+      - {lit: " OFF", when_false: mute}

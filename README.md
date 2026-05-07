@@ -1,25 +1,71 @@
-# Blustream Device Control Library and CLI
+# Blustream
 
-Python library and command-line tool for controlling Blustream audio devices, starting with the DMP168 digital audio matrix processor.
+Open-source toolkit for controlling [Blustream](https://www.blustream.com/) audio
+devices — starting with the DMP168 digital audio matrix processor — across
+three home-automation surfaces.
 
-## Features
+## Components
 
-- **Library API**: Clean Python API for programmatic device control
-- **CLI Tool**: Command-line interface for device management
-- **Extensible**: Architecture supports multiple Blustream device types
-- **TCP/IP Communication**: Network-based device control
+This repository is a monorepo housing three deliverables that share a single
+protocol contract under `spec/`:
+
+1. **Python library + CLI** (`blustream/`). A clean async Python API and a
+   `blustream` console script. Ships to **[PyPI](https://pypi.org/project/blustream/)**
+   on `v*` tags.
+2. **Control4 driver** (`control4/dmp168/`). A Lua driver packaged as a
+   `.c4z` archive that exposes the matrix as a standard Control4 audio
+   matrix. Ships as a **GitHub release** with the `.c4z` attached on
+   `c4-v*` tags.
+3. **Home Assistant integration** (`custom_components/blustream/`). The
+   directory is reserved and registered with HACS; the integration code
+   itself is deferred to a future PRD. The eventual integration will depend
+   on the published `blustream` PyPI library rather than re-embedding the
+   protocol code.
+
+The protocol primitives shared between the library and the driver are
+**generated** from `spec/protocol.yaml` via the codegen tooling under
+`spec/codegen/`. The Python and Lua emitters write into
+`blustream/devices/dmp168/_generated.py` and
+`control4/dmp168/src/generated.lua` respectively, and CI fails when those
+committed files drift from what the spec would produce.
+
+## Independent versioning
+
+Each component releases on its own cadence using a distinct tag prefix. The
+prefixes are disjoint so a tag for one component cannot accidentally trigger
+the wrong release workflow.
+
+| Component       | Tag prefix | Workflow                                | Artifact                                 |
+| --------------- | ---------- | --------------------------------------- | ---------------------------------------- |
+| Python library  | `v*`       | `.github/workflows/release-pypi.yml`    | `blustream` on PyPI (sdist + wheel)      |
+| Control4 driver | `c4-v*`    | `.github/workflows/release-c4z.yml`     | GitHub release with attached `.c4z`      |
+| HA integration  | _reserved_ | _deferred_                              | _deferred_ (will use HACS once built)    |
+
+For example, a library bug-fix release tags `v0.2.1`, while a driver-only
+update tags `c4-v0.3.0`. The shared `spec/` directory is the coordination
+point when a protocol change requires both components to move in lockstep.
 
 ## Installation
 
+### Python library + CLI
+
+Once published, the library installs from PyPI:
+
 ```bash
-pip install -e .
+pip install blustream
 ```
 
-Or install in development mode:
+For local development from a checkout:
 
 ```bash
 pip install -e ".[dev]"
 ```
+
+### Control4 driver
+
+Download the `.c4z` from the latest [GitHub release](https://github.com/caidurbin/blustream/releases)
+tagged `c4-v*` and install it through Composer Pro. See
+`docs/control4-driver-plan.md` for the dealer-load workflow.
 
 ## Library Usage
 
@@ -206,7 +252,7 @@ busted --pattern=_spec control4/        # run Lua unit tests
 
 ## License
 
-MIT License
+This project is licensed under the [MIT License](LICENSE).
 
 ## Contributing
 
