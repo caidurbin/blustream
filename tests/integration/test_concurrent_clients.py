@@ -31,9 +31,7 @@ async def test_multiple_clients_can_query_status_concurrently(
     try:
         await asyncio.gather(*(d.connect() for d in devices))
 
-        statuses = await asyncio.gather(
-            *(d.execute_command("status") for d in devices)
-        )
+        statuses = await asyncio.gather(*(d.execute_command("status") for d in devices))
 
         assert len(statuses) == CONCURRENT_CLIENTS
         for i, status in enumerate(statuses):

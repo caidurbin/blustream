@@ -19,7 +19,7 @@ import asyncio
 import pytest
 
 from blustream.devices.dmp168.device import DMP168
-from tests.integration.conftest import output_l_input
+from tests.integration._helpers import output_l_input
 
 TEST_OUTPUT = 7
 TEST_INPUT = 14
@@ -43,9 +43,7 @@ async def test_status_reflects_external_routing_change(host: str, port: int) -> 
         prior_input = output_l_input(baseline, TEST_OUTPUT)
         target_input = ALT_INPUT if prior_input == TEST_INPUT else TEST_INPUT
 
-        await external.route_input_to_output(
-            input_ch=target_input, output=TEST_OUTPUT
-        )
+        await external.route_input_to_output(input_ch=target_input, output=TEST_OUTPUT)
         try:
             await asyncio.sleep(SETTLE_DELAY_S)
             seen = await driver.execute_command("status")
