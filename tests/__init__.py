@@ -1,2 +1,2 @@
-"""Test suite for Bluestream library."""
+"""Test suite for Blustream library."""
 

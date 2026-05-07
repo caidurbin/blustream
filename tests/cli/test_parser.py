@@ -5,8 +5,8 @@ from typing import Any
 
 import pytest
 
-from bluestream.base.commands import Command, CommandRegistry, Parameter
-from bluestream.cli.parser import build_parser, extract_kwargs
+from blustream.base.commands import Command, CommandRegistry, Parameter
+from blustream.cli.parser import build_parser, extract_kwargs
 
 
 def _registry(*commands):

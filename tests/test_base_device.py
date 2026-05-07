@@ -4,9 +4,9 @@
 
 import pytest
 
-from bluestream.base.connection import Connection
-from bluestream.base.device import BluestreamDevice
-from bluestream.base.exceptions import CommandError, ConnectionError, TimeoutError
+from blustream.base.connection import Connection
+from blustream.base.device import BlustreamDevice
+from blustream.base.exceptions import CommandError, ConnectionError, TimeoutError
 
 
 class MockConnection(Connection):
@@ -45,7 +45,7 @@ class MockConnection(Connection):
         return self._connected
 
 
-class ConcreteDevice(BluestreamDevice):
+class ConcreteDevice(BlustreamDevice):
     """Concrete implementation for testing."""
 
     def get_commands(self):
@@ -61,8 +61,8 @@ class ConcreteDevice(BluestreamDevice):
         return {"status": "ok"}
 
 
-class TestBluestreamDevice:
-    """Tests for BluestreamDevice base class."""
+class TestBlustreamDevice:
+    """Tests for BlustreamDevice base class."""
 
     def test_init(self):
         """Test device initialization."""

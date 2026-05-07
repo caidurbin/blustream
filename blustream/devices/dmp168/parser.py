@@ -4,8 +4,8 @@ import logging
 import re
 from typing import Optional
 
-from bluestream.base.exceptions import ParseError
-from bluestream.devices.dmp168.models import (
+from blustream.base.exceptions import ParseError
+from blustream.devices.dmp168.models import (
     InputSettings,
     OutputRouting,
     PresetStatus,

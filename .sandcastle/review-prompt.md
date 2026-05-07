@@ -47,7 +47,7 @@ Review the code changes on branch `{{BRANCH}}` and improve code clarity, consist
 If you find improvements to make:
 
 1. Make the changes directly on this branch
-2. Run `ruff check bluestream tests` and `pytest` to ensure nothing is broken
+2. Run `ruff check blustream tests` and `pytest` to ensure nothing is broken
 3. Commit describing the refinements (see commit style in @.sandcastle/CODING_STANDARDS.md)
 
 If the code is already clean and well-structured, do nothing.

@@ -4,13 +4,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from bluestream.base.exceptions import CommandError, ConnectionError, ValidationError
-from bluestream.devices.dmp168.commands import (
+from blustream.base.exceptions import CommandError, ConnectionError, ValidationError
+from blustream.devices.dmp168.commands import (
     build_output_volume_command,
     build_power_on_command,
     build_status_command,
 )
-from bluestream.devices.dmp168.device import DMP168
+from blustream.devices.dmp168.device import DMP168
 
 
 class TestDMP168Commands:
@@ -105,7 +105,7 @@ class TestDMP168Commands:
 
     def test_build_route_command_boundary_values(self):
         """Test route command with boundary values."""
-        from bluestream.devices.dmp168.commands import build_route_command
+        from blustream.devices.dmp168.commands import build_route_command
 
         # Test minimum input (1)
         cmd = build_route_command(output=1, input_ch=1)
@@ -119,7 +119,7 @@ class TestDMP168Commands:
 
     def test_build_route_command_invalid_input(self):
         """Test route command with invalid input."""
-        from bluestream.devices.dmp168.commands import build_route_command
+        from blustream.devices.dmp168.commands import build_route_command
 
         with pytest.raises(ValidationError):
             build_route_command(output=1, input_ch=0)  # Input must be 1-24
@@ -129,7 +129,7 @@ class TestDMP168Commands:
 
     def test_build_preset_command_boundary_values(self):
         """Test preset commands with boundary values."""
-        from bluestream.devices.dmp168.commands import (
+        from blustream.devices.dmp168.commands import (
             build_preset_delete_command,
             build_preset_recall_command,
             build_preset_save_command,
@@ -148,7 +148,7 @@ class TestDMP168Commands:
 
     def test_build_preset_command_invalid_preset(self):
         """Test preset commands with invalid preset number."""
-        from bluestream.devices.dmp168.commands import build_preset_save_command
+        from blustream.devices.dmp168.commands import build_preset_save_command
 
         with pytest.raises(ValidationError):
             build_preset_save_command(preset=0)  # Preset must be 1-8
@@ -158,7 +158,7 @@ class TestDMP168Commands:
 
     def test_build_input_gain_command_boundary_values(self):
         """Test input gain command with boundary values."""
-        from bluestream.devices.dmp168.commands import build_input_gain_command
+        from blustream.devices.dmp168.commands import build_input_gain_command
 
         # Test minimum input (0 = All)
         cmd = build_input_gain_command(input_ch=0, gain=0)
@@ -173,7 +173,7 @@ class TestDMP168Commands:
 
     def test_build_input_gain_command_relative(self):
         """Test input gain command with relative level."""
-        from bluestream.devices.dmp168.commands import build_input_gain_command
+        from blustream.devices.dmp168.commands import build_input_gain_command
 
         cmd = build_input_gain_command(input_ch=1, gain="+")
         assert "IN 1" in cmd
@@ -185,7 +185,7 @@ class TestDMP168Commands:
 
     def test_build_input_gain_command_invalid_input(self):
         """Test input gain command with invalid input."""
-        from bluestream.devices.dmp168.commands import build_input_gain_command
+        from blustream.devices.dmp168.commands import build_input_gain_command
 
         with pytest.raises(ValidationError):
             build_input_gain_command(input_ch=-1, gain=50)  # Input must be 0-16
@@ -195,7 +195,7 @@ class TestDMP168Commands:
 
     def test_build_output_delay_command_boundary_values(self):
         """Test output delay command with boundary values."""
-        from bluestream.devices.dmp168.commands import build_output_delay_command
+        from blustream.devices.dmp168.commands import build_output_delay_command
 
         # Test minimum delay (0)
         cmd = build_output_delay_command(output=1, delay_ms=0)
@@ -208,7 +208,7 @@ class TestDMP168Commands:
 
     def test_build_output_delay_command_invalid_delay(self):
         """Test output delay command with invalid delay."""
-        from bluestream.devices.dmp168.commands import build_output_delay_command
+        from blustream.devices.dmp168.commands import build_output_delay_command
 
         with pytest.raises(ValidationError):
             build_output_delay_command(output=1, delay_ms=-1)  # Delay must be 0-500
@@ -218,7 +218,7 @@ class TestDMP168Commands:
 
     def test_build_output_mix_command_boundary_values(self):
         """Test output mix command with boundary values."""
-        from bluestream.devices.dmp168.commands import build_output_mix_command
+        from blustream.devices.dmp168.commands import build_output_mix_command
 
         # Test minimum mode (0)
         cmd = build_output_mix_command(output=1, mode=0)
@@ -231,7 +231,7 @@ class TestDMP168Commands:
 
     def test_build_output_mix_command_invalid_mode(self):
         """Test output mix command with invalid mode."""
-        from bluestream.devices.dmp168.commands import build_output_mix_command
+        from blustream.devices.dmp168.commands import build_output_mix_command
 
         with pytest.raises(ValidationError):
             build_output_mix_command(output=1, mode=-1)  # Mode must be 0-6
@@ -241,7 +241,7 @@ class TestDMP168Commands:
 
     def test_build_group_volume_command_boundary_values(self):
         """Test group volume command with boundary values."""
-        from bluestream.devices.dmp168.commands import build_group_volume_command
+        from blustream.devices.dmp168.commands import build_group_volume_command
 
         # Test minimum group (0 = All)
         cmd = build_group_volume_command(group=0, level=0, unit="percent")
@@ -255,7 +255,7 @@ class TestDMP168Commands:
 
     def test_build_group_volume_command_invalid_group(self):
         """Test group volume command with invalid group."""
-        from bluestream.devices.dmp168.commands import build_group_volume_command
+        from blustream.devices.dmp168.commands import build_group_volume_command
 
         with pytest.raises(ValidationError):
             build_group_volume_command(group=-1, level=50)  # Group must be 0-4
@@ -265,7 +265,7 @@ class TestDMP168Commands:
 
     def test_build_standby_command_boundary_values(self):
         """Test standby command with boundary values."""
-        from bluestream.devices.dmp168.commands import build_standby_command
+        from blustream.devices.dmp168.commands import build_standby_command
 
         # Test mode 0 (Sleep)
         cmd = build_standby_command(mode=0)
@@ -277,7 +277,7 @@ class TestDMP168Commands:
 
     def test_build_standby_command_invalid_mode(self):
         """Test standby command with invalid mode."""
-        from bluestream.devices.dmp168.commands import build_standby_command
+        from blustream.devices.dmp168.commands import build_standby_command
 
         with pytest.raises(ValidationError):
             build_standby_command(mode=-1)  # Mode must be 0 or 1
@@ -289,7 +289,7 @@ class TestDMP168Commands:
 class TestDMP168Device:
     """Tests for DMP168 device class."""
 
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     def test_get_commands(self, mock_connection_class):
         """Test getting available commands."""
         mock_conn = MagicMock()
@@ -303,7 +303,7 @@ class TestDMP168Device:
         assert "output_volume" in commands
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_execute_command_unknown(self, mock_connection_class):
         """Test executing unknown command."""
         mock_conn = AsyncMock()
@@ -318,7 +318,7 @@ class TestDMP168Device:
             await device.execute_command("unknown_command")
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_high_level_api(self, mock_connection_class):
         """Test high-level API methods."""
         mock_conn = MagicMock()
@@ -345,7 +345,7 @@ class TestDMP168Device:
         await device.route_input_to_output(input_ch=2, output=1)
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_execute_command_missing_parameter(self, mock_connection_class):
         """Test executing command with missing required parameter."""
         mock_conn = AsyncMock()
@@ -360,7 +360,7 @@ class TestDMP168Device:
             await device.execute_command("output_volume")  # Missing 'output' and 'level'
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_execute_command_invalid_parameter_value(self, mock_connection_class):
         """Test executing command with invalid parameter value."""
         mock_conn = AsyncMock()
@@ -375,7 +375,7 @@ class TestDMP168Device:
             await device.execute_command("output_volume", output=10, level=75)  # output=10 is invalid
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_execute_command_not_connected(self, mock_connection_class):
         """Test executing command when not connected."""
         mock_conn = MagicMock()
@@ -384,13 +384,13 @@ class TestDMP168Device:
         device = DMP168(host="192.168.1.100")
         # Don't connect
 
-        from bluestream.base.exceptions import ConnectionError
+        from blustream.base.exceptions import ConnectionError
 
         with pytest.raises(ConnectionError):
             await device.execute_command("status")
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_execute_command_connection_error(self, mock_connection_class):
         """Test executing command when connection error occurs."""
         mock_conn = AsyncMock()
@@ -406,7 +406,7 @@ class TestDMP168Device:
             await device.execute_command("status")
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_execute_command_uptime_success_pattern(self, mock_connection_class):
         """Test executing uptime command with [SUCCESS] pattern."""
         mock_conn = AsyncMock()
@@ -423,7 +423,7 @@ class TestDMP168Device:
         assert result == "0000:08:57:01"
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_execute_command_temp_success_pattern(self, mock_connection_class):
         """Test executing temp command with [SUCCESS] pattern."""
         mock_conn = AsyncMock()
@@ -440,7 +440,7 @@ class TestDMP168Device:
         assert result == "47.4C"
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_execute_command_uptime_direct_pattern(self, mock_connection_class):
         """Test executing uptime command with direct value pattern."""
         mock_conn = AsyncMock()
@@ -457,7 +457,7 @@ class TestDMP168Device:
         assert result == "0000:08:57:01"
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_execute_command_temp_direct_pattern(self, mock_connection_class):
         """Test executing temp command with direct value pattern."""
         mock_conn = AsyncMock()
@@ -474,7 +474,7 @@ class TestDMP168Device:
         assert result == "47.4C"
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_command_requires_confirmation(self, mock_connection_class):
         """Test checking if command requires confirmation."""
         mock_conn = MagicMock()
@@ -488,7 +488,7 @@ class TestDMP168Device:
         assert device.command_requires_confirmation("unknown_command") is False
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_confirmation_message_static_string(self, mock_connection_class):
         """Test that reboot has a static string confirmation_message."""
         mock_conn = MagicMock()
@@ -501,7 +501,7 @@ class TestDMP168Device:
         assert "reboot" in command.confirmation_message.lower()
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_confirmation_message_callable(self, mock_connection_class):
         """Test that preset_delete has a callable confirmation_message with kwarg substitution."""
         mock_conn = MagicMock()
@@ -516,7 +516,7 @@ class TestDMP168Device:
         assert "preset" in msg.lower()
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_confirmation_message_callable_output_remove(self, mock_connection_class):
         """Test that output_remove has a callable confirmation_message with kwarg substitution."""
         mock_conn = MagicMock()
@@ -531,7 +531,7 @@ class TestDMP168Device:
         assert "5" in msg
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_confirmation_message_unset_is_none(self, mock_connection_class):
         """Test that non-destructive commands have no confirmation_message."""
         mock_conn = MagicMock()
@@ -543,7 +543,7 @@ class TestDMP168Device:
         assert command.confirmation_message is None
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_get_command_unknown(self, mock_connection_class):
         """Test get_command returns None for unknown commands."""
         mock_conn = MagicMock()
@@ -553,7 +553,7 @@ class TestDMP168Device:
         assert device.get_command("nonexistent") is None
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_context_manager(self, mock_connection_class):
         """Test device as async context manager."""
         mock_conn = AsyncMock()
@@ -569,7 +569,7 @@ class TestDMP168Device:
         mock_conn.disconnect.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_execute_command_parse_error(self, mock_connection_class):
         """Test executing command that causes parse error."""
         mock_conn = AsyncMock()
@@ -583,20 +583,20 @@ class TestDMP168Device:
         device = DMP168(host="192.168.1.100")
         await device.connect()
 
-        from bluestream.base.exceptions import ParseError
+        from blustream.base.exceptions import ParseError
 
         with pytest.raises(ParseError):
             await device.execute_command("status")
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_execute_command_timeout(self, mock_connection_class):
         """Test executing command that times out."""
         mock_conn = AsyncMock()
         mock_conn.connect = AsyncMock()
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_conn.send = AsyncMock()
-        from bluestream.base.exceptions import TimeoutError
+        from blustream.base.exceptions import TimeoutError
 
         mock_conn.receive = AsyncMock(side_effect=TimeoutError("Timeout"))
         mock_connection_class.return_value = mock_conn
@@ -608,7 +608,7 @@ class TestDMP168Device:
             await device.execute_command("status")
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_execute_command_uptime_fallback(self, mock_connection_class):
         """Test executing uptime command with fallback parsing."""
         mock_conn = AsyncMock()
@@ -626,7 +626,7 @@ class TestDMP168Device:
         assert result == "0000:12:34:56"
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_execute_command_temp_fallback(self, mock_connection_class):
         """Test executing temp command with fallback parsing."""
         mock_conn = AsyncMock()
@@ -644,7 +644,7 @@ class TestDMP168Device:
         assert result == "42.5C"
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_execute_command_uptime_stripped_response(self, mock_connection_class):
         """Test executing uptime command with only stripped response fallback."""
         mock_conn = AsyncMock()
@@ -663,7 +663,7 @@ class TestDMP168Device:
         assert "0000:12:34:56" in result
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_execute_command_handler_error(self, mock_connection_class):
         """Test executing command when handler raises error."""
         mock_conn = AsyncMock()
@@ -680,7 +680,7 @@ class TestDMP168Device:
             await device.execute_command("output_volume", output="invalid", level=75)
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_set_output_volume_relative(self, mock_connection_class):
         """Test setting output volume with relative level."""
         mock_conn = AsyncMock()
@@ -699,7 +699,7 @@ class TestDMP168Device:
         await device.set_output_volume(1, "-")
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_set_input_gain_relative(self, mock_connection_class):
         """Test setting input gain with relative level."""
         mock_conn = AsyncMock()

@@ -9,8 +9,8 @@ Detailed unit tests for confirm_command live in tests/cli/test_dispatcher.py.
 
 from unittest.mock import patch
 
-from bluestream.cli.dispatcher import confirm_command
-from bluestream.devices.dmp168.device import DMP168
+from blustream.cli.dispatcher import confirm_command
+from blustream.devices.dmp168.device import DMP168
 
 
 class TestDMP168ConfirmationWiring:

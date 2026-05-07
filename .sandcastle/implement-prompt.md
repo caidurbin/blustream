@@ -37,7 +37,7 @@ If applicable, use RGR to complete the task.
 
 Before committing, run:
 
-- `ruff check bluestream tests`
+- `ruff check blustream tests`
 - `pytest`
 
 Both must pass.

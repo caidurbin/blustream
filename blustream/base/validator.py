@@ -2,8 +2,8 @@
 
 from typing import Any, Dict, List, Tuple, Union
 
-from bluestream.base.commands import CommandRegistry, Dependency
-from bluestream.base.exceptions import CommandError, ValidationError
+from blustream.base.commands import CommandRegistry, Dependency
+from blustream.base.exceptions import CommandError, ValidationError
 
 
 def _normalize_depends_on(

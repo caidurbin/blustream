@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from bluestream.base.commands import Command, CommandRegistry, Parameter
-from bluestream.cli.dispatcher import confirm_command, dispatch
+from blustream.base.commands import Command, CommandRegistry, Parameter
+from blustream.cli.dispatcher import confirm_command, dispatch
 
 
 def _registry(*commands):
@@ -192,7 +192,7 @@ class TestDispatchOrchestration:
         )
 
         args = argparse.Namespace(command="reboot", yes=False, json=False)
-        with patch("bluestream.cli.dispatcher.confirm_command", return_value=False):
+        with patch("blustream.cli.dispatcher.confirm_command", return_value=False):
             exit_code = await dispatch(args, reg, lambda: None)
         assert exit_code == 0
 

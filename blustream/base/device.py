@@ -1,12 +1,12 @@
-"""Abstract base device class for Bluestream devices."""
+"""Abstract base device class for Blustream devices."""
 
 import asyncio
 import time
 from abc import ABC, abstractmethod
 from typing import Any, List
 
-from bluestream.base.connection import Connection
-from bluestream.base.exceptions import CommandError, ConnectionError, TimeoutError
+from blustream.base.connection import Connection
+from blustream.base.exceptions import CommandError, ConnectionError, TimeoutError
 
 # Timeout constants (in seconds)
 TIMEOUT_PROMPT_CHECK = 0.05  # Very short timeout for prompt detection
@@ -30,8 +30,8 @@ RESPONSE_SIZE_SHORT = 100  # Threshold for short response detection
 RESPONSE_SIZE_SIMPLE = 2000  # Threshold for simple command response size
 
 
-class BluestreamDevice(ABC):
-    """Abstract base class for all Bluestream devices."""
+class BlustreamDevice(ABC):
+    """Abstract base class for all Blustream devices."""
 
     def __init__(self, connection: Connection):
         """Initialize device with a connection.

@@ -1,4 +1,4 @@
-"""Abstract connection interface for Bluestream devices."""
+"""Abstract connection interface for Blustream devices."""
 
 from abc import ABC, abstractmethod
 

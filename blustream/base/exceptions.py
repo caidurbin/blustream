@@ -1,33 +1,33 @@
-"""Custom exception hierarchy for Bluestream devices."""
+"""Custom exception hierarchy for Blustream devices."""
 
 from typing import List, Optional, Tuple
 
 
-class BluestreamError(Exception):
-    """Base exception for all Bluestream errors."""
+class BlustreamError(Exception):
+    """Base exception for all Blustream errors."""
 
     pass
 
 
-class ConnectionError(BluestreamError):
+class ConnectionError(BlustreamError):
     """Raised when connection-related errors occur."""
 
     pass
 
 
-class CommandError(BluestreamError):
+class CommandError(BlustreamError):
     """Raised when command execution fails."""
 
     pass
 
 
-class ParseError(BluestreamError):
+class ParseError(BlustreamError):
     """Raised when response parsing fails."""
 
     pass
 
 
-class ValidationError(BluestreamError):
+class ValidationError(BlustreamError):
     """Raised when parameter validation fails.
 
     Attributes:
@@ -41,7 +41,7 @@ class ValidationError(BluestreamError):
         super().__init__(message)
 
 
-class TimeoutError(BluestreamError):
+class TimeoutError(BlustreamError):
     """Raised when an operation times out."""
 
     pass

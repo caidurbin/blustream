@@ -1,4 +1,5 @@
 {
+  "name": "blustream",
   "scripts": {
     "sandcastle": "npx tsx .sandcastle/main.mts"
   },

@@ -3,7 +3,7 @@
 import json
 from typing import Any
 
-from bluestream.base.commands import RenderContext
+from blustream.base.commands import RenderContext
 
 OUTPUT_MIX_MODE_NAMES = (
     "None",

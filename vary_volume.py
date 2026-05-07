@@ -6,8 +6,8 @@ import sys
 import time
 from typing import Optional
 
-from bluestream import DMP168
-from bluestream.base.exceptions import BluestreamError, ConnectionError
+from blustream import DMP168
+from blustream.base.exceptions import BlustreamError, ConnectionError
 
 
 async def vary_volume_sine(
@@ -147,7 +147,7 @@ async def vary_volume_sine(
     except ConnectionError as e:
         print(f"Error: Failed to connect to {host}:{port}: {e}", file=sys.stderr)
         sys.exit(1)
-    except BluestreamError as e:
+    except BlustreamError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
     except KeyboardInterrupt:

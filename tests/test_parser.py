@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from bluestream.base.exceptions import ParseError
-from bluestream.devices.dmp168.parser import DMP168Parser
+from blustream.base.exceptions import ParseError
+from blustream.devices.dmp168.parser import DMP168Parser
 
 
 def load_fixture(name: str) -> str:
@@ -182,7 +182,7 @@ On
 """
         parser = DMP168Parser()
         # Parser correctly raises ParseError for incomplete data
-        from bluestream.base.exceptions import ParseError
+        from blustream.base.exceptions import ParseError
         with pytest.raises(ParseError):
             parser.parse_status(response)
 

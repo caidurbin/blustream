@@ -3,7 +3,7 @@
 import argparse
 from typing import Any, Dict, List, Optional
 
-from bluestream.base.commands import Command, CommandRegistry, Parameter
+from blustream.base.commands import Command, CommandRegistry, Parameter
 
 
 def _snake_to_kebab(name: str) -> str:
@@ -19,7 +19,7 @@ def build_parser(
     Pure function — performs no I/O.
     """
     parser = argparse.ArgumentParser(
-        description="Bluestream device control CLI",
+        description="Blustream device control CLI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         parents=parents or [],
     )

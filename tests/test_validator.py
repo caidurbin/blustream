@@ -2,9 +2,9 @@
 
 import pytest
 
-from bluestream.base.commands import Command, CommandRegistry, Parameter
-from bluestream.base.exceptions import CommandError, ValidationError
-from bluestream.base.validator import validate
+from blustream.base.commands import Command, CommandRegistry, Parameter
+from blustream.base.exceptions import CommandError, ValidationError
+from blustream.base.validator import validate
 
 
 @pytest.fixture

@@ -4,21 +4,21 @@ import logging
 import re
 from typing import Any, Dict, List, Optional, Union
 
-from bluestream.base.commands import Command, CommandRegistry
-from bluestream.base.connection import Connection
-from bluestream.base.device import BluestreamDevice
-from bluestream.base.exceptions import CommandError, ValidationError
-from bluestream.base.validator import validate
-from bluestream.connection.tcp import TCPConnection
-from bluestream.devices.dmp168 import commands as cmd_module
-from bluestream.devices.dmp168.commands import _is_relative_adjustment
-from bluestream.devices.dmp168.models import PresetStatus, SystemStatus
-from bluestream.devices.dmp168.parser import DMP168Parser
+from blustream.base.commands import Command, CommandRegistry
+from blustream.base.connection import Connection
+from blustream.base.device import BlustreamDevice
+from blustream.base.exceptions import CommandError, ValidationError
+from blustream.base.validator import validate
+from blustream.connection.tcp import TCPConnection
+from blustream.devices.dmp168 import commands as cmd_module
+from blustream.devices.dmp168.commands import _is_relative_adjustment
+from blustream.devices.dmp168.models import PresetStatus, SystemStatus
+from blustream.devices.dmp168.parser import DMP168Parser
 
 logger = logging.getLogger(__name__)
 
 
-class DMP168(BluestreamDevice):
+class DMP168(BlustreamDevice):
     """DMP168 digital audio matrix processor device."""
 
     commands: CommandRegistry = CommandRegistry()

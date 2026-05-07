@@ -4,13 +4,13 @@ import json
 
 import pytest
 
-from bluestream.base.commands import Command, RenderContext
-from bluestream.devices.dmp168.formatters import (
+from blustream.base.commands import Command, RenderContext
+from blustream.devices.dmp168.formatters import (
     OUTPUT_MIX_MODE_NAMES,
     format_preset_status,
     format_status,
 )
-from bluestream.devices.dmp168.models import (
+from blustream.devices.dmp168.models import (
     InputSettings,
     OutputRouting,
     PresetStatus,
@@ -292,8 +292,8 @@ class TestCommandRegistrationWiring:
     """Verify DMP168 command registrations have format_result wired up."""
 
     def test_status_has_format_result(self):
-        from bluestream.base.commands import CommandRegistry
-        from bluestream.devices.dmp168.commands import _register_commands
+        from blustream.base.commands import CommandRegistry
+        from blustream.devices.dmp168.commands import _register_commands
 
         registry = CommandRegistry()
         _register_commands(registry)
@@ -302,8 +302,8 @@ class TestCommandRegistrationWiring:
         assert cmd.format_result is not None
 
     def test_preset_status_has_format_result(self):
-        from bluestream.base.commands import CommandRegistry
-        from bluestream.devices.dmp168.commands import _register_commands
+        from blustream.base.commands import CommandRegistry
+        from blustream.devices.dmp168.commands import _register_commands
 
         registry = CommandRegistry()
         _register_commands(registry)
@@ -312,8 +312,8 @@ class TestCommandRegistrationWiring:
         assert cmd.format_result is not None
 
     def test_status_format_result_produces_correct_output(self, sample_status):
-        from bluestream.base.commands import CommandRegistry
-        from bluestream.devices.dmp168.commands import _register_commands
+        from blustream.base.commands import CommandRegistry
+        from blustream.devices.dmp168.commands import _register_commands
 
         registry = CommandRegistry()
         _register_commands(registry)
@@ -324,8 +324,8 @@ class TestCommandRegistrationWiring:
         assert "Input Settings:" in result
 
     def test_preset_status_format_result_produces_correct_output(self, preset_exists):
-        from bluestream.base.commands import CommandRegistry
-        from bluestream.devices.dmp168.commands import _register_commands
+        from blustream.base.commands import CommandRegistry
+        from blustream.devices.dmp168.commands import _register_commands
 
         registry = CommandRegistry()
         _register_commands(registry)

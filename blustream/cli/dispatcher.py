@@ -4,10 +4,10 @@ import argparse
 import sys
 from typing import Any, Callable
 
-from bluestream.base.commands import Command, CommandRegistry, RenderContext
-from bluestream.base.exceptions import BluestreamError, ValidationError
-from bluestream.base.validator import validate
-from bluestream.cli.parser import extract_kwargs
+from blustream.base.commands import Command, CommandRegistry, RenderContext
+from blustream.base.exceptions import BlustreamError, ValidationError
+from blustream.base.validator import validate
+from blustream.cli.parser import extract_kwargs
 
 
 def confirm_command(command: Command, yes: bool, kwargs: dict) -> bool:
@@ -81,7 +81,7 @@ async def dispatch(
             output = str(result)
         print(output)
         return 0
-    except BluestreamError as e:
+    except BlustreamError as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
     except Exception as e:

@@ -4,15 +4,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from bluestream.base.exceptions import ValidationError
-from bluestream.devices.dmp168.device import DMP168
+from blustream.base.exceptions import ValidationError
+from blustream.devices.dmp168.device import DMP168
 
 
 class TestValidatorIntegration:
     """Verify execute_command uses the centralized validator."""
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_multiple_errors_collected_via_execute_command(
         self, mock_connection_class
     ):
@@ -40,7 +40,7 @@ class TestValidatorIntegration:
         assert "channel" in param_names
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_validation_callable_fires_via_execute_command(
         self, mock_connection_class
     ):
@@ -64,7 +64,7 @@ class TestValidatorIntegration:
         )
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_valid_command_still_works(self, mock_connection_class):
         """Valid commands should pass validation and execute normally."""
         mock_conn = AsyncMock()
@@ -83,7 +83,7 @@ class TestValidatorIntegration:
         assert result is not None
 
     @pytest.mark.asyncio
-    @patch("bluestream.devices.dmp168.device.TCPConnection")
+    @patch("blustream.devices.dmp168.device.TCPConnection")
     async def test_missing_params_collected(self, mock_connection_class):
         """Missing required params should all be collected."""
         mock_conn = AsyncMock()

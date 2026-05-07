@@ -1,4 +1,4 @@
-"""Setup configuration for Bluestream package."""
+"""Setup configuration for Blustream package."""
 
 from setuptools import find_packages, setup
 
@@ -6,11 +6,11 @@ with open("README.md", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name="bluestream",
+    name="blustream",
     version="0.1.0",
     author="Your Name",
     author_email="your.email@example.com",
-    description="Python library and CLI for controlling Bluestream audio devices",
+    description="Python library and CLI for controlling Blustream audio devices",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/caidurbin/blustream",
@@ -40,7 +40,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "bluestream=bluestream.cli.main:main",
+            "blustream=blustream.cli.main:main",
         ],
     },
 )
