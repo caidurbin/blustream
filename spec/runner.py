@@ -4,6 +4,25 @@ Mirrors the Lua runner at ``control4/dmp168/src/vector_runner.lua``. Both
 runners take the same shared vectors file (``spec/vectors/formatters.yaml``)
 and assert byte-identical wire output. Drift between the two implementations
 becomes a CI failure rather than a runtime surprise.
+
+Vector shapes
+-------------
+
+Happy path (asserts wire output)::
+
+    - name: power_on emits literal PON
+      op: power_on
+      args: {}
+      expected_wire: "PON"
+
+Range violation (asserts the formatter raises, optionally with a message
+substring)::
+
+    - name: output_volume rejects output=10
+      op: output_volume
+      args: {output: 10, level: 50}
+      expected_error: true
+      # optional: error_contains: "Output must be between 0-8"
 """
 
 from __future__ import annotations
@@ -31,8 +50,27 @@ def _formatter_for(op: str):
 def _run_one(vector: dict[str, Any]) -> None:
     op = vector["op"]
     args = vector.get("args") or {}
+    fn = _formatter_for(op)
+
+    if vector.get("expected_error"):
+        try:
+            actual = fn(**args)
+        except Exception as exc:
+            substring = vector.get("error_contains")
+            if substring is not None and substring not in str(exc):
+                raise VectorMismatchError(
+                    f"vector {vector.get('name', op)!r}: "
+                    f"format_{op}({args}) raised {exc!r}, "
+                    f"expected message to contain {substring!r}"
+                ) from exc
+            return
+        raise VectorMismatchError(
+            f"vector {vector.get('name', op)!r}: "
+            f"format_{op}({args}) -> {actual!r}, expected an error"
+        )
+
     expected = vector["expected_wire"]
-    actual = _formatter_for(op)(**args)
+    actual = fn(**args)
     if actual != expected:
         raise VectorMismatchError(
             f"vector {vector.get('name', op)!r}: "

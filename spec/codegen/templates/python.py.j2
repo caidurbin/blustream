@@ -7,13 +7,11 @@ Device: {{ device.manufacturer }} {{ device.name }}
 Firmware baseline: {{ device.firmware_baseline }}
 """
 
+from blustream.base.exceptions import ValidationError
+
 DEFAULT_PORT = {{ transport.default_port }}
 ALTERNATIVE_PORT = {{ transport.alternative_port }}
 TERMINATOR = {{ transport.terminator | py_str }}
 
-{% for op_name, cmd in commands.items() %}
 
-def format_{{ op_name }}() -> str:
-    """{{ cmd.description }}"""
-    return {{ cmd.wire | py_str }}
-{% endfor %}
+{{ functions_code }}

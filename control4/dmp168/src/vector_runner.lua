@@ -6,6 +6,22 @@
 -- rather than a runtime surprise.
 --
 -- Public interface (mirrored on the Python side): run_vectors(yaml_path).
+--
+-- Vector shapes
+-- -------------
+--
+-- Happy path (asserts wire output):
+--   - name: power_on emits literal PON
+--     op: power_on
+--     args: {}
+--     expected_wire: "PON"
+--
+-- Range violation (asserts the formatter raises):
+--   - name: output_volume rejects output=10
+--     op: output_volume
+--     args: {output: 10, level: 50}
+--     expected_error: true
+--     -- optional: error_contains: "Output must be between 0-8"
 
 local lyaml = require("lyaml")
 local generated = require("generated")
@@ -33,7 +49,35 @@ local function run_one(vector)
                 .. "' for op '" .. tostring(op) .. "'"
         )
     end
-    local actual = fn()
+
+    local args = vector.args or {}
+
+    if vector.expected_error then
+        local ok, err = pcall(fn, args)
+        if ok then
+            error(string.format(
+                "vector %q: format_%s(%s) -> %q, expected an error",
+                tostring(vector.name or op),
+                op,
+                format_args(vector.args),
+                tostring(err)  -- err here is the return value
+            ))
+        end
+        local substring = vector.error_contains
+        if substring ~= nil and not string.find(tostring(err), substring, 1, true) then
+            error(string.format(
+                "vector %q: format_%s(%s) raised %q, expected message to contain %q",
+                tostring(vector.name or op),
+                op,
+                format_args(vector.args),
+                tostring(err),
+                tostring(substring)
+            ))
+        end
+        return
+    end
+
+    local actual = fn(args)
     local expected = vector.expected_wire
     if actual ~= expected then
         error(string.format(

@@ -3,9 +3,436 @@
 # Each entry asserts that calling format_<op>(**args) in either the Python or
 # the Lua generated module produces `expected_wire` byte-for-byte. Both
 # language test runners load this same file; CI fails if either disagrees.
+#
+# Vector shapes:
+#
+#   Happy path -- assert byte-identical wire output:
+#     - name: ...
+#       op: <command>
+#       args: {...}
+#       expected_wire: "..."
+#
+#   Range violation -- assert the formatter raises (Python: ValidationError,
+#   Lua: error()). Optional `error_contains` tightens the assertion to a
+#   substring of the raised message:
+#     - name: ...
+#       op: <command>
+#       args: {...}
+#       expected_error: true
+#       error_contains: "..."   # optional
 
 vectors:
+
+  # ---------- Status / introspection (no params) ----------
+
+  - name: status emits literal STATUS
+    op: status
+    args: {}
+    expected_wire: "STATUS"
+
+  - name: uptime emits literal UPTIME
+    op: uptime
+    args: {}
+    expected_wire: "UPTIME"
+
+  - name: temp emits literal TEMP
+    op: temp
+    args: {}
+    expected_wire: "TEMP"
+
+  # ---------- Power / lifecycle (no params) ----------
+
   - name: power_on emits literal PON
     op: power_on
     args: {}
     expected_wire: "PON"
+
+  - name: power_off emits literal POFF
+    op: power_off
+    args: {}
+    expected_wire: "POFF"
+
+  - name: reboot emits literal REBOOT
+    op: reboot
+    args: {}
+    expected_wire: "REBOOT"
+
+  # ---------- standby ----------
+
+  - name: standby mode=0 (Sleep)
+    op: standby
+    args: {mode: 0}
+    expected_wire: "STANDBY 0"
+
+  - name: standby mode=1 (Standby)
+    op: standby
+    args: {mode: 1}
+    expected_wire: "STANDBY 1"
+
+  - name: standby rejects mode=2
+    op: standby
+    args: {mode: 2}
+    expected_error: true
+    error_contains: "Invalid standby mode"
+
+  # ---------- output_volume ----------
+
+  - name: output_volume basic percent
+    op: output_volume
+    args: {output: 1, level: 75}
+    expected_wire: "OUT 1 VOL 75"
+
+  - name: output_volume dB
+    op: output_volume
+    args: {output: 1, level: -10, unit: "dB"}
+    expected_wire: "OUT 1 VOL -10 dB"
+
+  - name: output_volume relative + (no dB even when unit=dB)
+    op: output_volume
+    args: {output: 1, level: "+", unit: "dB"}
+    expected_wire: "OUT 1 VOL +"
+
+  - name: output_volume L channel
+    op: output_volume
+    args: {output: 1, level: 50, channel: "L"}
+    expected_wire: "OUT 1 L VOL L 50"
+
+  - name: output_volume all-outputs zero
+    op: output_volume
+    args: {output: 0, level: 0}
+    expected_wire: "OUT 0 VOL 0"
+
+  - name: output_volume rejects output=9
+    op: output_volume
+    args: {output: 9, level: 50}
+    expected_error: true
+    error_contains: "Output must be between 0-8"
+
+  - name: output_volume rejects channel=X
+    op: output_volume
+    args: {output: 1, level: 50, channel: "X"}
+    expected_error: true
+    error_contains: "Invalid channel"
+
+  # ---------- output_mute ----------
+
+  - name: output_mute on
+    op: output_mute
+    args: {output: 1, mute: true}
+    expected_wire: "OUT 1 MUTE ON"
+
+  - name: output_mute off
+    op: output_mute
+    args: {output: 1, mute: false}
+    expected_wire: "OUT 1 MUTE OFF"
+
+  - name: output_mute L channel on
+    op: output_mute
+    args: {output: 1, mute: true, channel: "L"}
+    expected_wire: "OUT 1 L MUTE L ON"
+
+  - name: output_mute rejects output=9
+    op: output_mute
+    args: {output: 9, mute: true}
+    expected_error: true
+    error_contains: "Output must be between 0-8"
+
+  # ---------- output_channel_lock ----------
+
+  - name: output_channel_lock on
+    op: output_channel_lock
+    args: {output: 1, lock: true}
+    expected_wire: "OUT 1 CH LOCK ON"
+
+  - name: output_channel_lock off R
+    op: output_channel_lock
+    args: {output: 1, lock: false, channel: "R"}
+    expected_wire: "OUT 1 CH LOCK R OFF"
+
+  - name: output_channel_lock rejects output=-1
+    op: output_channel_lock
+    args: {output: -1, lock: true}
+    expected_error: true
+    error_contains: "Output must be between 0-8"
+
+  # ---------- output_delay ----------
+
+  - name: output_delay 0 ms
+    op: output_delay
+    args: {output: 1, delay_ms: 0}
+    expected_wire: "OUT 1 DELAY 0"
+
+  - name: output_delay 500 ms (max)
+    op: output_delay
+    args: {output: 1, delay_ms: 500}
+    expected_wire: "OUT 1 DELAY 500"
+
+  - name: output_delay L channel
+    op: output_delay
+    args: {output: 1, delay_ms: 100, channel: "L"}
+    expected_wire: "OUT 1 L DELAY 100"
+
+  - name: output_delay rejects 501 ms
+    op: output_delay
+    args: {output: 1, delay_ms: 501}
+    expected_error: true
+    error_contains: "Delay must be between 0-500"
+
+  # ---------- output_mix ----------
+
+  - name: output_mix mode 0 (None)
+    op: output_mix
+    args: {output: 1, mode: 0}
+    expected_wire: "OUT 1 MIX 0"
+
+  - name: output_mix mode 6 (Mono R-L) max
+    op: output_mix
+    args: {output: 1, mode: 6}
+    expected_wire: "OUT 1 MIX 6"
+
+  - name: output_mix rejects mode=7
+    op: output_mix
+    args: {output: 1, mode: 7}
+    expected_error: true
+    error_contains: "Mix mode must be between 0-6"
+
+  # ---------- output_master_volume ----------
+
+  - name: output_master_volume basic
+    op: output_master_volume
+    args: {level: 50}
+    expected_wire: "OUT MASTER VOL 50"
+
+  - name: output_master_volume dB
+    op: output_master_volume
+    args: {level: -10, unit: "dB"}
+    expected_wire: "OUT MASTER VOL -10 dB"
+
+  - name: output_master_volume relative -
+    op: output_master_volume
+    args: {level: "-"}
+    expected_wire: "OUT MASTER VOL -"
+
+  - name: output_master_volume L channel
+    op: output_master_volume
+    args: {level: 50, channel: "L"}
+    expected_wire: "OUT MASTER VOL L 50"
+
+  - name: output_master_volume rejects channel=X
+    op: output_master_volume
+    args: {level: 50, channel: "X"}
+    expected_error: true
+    error_contains: "Invalid channel"
+
+  # ---------- output_master_mute ----------
+
+  - name: output_master_mute on
+    op: output_master_mute
+    args: {mute: true}
+    expected_wire: "OUT MASTER MUTE ON"
+
+  - name: output_master_mute off R
+    op: output_master_mute
+    args: {mute: false, channel: "R"}
+    expected_wire: "OUT MASTER MUTE R OFF"
+
+  - name: output_master_mute rejects channel=X
+    op: output_master_mute
+    args: {mute: true, channel: "X"}
+    expected_error: true
+    error_contains: "Invalid channel"
+
+  # ---------- route ----------
+
+  - name: route input 5 -> output 1
+    op: route
+    args: {output: 1, input_ch: 5}
+    expected_wire: "OUT 1 FR 5"
+
+  - name: route min input min output
+    op: route
+    args: {output: 1, input_ch: 1}
+    expected_wire: "OUT 1 FR 1"
+
+  - name: route max input max output
+    op: route
+    args: {output: 8, input_ch: 24}
+    expected_wire: "OUT 8 FR 24"
+
+  - name: route L from R
+    op: route
+    args: {output: 1, input_ch: 5, output_channel: "L", input_channel: "R"}
+    expected_wire: "OUT 1 L FR 5 R"
+
+  - name: route rejects input=0
+    op: route
+    args: {output: 1, input_ch: 0}
+    expected_error: true
+    error_contains: "Input must be between 1-24"
+
+  - name: route rejects input=25
+    op: route
+    args: {output: 1, input_ch: 25}
+    expected_error: true
+    error_contains: "Input must be between 1-24"
+
+  # ---------- output_remove ----------
+
+  - name: output_remove input 5 from output 1
+    op: output_remove
+    args: {output: 1, input_ch: 5}
+    expected_wire: "OUT 1 REM 5"
+
+  - name: output_remove L from R
+    op: output_remove
+    args: {output: 1, input_ch: 5, output_channel: "L", input_channel: "R"}
+    expected_wire: "OUT 1 L REM 5 R"
+
+  - name: output_remove rejects input=25
+    op: output_remove
+    args: {output: 1, input_ch: 25}
+    expected_error: true
+    error_contains: "Input must be between 1-24"
+
+  # ---------- input_gain ----------
+
+  - name: input_gain basic
+    op: input_gain
+    args: {input_ch: 1, gain: 50}
+    expected_wire: "IN 1 GAIN 50"
+
+  - name: input_gain dB
+    op: input_gain
+    args: {input_ch: 1, gain: -10, unit: "dB"}
+    expected_wire: "IN 1 GAIN -10 dB"
+
+  - name: input_gain relative + (no dB)
+    op: input_gain
+    args: {input_ch: 1, gain: "+"}
+    expected_wire: "IN 1 GAIN +"
+
+  - name: input_gain L channel
+    op: input_gain
+    args: {input_ch: 1, gain: 50, channel: "L"}
+    expected_wire: "IN 1 L GAIN 50"
+
+  - name: input_gain rejects input=17
+    op: input_gain
+    args: {input_ch: 17, gain: 50}
+    expected_error: true
+    error_contains: "Input must be between 0-16"
+
+  # ---------- input_mute ----------
+
+  - name: input_mute on
+    op: input_mute
+    args: {input_ch: 1, mute: true}
+    expected_wire: "IN 1 MUTE ON"
+
+  - name: input_mute off
+    op: input_mute
+    args: {input_ch: 1, mute: false}
+    expected_wire: "IN 1 MUTE OFF"
+
+  - name: input_mute L channel on
+    op: input_mute
+    args: {input_ch: 1, mute: true, channel: "L"}
+    expected_wire: "IN 1 L MUTE L ON"
+
+  - name: input_mute rejects input=-1
+    op: input_mute
+    args: {input_ch: -1, mute: true}
+    expected_error: true
+    error_contains: "Input must be between 0-16"
+
+  # ---------- presets ----------
+
+  - name: preset_save 1
+    op: preset_save
+    args: {preset: 1}
+    expected_wire: "PRESET 1 SAVE"
+
+  - name: preset_save rejects 0
+    op: preset_save
+    args: {preset: 0}
+    expected_error: true
+    error_contains: "Preset must be between 1-8"
+
+  - name: preset_recall 8 (max)
+    op: preset_recall
+    args: {preset: 8}
+    expected_wire: "PRESET 8 APPLY"
+
+  - name: preset_recall rejects 9
+    op: preset_recall
+    args: {preset: 9}
+    expected_error: true
+    error_contains: "Preset must be between 1-8"
+
+  - name: preset_delete 4
+    op: preset_delete
+    args: {preset: 4}
+    expected_wire: "PRESET 4 DELETE"
+
+  - name: preset_delete rejects 0
+    op: preset_delete
+    args: {preset: 0}
+    expected_error: true
+    error_contains: "Preset must be between 1-8"
+
+  - name: preset_status 4
+    op: preset_status
+    args: {preset: 4}
+    expected_wire: "PRESET 4 STATUS"
+
+  - name: preset_status rejects 9
+    op: preset_status
+    args: {preset: 9}
+    expected_error: true
+    error_contains: "Preset must be between 1-8"
+
+  # ---------- group_volume ----------
+
+  - name: group_volume basic
+    op: group_volume
+    args: {group: 1, level: 50}
+    expected_wire: "GROUP 1 VOL 50"
+
+  - name: group_volume dB
+    op: group_volume
+    args: {group: 1, level: -10, unit: "dB"}
+    expected_wire: "GROUP 1 VOL -10 dB"
+
+  - name: group_volume relative + (no dB)
+    op: group_volume
+    args: {group: 1, level: "+", unit: "dB"}
+    expected_wire: "GROUP 1 VOL +"
+
+  - name: group_volume L channel
+    op: group_volume
+    args: {group: 1, level: 50, channel: "L"}
+    expected_wire: "GROUP 1 VOL L 50"
+
+  - name: group_volume rejects group=5
+    op: group_volume
+    args: {group: 5, level: 50}
+    expected_error: true
+    error_contains: "Group must be between 0-4"
+
+  # ---------- group_mute ----------
+
+  - name: group_mute on
+    op: group_mute
+    args: {group: 1, mute: true}
+    expected_wire: "GROUP 1 MUTE ON"
+
+  - name: group_mute off L
+    op: group_mute
+    args: {group: 1, mute: false, channel: "L"}
+    expected_wire: "GROUP 1 MUTE L OFF"
+
+  - name: group_mute rejects group=-1
+    op: group_mute
+    args: {group: -1, mute: true}
+    expected_error: true
+    error_contains: "Group must be between 0-4"

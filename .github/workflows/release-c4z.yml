@@ -1,0 +1,71 @@
+name: Release (.c4z)
+
+# Builds and publishes the Blustream DMP168 Control4 driver `.c4z`
+# artifact on `c4-v*` tags. The `c4-v*` prefix is the driver's
+# release lane; the Python library uses the disjoint `v*` prefix in
+# release-pypi.yml so the two components version independently
+# (PRD #9, README "Independent versioning").
+#
+# The build itself is delegated to `tools/build_c4z.py`, which is
+# the same path exercised by `tests/test_c4z_build.py` and the
+# regular CI build in `.github/workflows/c4z-build.yml`. Running it
+# here keeps the released artifact byte-equivalent to what reviewers
+# saw on the merging PR.
+
+on:
+  push:
+    tags:
+      - "c4-v*"
+
+permissions:
+  # Creating a GitHub release and attaching artifacts requires write
+  # access to repository contents. Without this the publish step
+  # silently fails with HTTP 403.
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build release .c4z and publish GitHub release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install drivers-driverpackager runtime deps
+        # snap-one/drivers-driverpackager (dp3/) imports lxml at module
+        # scope; mirrors the install step in c4z-build.yml so the two
+        # workflows do not drift on toolchain.
+        run: |
+          python -m pip install --upgrade pip
+          pip install lxml
+
+      - name: Build release .c4z
+        # `release` (clean, no -ae) is the flavor that ships to users.
+        # `--auto-clone` mirrors c4z-build.yml so the runner doesn't
+        # need a pre-staged drivers-driverpackager checkout.
+        run: |
+          python tools/build_c4z.py release --auto-clone
+
+      - name: Upload .c4z as workflow artifact
+        # Belt-and-braces: even if the GitHub release step fails, the
+        # built .c4z is still downloadable from the workflow run.
+        uses: actions/upload-artifact@v4
+        with:
+          name: blustream-dmp168-release-c4z
+          path: dist/c4z/release/*.c4z
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Create GitHub release and attach .c4z
+        # softprops/action-gh-release reads the tag from the trigger
+        # ref and creates a release named after the tag (e.g.
+        # `c4-v1.0.0`). The `files` glob attaches the built artifact.
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/c4z/release/*.c4z
+          fail_on_unmatched_files: true
+          generate_release_notes: true
