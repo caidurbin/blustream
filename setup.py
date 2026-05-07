@@ -13,7 +13,7 @@ setup(
     description="Python library and CLI for controlling Bluestream audio devices",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/caidurbin/bluestream",
+    url="https://github.com/caidurbin/blustream",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 3 - Alpha",
