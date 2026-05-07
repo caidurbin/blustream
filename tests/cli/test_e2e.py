@@ -4,11 +4,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from bluestream.base.connection import Connection
-from bluestream.base.exceptions import ConnectionError
-from bluestream.cli.dispatcher import dispatch
-from bluestream.cli.parser import build_parser
-from bluestream.devices.dmp168.device import DMP168
+from blustream.base.connection import Connection
+from blustream.base.exceptions import ConnectionError
+from blustream.cli.dispatcher import dispatch
+from blustream.cli.parser import build_parser
+from blustream.devices.dmp168.device import DMP168
 
 
 class MockConnection(Connection):
@@ -189,7 +189,7 @@ class TestE2EReboot:
         args.yes = False
         args.json = False
 
-        with patch("bluestream.cli.dispatcher.confirm_command", return_value=False):
+        with patch("blustream.cli.dispatcher.confirm_command", return_value=False):
             exit_code = await dispatch(args, registry, factory)
 
         assert exit_code == 0

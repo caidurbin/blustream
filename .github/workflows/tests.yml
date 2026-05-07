@@ -49,7 +49,7 @@ jobs:
     - name: Run tests with coverage
       run: |
         pytest -v --tb=short \
-          --cov=bluestream \
+          --cov=blustream \
           --cov-report=xml \
           --cov-report=html \
           --cov-report=term-missing \
@@ -78,6 +78,6 @@ jobs:
       run: |
         echo "## Coverage Summary (${{ matrix.python-version }})" >> $GITHUB_STEP_SUMMARY
         echo '```' >> $GITHUB_STEP_SUMMARY
-        pytest --cov=bluestream --cov-report=term --quiet 2>&1 | tail -20 >> $GITHUB_STEP_SUMMARY
+        pytest --cov=blustream --cov-report=term --quiet 2>&1 | tail -20 >> $GITHUB_STEP_SUMMARY
         echo '```' >> $GITHUB_STEP_SUMMARY
 

@@ -8,7 +8,7 @@ For each branch:
 
 1. Run `git merge <branch> --no-edit`
 2. If there are merge conflicts, resolve them intelligently by reading both sides and choosing the correct resolution
-3. After resolving conflicts, run `ruff check bluestream tests` and `pytest` to verify everything works
+3. After resolving conflicts, run `ruff check blustream tests` and `pytest` to verify everything works
 4. If tests fail, fix the issues before proceeding to the next branch
 
 After all branches are merged, make a single [Conventional Commits](https://www.conventionalcommits.org/) commit summarizing the merge — e.g. `chore: merge sandcastle branches` with a body that lists each branch and the issue it closed.

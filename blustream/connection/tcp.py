@@ -6,8 +6,8 @@ from typing import Optional
 
 import telnetlib3
 
-from bluestream.base.connection import Connection
-from bluestream.base.exceptions import ConnectionError, TimeoutError
+from blustream.base.connection import Connection
+from blustream.base.exceptions import ConnectionError, TimeoutError
 
 logger = logging.getLogger(__name__)
 

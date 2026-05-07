@@ -6,9 +6,9 @@ import logging
 import sys
 from typing import Dict, Type
 
-from bluestream.cli.dispatcher import dispatch
-from bluestream.cli.parser import build_parser
-from bluestream.devices.dmp168.device import DMP168
+from blustream.cli.dispatcher import dispatch
+from blustream.cli.parser import build_parser
+from blustream.devices.dmp168.device import DMP168
 
 DEVICES: Dict[str, Type] = {
     "dmp168": DMP168,

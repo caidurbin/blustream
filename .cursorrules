@@ -1,7 +1,7 @@
-# Bluestream Device Control Library - Cursor Rules
+# Blustream Device Control Library - Cursor Rules
 
 ## Project Overview
-Python library and CLI for controlling Bluestream audio devices (starting with DMP168). Uses extensible architecture with abstract base classes, command registry pattern, and TCP/IP communication.
+Python library and CLI for controlling Blustream audio devices (starting with DMP168). Uses extensible architecture with abstract base classes, command registry pattern, and TCP/IP communication.
 
 ## Safety
 
@@ -34,7 +34,7 @@ Python library and CLI for controlling Bluestream audio devices (starting with D
 - Include Args, Returns, and Raises sections where applicable
 
 ### Naming
-- Classes: PascalCase (`BluestreamDevice`, `DMP168`)
+- Classes: PascalCase (`BlustreamDevice`, `DMP168`)
 - Functions/methods: snake_case (`get_status`, `power_on`)
 - Private: prefix with `_` (`_connection`, `_register_commands`)
 - CLI: kebab-case (`input-gain`), internal: snake_case (`input_gain`)
@@ -47,13 +47,13 @@ Python library and CLI for controlling Bluestream audio devices (starting with D
 - Register in `_register_commands()` function with metadata: name, description, parameters, handler, return_type
 
 ### Abstract Base Classes
-- Devices inherit from `BluestreamDevice` ABC
+- Devices inherit from `BlustreamDevice` ABC
 - Connections inherit from `Connection` ABC
 - Use `@abstractmethod` for required methods
 - Implement context manager protocol (`__enter__`, `__exit__`)
 
 ### Error Handling
-- Use custom exceptions from `bluestream.base.exceptions`
+- Use custom exceptions from `blustream.base.exceptions`
 - `ValidationError` for invalid parameters
 - `ConnectionError` for connection issues
 - `CommandError` for command execution failures
@@ -66,12 +66,12 @@ Python library and CLI for controlling Bluestream audio devices (starting with D
 ## Project Structure
 
 ```
-bluestream/
+blustream/
 ├── base/              # Abstract base classes and interfaces
 ├── connection/        # Connection implementations
 ├── devices/           # Device-specific implementations
 │   └── dmp168/        # Each device in own subdirectory
-│       ├── device.py  # Device class (inherits BluestreamDevice)
+│       ├── device.py  # Device class (inherits BlustreamDevice)
 │       ├── commands.py # Command builders and registration
 │       ├── parser.py  # Response parsing
 │       └── models.py  # Data models (dataclasses)

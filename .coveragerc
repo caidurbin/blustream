@@ -2,7 +2,7 @@
 # This file provides coverage settings for pytest-cov
 
 [run]
-source = bluestream
+source = blustream
 omit =
     */tests/*
     */test_*.py

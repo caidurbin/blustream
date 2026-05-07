@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from bluestream.base.exceptions import ConnectionError, TimeoutError
-from bluestream.connection.tcp import TCPConnection
+from blustream.base.exceptions import ConnectionError, TimeoutError
+from blustream.connection.tcp import TCPConnection
 
 
 class TestTCPConnection:
@@ -125,7 +125,7 @@ class TestTCPConnection:
         conn = TCPConnection(host="192.168.1.100", port=23)
         await conn.connect()
 
-        from bluestream.base.exceptions import TimeoutError
+        from blustream.base.exceptions import TimeoutError
 
         with pytest.raises(TimeoutError):
             await conn.receive(timeout=0.1)
@@ -181,7 +181,7 @@ class TestTCPConnection:
         mock_open_connection.side_effect = OSError("Connection refused")
 
         conn = TCPConnection(host="192.168.1.100", port=23)
-        from bluestream.base.exceptions import ConnectionError
+        from blustream.base.exceptions import ConnectionError
 
         with pytest.raises(ConnectionError):
             await conn.connect()
@@ -206,7 +206,7 @@ class TestTCPConnection:
         # But we can test that the connection state is updated on error
         mock_writer.write.side_effect = OSError("Write failed")
 
-        from bluestream.base.exceptions import ConnectionError
+        from blustream.base.exceptions import ConnectionError
 
         with pytest.raises(ConnectionError):
             await conn.send(b"test")

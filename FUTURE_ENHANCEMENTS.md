@@ -1,6 +1,6 @@
 # Future Enhancements
 
-This document tracks planned future enhancements to the Bluestream device control library and CLI.
+This document tracks planned future enhancements to the Blustream device control library and CLI.
 
 ## Connection Pooling
 
@@ -57,7 +57,7 @@ This document tracks planned future enhancements to the Bluestream device contro
 - YAML/JSON/TOML config files
 - Per-device configuration profiles
 - Configuration validation
-- Config file location: `~/.bluestream/config.yaml`, `./bluestream.yaml`
+- Config file location: `~/.blustream/config.yaml`, `./blustream.yaml`
 
 **Implementation Notes**:
 - Optional dependency (PyYAML if using YAML)
@@ -80,7 +80,7 @@ This document tracks planned future enhancements to the Bluestream device contro
 
 ## Advanced Error Handling
 
-**Current State**: Basic exception hierarchy (`BluestreamError`, `ConnectionError`, `TimeoutError`, `ValidationError`); no retry logic.
+**Current State**: Basic exception hierarchy (`BlustreamError`, `ConnectionError`, `TimeoutError`, `ValidationError`); no retry logic.
 
 **Future Enhancement**: Enhanced error handling:
 - Error response parsing from device
@@ -141,9 +141,9 @@ This document tracks planned future enhancements to the Bluestream device contro
 
 **Current State**: DMP168 only
 
-**Future Enhancement**: Support additional Bluestream devices:
+**Future Enhancement**: Support additional Blustream devices:
 - DMP168X (if different from DMP168)
-- Other Bluestream audio matrix processors
+- Other Blustream audio matrix processors
 - Common command patterns across devices
 - Device-specific command implementations
 

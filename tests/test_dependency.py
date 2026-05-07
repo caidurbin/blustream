@@ -2,14 +2,14 @@
 
 import pytest
 
-from bluestream.base.commands import (
+from blustream.base.commands import (
     Command,
     CommandRegistry,
     Dependency,
     Parameter,
 )
-from bluestream.base.exceptions import ValidationError
-from bluestream.base.validator import validate
+from blustream.base.exceptions import ValidationError
+from blustream.base.validator import validate
 
 
 @pytest.fixture
@@ -230,8 +230,8 @@ class TestDMP168UnitDependency:
 
     @pytest.fixture
     def dmp168_registry(self):
-        from bluestream.base.commands import CommandRegistry
-        from bluestream.devices.dmp168.commands import _register_commands
+        from blustream.base.commands import CommandRegistry
+        from blustream.devices.dmp168.commands import _register_commands
 
         reg = CommandRegistry()
         _register_commands(reg)

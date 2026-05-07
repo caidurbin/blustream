@@ -1,12 +1,12 @@
-# Bluestream Device Control Library and CLI
+# Blustream Device Control Library and CLI
 
-Python library and command-line tool for controlling Bluestream audio devices, starting with the DMP168 digital audio matrix processor.
+Python library and command-line tool for controlling Blustream audio devices, starting with the DMP168 digital audio matrix processor.
 
 ## Features
 
 - **Library API**: Clean Python API for programmatic device control
 - **CLI Tool**: Command-line interface for device management
-- **Extensible**: Architecture supports multiple Bluestream device types
+- **Extensible**: Architecture supports multiple Blustream device types
 - **TCP/IP Communication**: Network-based device control
 
 ## Installation
@@ -25,7 +25,7 @@ pip install -e ".[dev]"
 
 ```python
 import asyncio
-from bluestream import DMP168
+from blustream import DMP168
 
 async def main():
     # Connect to device
@@ -56,78 +56,78 @@ asyncio.run(main())
 
 ## CLI Usage
 
-Subcommand names are derived from the command registry. Use `bluestream --help`
-to list all commands and `bluestream <command> --help` for parameter details.
+Subcommand names are derived from the command registry. Use `blustream --help`
+to list all commands and `blustream <command> --help` for parameter details.
 
 ### Get Device Status
 
 ```bash
-bluestream --host 192.168.1.100 status
+blustream --host 192.168.1.100 status
 ```
 
 ### Power Control
 
 ```bash
-bluestream --host 192.168.1.100 power-on
-bluestream --host 192.168.1.100 power-off
+blustream --host 192.168.1.100 power-on
+blustream --host 192.168.1.100 power-off
 ```
 
 ### Volume Control
 
 ```bash
 # Set output 1 volume to 75%
-bluestream --host 192.168.1.100 output-volume --output 1 --level 75
+blustream --host 192.168.1.100 output-volume --output 1 --level 75
 
 # Set output 1 volume to -10 dB
-bluestream --host 192.168.1.100 output-volume --output 1 --level -10 --unit dB
+blustream --host 192.168.1.100 output-volume --output 1 --level -10 --unit dB
 
 # Increase output 1 volume by one step
-bluestream --host 192.168.1.100 output-volume --output 1 --increase-level
+blustream --host 192.168.1.100 output-volume --output 1 --increase-level
 
 # Decrease output 1 volume by one step
-bluestream --host 192.168.1.100 output-volume --output 1 --decrease-level
+blustream --host 192.168.1.100 output-volume --output 1 --decrease-level
 ```
 
 ### Mute Control
 
 ```bash
 # Mute output 1
-bluestream --host 192.168.1.100 output-mute --output 1 --mute
+blustream --host 192.168.1.100 output-mute --output 1 --mute
 
 # Unmute output 1
-bluestream --host 192.168.1.100 output-mute --output 1 --no-mute
+blustream --host 192.168.1.100 output-mute --output 1 --no-mute
 ```
 
 ### Routing
 
 ```bash
 # Route input 2 to output 1
-bluestream --host 192.168.1.100 route --input 2 --output 1
+blustream --host 192.168.1.100 route --input 2 --output 1
 ```
 
 ### Presets
 
 ```bash
 # Save current configuration to preset 1
-bluestream --host 192.168.1.100 preset-save --preset 1
+blustream --host 192.168.1.100 preset-save --preset 1
 
 # Recall preset 1
-bluestream --host 192.168.1.100 preset-recall --preset 1
+blustream --host 192.168.1.100 preset-recall --preset 1
 
 # Get preset status
-bluestream --host 192.168.1.100 preset-status --preset 1
+blustream --host 192.168.1.100 preset-status --preset 1
 ```
 
 ### JSON Output
 
 ```bash
 # Get status as JSON
-bluestream --host 192.168.1.100 status --json
+blustream --host 192.168.1.100 status --json
 ```
 
 ## Command Line Options
 
-Global flags must appear **before** the subcommand (e.g. `bluestream --yes reboot`, not `bluestream reboot --yes`).
+Global flags must appear **before** the subcommand (e.g. `blustream --yes reboot`, not `blustream reboot --yes`).
 
 - `--device`: Device type (default: dmp168)
 - `--host`: Device hostname or IP address (default: localhost)
@@ -156,8 +156,8 @@ The library is designed with extensibility in mind:
 ### Project Structure
 
 ```
-bluestream/
-├── bluestream/              # Main package
+blustream/
+├── blustream/              # Main package
 │   ├── base/                # Base classes and interfaces
 │   ├── connection/          # Connection implementations
 │   ├── devices/             # Device-specific implementations

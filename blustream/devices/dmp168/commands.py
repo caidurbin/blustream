@@ -2,10 +2,10 @@
 
 from typing import Any, Optional, Union
 
-from bluestream.base.commands import Command, CommandRegistry, Dependency, Parameter
-from bluestream.base.exceptions import ValidationError
-from bluestream.devices.dmp168.formatters import format_preset_status, format_status
-from bluestream.devices.dmp168.models import PresetStatus, SystemStatus
+from blustream.base.commands import Command, CommandRegistry, Dependency, Parameter
+from blustream.base.exceptions import ValidationError
+from blustream.devices.dmp168.formatters import format_preset_status, format_status
+from blustream.devices.dmp168.models import PresetStatus, SystemStatus
 
 
 def _is_relative_adjustment(value: Any) -> bool:

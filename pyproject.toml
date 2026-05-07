@@ -45,5 +45,5 @@ fixable = ["ALL"]
 unfixable = []
 
 [tool.ruff.lint.isort]
-known-first-party = ["bluestream"]
+known-first-party = ["blustream"]
 
