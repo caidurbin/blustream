@@ -210,9 +210,7 @@ function CSM:on_received(data)
         local _, end_idx = self._buffer:find("\r?\n", 1)
         if not end_idx then break end
         self._buffer = self._buffer:sub(end_idx + 1)
-        if self._inflight then
-            self._inflight = false
-        end
+        self._inflight = false
     end
     self:_pump()
 end
@@ -237,10 +235,7 @@ end
 
 function CSM:_schedule_reconnect()
     self:_cancel_reconnect()
-    local idx = self._reconnect_idx + 1
-    if idx > #M.BACKOFF_SCHEDULE_MS then
-        idx = #M.BACKOFF_SCHEDULE_MS
-    end
+    local idx = math.min(self._reconnect_idx + 1, #M.BACKOFF_SCHEDULE_MS)
     local delay = M.BACKOFF_SCHEDULE_MS[idx]
     self._reconnect_idx = idx
     self:_emit(("reconnect scheduled in %d ms (attempt %d)"):format(delay, idx))
