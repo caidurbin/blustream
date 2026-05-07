@@ -15,6 +15,7 @@
 -- See tools/build_c4z.py.
 
 local connection = require("connection")
+local proxy_handler = require("proxy_handler")
 
 local NETWORK_BINDING = 6001  -- matches <connection><id>6001</id></connection> in driver.xml
 
@@ -23,6 +24,7 @@ local DEFAULT_POLL_INTERVAL_S = 15
 local DEFAULT_DEBUG_MODE = false
 
 local cs = nil
+local ph = nil
 
 local function debug_log(msg)
     -- print() routes to the Composer Lua console under DriverWorks.
@@ -111,6 +113,11 @@ function OnDriverInit(driverInitType)  -- luacheck: no unused args
         log = debug_log,
         debug_mode = read_debug_mode(),
     })
+    ph = proxy_handler.new({
+        connection = cs,
+        log = debug_log,
+        debug_mode = read_debug_mode(),
+    })
 end
 
 function OnDriverLateInit(driverInitType)  -- luacheck: no unused args
@@ -129,6 +136,7 @@ function OnDriverDestroyed()
         cs:stop()
         cs = nil
     end
+    ph = nil
 end
 
 -- Composer fires this when a Property edit lands. Re-read the affected
@@ -141,7 +149,9 @@ function OnPropertyChanged(strProperty)
     elseif strProperty == "Port" then
         cs:set_port(read_port())
     elseif strProperty == "Debug Mode" then
-        cs:set_debug_mode(read_debug_mode())
+        local enabled = read_debug_mode()
+        cs:set_debug_mode(enabled)
+        if ph ~= nil then ph:set_debug_mode(enabled) end
     end
     -- Poll Interval (s) is consumed by the polling coordinator — added in
     -- a later slice. No-op here.
@@ -171,8 +181,11 @@ function ExecuteCommand(strCommand, tParams)  -- luacheck: no unused args
     end
 end
 
-function ReceivedFromProxy(idBinding, strCommand, tParams)  -- luacheck: no unused args
-    -- Proxy command handling (SELECT_AUDIO_DEVICE, etc.) lands in the
-    -- routing slice. Left as a no-op so Composer's proxy-binding
-    -- registration succeeds.
+-- Composer fires this on the relevant binding (typically an output
+-- 2001..2008) when a Room programs a routing change. The proxy handler
+-- translates SELECT_AUDIO_DEVICE into wire commands and enqueues them
+-- via the connection state machine.
+function ReceivedFromProxy(idBinding, strCommand, tParams)
+    if ph == nil then return end
+    ph:on_proxy_command(idBinding, strCommand, tParams)
 end
