@@ -86,6 +86,11 @@ commands:
       - {lit: "STANDBY "}
       - {var: mode}
 
+  disable_auto_standby:
+    description: "Disable the auto-standby timer (persists across reboots)."
+    params: []
+    wire: "AUTO STB 0"
+
   reboot:
     description: "Reboot system."
     params: []

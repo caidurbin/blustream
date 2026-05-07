@@ -11,11 +11,25 @@ exclude_files = {
     "lua_modules",
 }
 
--- Control4 driver runtime injects the global `C4` namespace when Composer
--- loads the driver. Tag it as a read-only global only for files that ship
--- inside the .c4z artifact.
+-- Control4 driver runtime injects globals when Composer loads the driver:
+--   * C4         — the Composer API namespace.
+--   * Properties — table of driver Property values from driver.xml.
+-- Tag both as read-only globals only for files that ship inside the .c4z.
+-- Driver lifecycle / callback entry points (OnDriverInit, ExecuteCommand,
+-- etc.) are by-convention globals named verbatim by Composer; allow them
+-- to be set.
 files["control4/**/src/**.lua"] = {
-    read_globals = { "C4" },
+    read_globals = { "C4", "Properties" },
+    globals = {
+        "OnDriverInit",
+        "OnDriverLateInit",
+        "OnDriverDestroyed",
+        "OnPropertyChanged",
+        "OnConnectionStatusChanged",
+        "ReceivedFromNetwork",
+        "ReceivedFromProxy",
+        "ExecuteCommand",
+    },
 }
 
 -- Busted-style spec files use describe/it/before_each/after_each as globals.

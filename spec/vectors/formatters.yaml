@@ -75,6 +75,13 @@ vectors:
     expected_error: true
     error_contains: "Invalid standby mode"
 
+  # ---------- disable_auto_standby ----------
+
+  - name: disable_auto_standby emits literal AUTO STB 0
+    op: disable_auto_standby
+    args: {}
+    expected_wire: "AUTO STB 0"
+
   # ---------- output_volume ----------
 
   - name: output_volume basic percent

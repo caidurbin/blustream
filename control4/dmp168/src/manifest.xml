@@ -15,5 +15,8 @@
   <Items>
     <Item type="file" name="driver.xml"/>
     <Item type="file" name="driver.lua"/>
+    <Item type="file" name="connection.lua"/>
+    <Item type="file" name="generated.lua"/>
+    <Item type="file" name="status_parser.lua"/>
   </Items>
 </Driver>
