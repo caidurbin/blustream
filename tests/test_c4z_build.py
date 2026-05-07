@@ -304,17 +304,28 @@ class TestDriverShell:
 
     def test_driver_xml_has_16_inputs_and_8_outputs(self):
         # Channel-lock-on stereo bindings; matches ADR-0003 §"16 stereo
-        # input + 8 stereo output bindings".
+        # input + 8 stereo output bindings". Filter on class=STEREO so
+        # the network-control connection (added in issue #20) does not
+        # accidentally bump these counts.
+        def is_stereo(c):
+            return any(
+                (cls.findtext("classname") or "").strip().upper() == "STEREO"
+                for cls in c.findall(".//classes/class")
+            )
+
         tree = ET.parse(DRIVER_SRC_DIR / "driver.xml")
+        connections = tree.findall(".//connections/connection")
         consumers = [
             c
-            for c in tree.findall(".//connections/connection")
+            for c in connections
             if (c.findtext("consumer") or "").strip().lower() == "true"
+            and is_stereo(c)
         ]
         providers = [
             c
-            for c in tree.findall(".//connections/connection")
+            for c in connections
             if (c.findtext("audiosource") or "").strip().lower() == "true"
+            and is_stereo(c)
         ]
         assert len(consumers) == 16
         assert len(providers) == 8
@@ -372,7 +383,9 @@ class TestManifestXml:
         names = {item.get("name") for item in tree.findall(".//Items/Item")}
         # driverpackager's -ae logic hardcodes driver.lua at the manifest
         # directory root, so the manifest sits in src/ next to the Lua.
-        assert names == {"driver.xml", "driver.lua"}
+        # The manifest also pulls in the require()-able Lua modules that
+        # ship inside the .c4z (connection.lua etc.).
+        assert {"driver.xml", "driver.lua"} <= names
 
     def test_manifest_output_basename_matches_driver_id(self):
         # The .c4z basename matters: GitHub release artifacts and dealer

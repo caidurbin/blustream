@@ -2,7 +2,7 @@
 --
 -- DO NOT EDIT. Regenerate with: python -m spec.codegen.emit_lua
 -- Source: spec/protocol.yaml
--- Spec hash: f4368613e2b74958
+-- Spec hash: 69d3d20d2ec63493
 -- Device: Blustream dmp168
 -- Firmware baseline: 1.5.0
 
@@ -53,6 +53,12 @@ function M.format_standby(args)
     cmd = cmd .. "STANDBY "
     cmd = cmd .. tostring(mode)
     return cmd
+end
+
+function M.format_disable_auto_standby(args)
+    -- Disable the auto-standby timer (persists across reboots).
+    args = args or {}
+    return "AUTO STB 0"
 end
 
 function M.format_reboot(args)

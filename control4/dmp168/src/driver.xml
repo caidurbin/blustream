@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Blustream DMP168 Control4 driver descriptor — minimal shell.
+  Blustream DMP168 Control4 driver descriptor.
 
-  Declares the audio_matrix_switch proxy with 16 stereo input + 8 stereo
-  output bindings (see ADR-0003) so the driver registers in Composer Pro
-  with the right Connections-view shape. Lua handlers in driver.lua are
-  no-ops at this slice; functional behavior arrives in later issues.
+  Declares:
+    * the audio_matrix_switch proxy with 16 stereo input + 8 stereo
+      output bindings (see ADR-0003) so the driver registers in Composer
+      Pro with the right Connections-view shape,
+    * a network-control connection (id 6001) for the persistent TCP
+      session to the matrix on port 8000 (ADR-0005),
+    * dealer-facing Properties (Host, Port, Debug Mode, Poll Interval
+      (s)) consumed by driver.lua,
+    * the Refresh Matrix State Composer Action (issue #20) that triggers
+      a one-shot STATUS poll.
 
   Versioning starts at 0 — the first dealer-loadable build will tag c4-v0.1.0
   per docs/control4-driver-plan.md §3.
@@ -40,7 +46,66 @@
     <proxy proxybindingid="5001" name="Blustream DMP168">audio_matrix_switch</proxy>
   </proxies>
 
+  <properties>
+    <property>
+      <name>Host</name>
+      <type>STRING</type>
+      <default></default>
+      <readonly>false</readonly>
+      <description>IP address or hostname of the DMP168.</description>
+    </property>
+    <property>
+      <name>Port</name>
+      <type>NUMBER</type>
+      <default>8000</default>
+      <readonly>false</readonly>
+      <minimum>1</minimum>
+      <maximum>65535</maximum>
+      <description>TCP control port. Defaults to 8000 (raw TCP); 23 is also exposed by the matrix but performs telnet IAC negotiation.</description>
+    </property>
+    <property>
+      <name>Debug Mode</name>
+      <type>LIST</type>
+      <default>Off</default>
+      <items>
+        <item>Off</item>
+        <item>On</item>
+      </items>
+      <readonly>false</readonly>
+      <description>Gate verbose driver logging to the Composer Lua console.</description>
+    </property>
+    <property>
+      <name>Poll Interval (s)</name>
+      <type>RANGED_INTEGER</type>
+      <default>15</default>
+      <minimum>5</minimum>
+      <maximum>60</maximum>
+      <readonly>false</readonly>
+      <description>Background STATUS poll interval in seconds. Lower is more responsive to out-of-band changes but adds matrix traffic.</description>
+    </property>
+  </properties>
+
+  <actions>
+    <action>
+      <name>Refresh Matrix State</name>
+      <command>Refresh Matrix State</command>
+      <description>Issue a one-shot STATUS poll and reconcile internal state. Useful after manual web-GUI changes or for diagnostics.</description>
+    </action>
+  </actions>
+
   <connections>
+    <!-- Network control connection — persistent TCP to the matrix. -->
+    <connection>
+      <id>6001</id>
+      <facing>6</facing>
+      <connectionname>Network</connectionname>
+      <type>1</type>
+      <consumer>True</consumer>
+      <ethernet>True</ethernet>
+      <classes><class><classname>NETWORK</classname></class></classes>
+    </connection>
+
+
     <!-- 16 stereo audio inputs (consumers) — channel-lock always on. -->
     <connection>
       <id>1001</id>
