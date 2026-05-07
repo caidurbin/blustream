@@ -12,33 +12,28 @@ M.DEFAULT_PORT = 8000
 M.ALTERNATIVE_PORT = 23
 M.TERMINATOR = "\r\n"
 
-function M.format_status(args)
+function M.format_status(_)
     -- Get system status and port status.
-    args = args or {}
     return "STATUS"
 end
 
-function M.format_uptime(args)
+function M.format_uptime(_)
     -- Get system uptime.
-    args = args or {}
     return "UPTIME"
 end
 
-function M.format_temp(args)
+function M.format_temp(_)
     -- Get system temperature.
-    args = args or {}
     return "TEMP"
 end
 
-function M.format_power_on(args)
+function M.format_power_on(_)
     -- Power on, system run on normal state.
-    args = args or {}
     return "PON"
 end
 
-function M.format_power_off(args)
+function M.format_power_off(_)
     -- Power off, system run on power save state.
-    args = args or {}
     return "POFF"
 end
 
@@ -55,15 +50,13 @@ function M.format_standby(args)
     return cmd
 end
 
-function M.format_disable_auto_standby(args)
+function M.format_disable_auto_standby(_)
     -- Disable the auto-standby timer (persists across reboots).
-    args = args or {}
     return "AUTO STB 0"
 end
 
-function M.format_reboot(args)
+function M.format_reboot(_)
     -- Reboot system.
-    args = args or {}
     return "REBOOT"
 end
 

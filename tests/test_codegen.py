@@ -57,9 +57,11 @@ def test_emit_python_includes_hash_header_and_formatter():
 def test_emit_lua_includes_hash_header_and_formatter():
     src = emit_lua.render()
     assert f"Spec hash: {spec_hash()}" in src
-    # Generated Lua functions take a single ``args`` table (Lua's idiomatic
-    # keyword-args form) so the runner can pass parameterized vectors uniformly.
-    assert "function M.format_power_on(args)" in src
+    # Zero-arg commands use ``_`` as the unused parameter name so luacheck
+    # doesn't flag a discarded ``args`` assignment. Parameterised commands
+    # use ``args`` and read keyword fields off it (see format_standby etc).
+    assert "function M.format_power_on(_)" in src
+    assert "function M.format_standby(args)" in src
     assert 'return "PON"' in src
     assert "M.DEFAULT_PORT = 8000" in src
     assert "M.ALTERNATIVE_PORT = 23" in src
