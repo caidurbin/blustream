@@ -55,8 +55,12 @@ STATUS_RESPONSE = (
 )
 
 
-def _factory(response=b"OK\r\nDMP168>"):
-    """Create a MockConnection-backed DMP168 factory."""
+def _factory(response=b"[SUCCESS]ok\r\n"):
+    """Create a MockConnection-backed DMP168 factory.
+
+    Default response carries a ``[SUCCESS]\\r\\n`` terminator so simple
+    commands satisfy the marker-based response reader.
+    """
     conn = MockConnection()
     conn._response = response
 
