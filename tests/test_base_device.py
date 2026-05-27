@@ -225,3 +225,55 @@ class TestBlustreamDevice:
         conn._connected = False
         assert not device.is_connected
 
+    @pytest.mark.asyncio
+    async def test_send_command_writes_command_log(self, tmp_path):
+        """send_command appends a timestamped entry when command_log_path is set."""
+        import re
+
+        log_path = tmp_path / "commands.log"
+        conn = MockConnection()
+        device = ConcreteDevice(conn, command_log_path=str(log_path))
+        await device.connect()
+
+        # MockConnection consumes one response per send_command (the prompt-check
+        # read times out, which the device handles). Refill between calls.
+        conn._receive_responses = [b"OK\r\nDMP168>"]
+        await device.send_command("POWER ON")
+        conn._receive_responses = [b"OK\r\nDMP168>"]
+        await device.send_command("VOL CH=0 LR 50%")
+
+        contents = log_path.read_text(encoding="utf-8")
+        # Two entries, each preceded by a blank line, header line, then command line
+        headers = re.findall(r"^==== (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z) ====$", contents, re.MULTILINE)
+        assert len(headers) == 2
+        assert "command: POWER ON" in contents
+        assert "command: VOL CH=0 LR 50%" in contents
+
+    @pytest.mark.asyncio
+    async def test_send_command_no_log_when_path_unset(self, tmp_path):
+        """No file is written when command_log_path is not provided."""
+        log_path = tmp_path / "commands.log"
+        conn = MockConnection()
+        conn._receive_responses = [b"OK\r\nDMP168>"]
+        device = ConcreteDevice(conn)
+        await device.connect()
+
+        await device.send_command("POWER ON")
+
+        assert not log_path.exists()
+
+    @pytest.mark.asyncio
+    async def test_send_command_log_failure_does_not_break_command(self, tmp_path, caplog):
+        """A failing log write is logged as a warning but doesn't abort the command."""
+        bad_path = tmp_path / "missing_dir" / "commands.log"  # parent does not exist
+        conn = MockConnection()
+        conn._receive_responses = [b"OK\r\nDMP168>"]
+        device = ConcreteDevice(conn, command_log_path=str(bad_path))
+        await device.connect()
+
+        with caplog.at_level("WARNING", logger="blustream.base.device"):
+            response = await device.send_command("POWER ON")
+
+        assert "OK" in response
+        assert any("Failed to write command log" in rec.message for rec in caplog.records)
+

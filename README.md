@@ -61,6 +61,12 @@ For local development from a checkout:
 pip install -e ".[dev]"
 ```
 
+Or run the CLI directly from the checkout without installing:
+
+```bash
+uvx --from . blustream --host 192.168.1.100 status
+```
+
 ### Control4 driver
 
 Download the `.c4z` from the latest [GitHub release](https://github.com/caidurbin/blustream/releases)

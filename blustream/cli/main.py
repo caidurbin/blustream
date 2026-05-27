@@ -84,6 +84,15 @@ def _create_global_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Skip confirmations",
     )
+    parser.add_argument(
+        "--command-log",
+        metavar="PATH",
+        default=None,
+        help=(
+            "Append each command sent to the device to PATH with a UTC timestamp, "
+            "using the same '==== <ts> ====' format as monitor_dmp168.sh."
+        ),
+    )
     return parser
 
 
@@ -114,7 +123,12 @@ async def main_async() -> int:
         pass
 
     def device_factory():
-        return device_cls(host=args.host, port=args.port, timeout=args.timeout)
+        return device_cls(
+            host=args.host,
+            port=args.port,
+            timeout=args.timeout,
+            command_log_path=args.command_log,
+        )
 
     try:
         return await dispatch(args, registry, device_factory)

@@ -29,6 +29,7 @@ class DMP168(BlustreamDevice):
         port: int = 23,
         connection: Optional[Connection] = None,
         timeout: float = 5.0,
+        command_log_path: Optional[str] = None,
     ):
         """Initialize DMP168 device.
 
@@ -37,10 +38,12 @@ class DMP168(BlustreamDevice):
             port: TCP port (default 23)
             connection: Optional connection instance (creates TCPConnection if not provided)
             timeout: Connection timeout in seconds
+            command_log_path: Optional path to a text file for timestamped
+                command logging (see BlustreamDevice).
         """
         if connection is None:
             connection = TCPConnection(host=host, port=port, timeout=timeout)
-        super().__init__(connection)
+        super().__init__(connection, command_log_path=command_log_path)
         self.host = host
         self.port = port
         self._parser = DMP168Parser()
