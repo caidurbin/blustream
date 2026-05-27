@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Monitoring / runtime logs
+*.log
+
 # C extensions
 *.so
 

@@ -1,12 +1,16 @@
 """Abstract base device class for Blustream devices."""
 
 import asyncio
+import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Any, List
+from datetime import datetime, timezone
+from typing import Any, List, Optional
 
 from blustream.base.connection import Connection
 from blustream.base.exceptions import CommandError, ConnectionError, TimeoutError
+
+logger = logging.getLogger(__name__)
 
 # Timeout constants (in seconds)
 TIMEOUT_PROMPT_CHECK = 0.05  # Very short timeout for prompt detection
@@ -33,14 +37,34 @@ RESPONSE_SIZE_SIMPLE = 2000  # Threshold for simple command response size
 class BlustreamDevice(ABC):
     """Abstract base class for all Blustream devices."""
 
-    def __init__(self, connection: Connection):
+    def __init__(self, connection: Connection, command_log_path: Optional[str] = None):
         """Initialize device with a connection.
 
         Args:
             connection: Connection instance for device communication
+            command_log_path: Optional path to a text file. When set, every
+                command sent via send_command is appended with a UTC timestamp,
+                matching the format used by monitor_dmp168.sh.
         """
         self._connection = connection
         self._connected = False
+        self._command_log_path = command_log_path
+
+    def _log_command(self, command: str) -> None:
+        """Append a timestamped entry for the outgoing command.
+
+        Best-effort: logging failures are reported via the module logger but
+        never raised — the command must still be sent even if the log file
+        is unwritable.
+        """
+        if not self._command_log_path:
+            return
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        try:
+            with open(self._command_log_path, "a", encoding="utf-8") as fh:
+                fh.write(f"\n==== {ts} ====\ncommand: {command}\n")
+        except OSError as e:
+            logger.warning("Failed to write command log %s: %s", self._command_log_path, e)
 
     async def connect(self) -> None:
         """Connect to the device."""
@@ -120,6 +144,8 @@ class BlustreamDevice(ABC):
             raise ConnectionError(
                 "Device is not connected. Please call 'connect()' or use the device as a context manager before sending commands."
             )
+
+        self._log_command(command)
 
         try:
             # Send command
