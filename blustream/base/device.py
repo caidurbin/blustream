@@ -13,31 +13,39 @@ from blustream.base.exceptions import CommandError, ConnectionError, TimeoutErro
 logger = logging.getLogger(__name__)
 
 # Timeout constants (in seconds)
-TIMEOUT_PROMPT_CHECK = 0.05  # Very short timeout for prompt detection
 TIMEOUT_SHORT = 0.1  # Short timeout for quick reads and sleeps
-TIMEOUT_INITIAL_READ = 0.5  # Initial read timeout for simple commands
-TIMEOUT_INFO_COMMAND = 0.3  # Timeout for info commands (TEMP, UPTIME)
-TIMEOUT_STATUS_COMMAND = 1.0  # Timeout for STATUS command reads
+TIMEOUT_INITIAL_READ = 0.5  # Initial read timeout used by the multi-read fallback
+TIMEOUT_INFO_COMMAND = 0.3  # Per-read timeout for info commands (TEMP, UPTIME)
+TIMEOUT_STATUS_COMMAND = 1.0  # Per-read timeout for STATUS
+DEFAULT_RESPONSE_TIMEOUT = 2.0  # Overall budget to receive a marker-terminated reply
 
 # Sleep durations (in seconds)
-SLEEP_STATUS_COMMAND = 0.1  # Sleep before reading STATUS command response
-SLEEP_INFO_COMMAND = 0.2  # Sleep before reading info command response
-SLEEP_FINAL_READ = 0.2  # Sleep before final read for STATUS command
+SLEEP_STATUS_COMMAND = 0.1  # Sleep before reading STATUS response
+SLEEP_INFO_COMMAND = 0.2  # Sleep before reading info-command response
+SLEEP_FINAL_READ = 0.2  # Sleep before the final STATUS read
 
 # Response reading limits
-MAX_READS_SIMPLE = 5  # Maximum reads for simple commands
 MAX_READS_INFO = 10  # Maximum reads for info commands
-MAX_READS_STATUS = 20  # Maximum reads for STATUS command
+MAX_READS_STATUS = 20  # Maximum reads for STATUS
 
-# Response size thresholds
-RESPONSE_SIZE_SHORT = 100  # Threshold for short response detection
-RESPONSE_SIZE_SIMPLE = 2000  # Threshold for simple command response size
+# Response size threshold (info-command path)
+RESPONSE_SIZE_SIMPLE = 2000
+
+# Markers that delimit a simple command's reply. The device emits one of these
+# tags followed by message text and a CRLF; the CRLF after the marker is the
+# end-of-response signal.
+SIMPLE_RESPONSE_MARKERS = (b"[SUCCESS]", b"[ERROR]")
 
 
 class BlustreamDevice(ABC):
     """Abstract base class for all Blustream devices."""
 
-    def __init__(self, connection: Connection, command_log_path: Optional[str] = None):
+    def __init__(
+        self,
+        connection: Connection,
+        command_log_path: Optional[str] = None,
+        response_timeout: float = DEFAULT_RESPONSE_TIMEOUT,
+    ):
         """Initialize device with a connection.
 
         Args:
@@ -45,10 +53,14 @@ class BlustreamDevice(ABC):
             command_log_path: Optional path to a text file. When set, every
                 command sent via send_command is appended with a UTC timestamp,
                 matching the format used by monitor_dmp168.sh.
+            response_timeout: Overall budget (in seconds) for a simple command
+                reply to arrive. If the device does not emit a ``[SUCCESS]`` or
+                ``[ERROR]`` marker line within this window, the command fails.
         """
         self._connection = connection
         self._connected = False
         self._command_log_path = command_log_path
+        self._response_timeout = response_timeout
 
     def _log_command(self, command: str) -> None:
         """Append a timestamped entry for the outgoing command.
@@ -127,6 +139,56 @@ class BlustreamDevice(ABC):
         """
         pass
 
+    async def _read_until_response_marker(self) -> str:
+        """Accumulate inbound bytes until a SIMPLE_RESPONSE_MARKERS line ends.
+
+        The device replies with either ``[SUCCESS]<message>\\r\\n`` or
+        ``[ERROR]<message>\\r\\n`` (often preceded by an echo of the command).
+        We keep reading until one of those marker tags is followed by ``\\r\\n``
+        in the accumulated buffer.
+
+        Raises:
+            TimeoutError: If no complete marker line arrives within
+                ``self._response_timeout`` seconds.
+            ConnectionError: If the remote closes the connection before a
+                marker is seen.
+        """
+        buffer = b""
+        loop = asyncio.get_event_loop()
+        deadline = loop.time() + self._response_timeout
+
+        while True:
+            for marker in SIMPLE_RESPONSE_MARKERS:
+                idx = buffer.find(marker)
+                if idx < 0:
+                    continue
+                end = buffer.find(b"\r\n", idx + len(marker))
+                if end >= 0:
+                    return buffer[: end + 2].decode("utf-8", errors="replace")
+
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                raise TimeoutError(
+                    f"Response marker not received within {self._response_timeout:.1f}s. "
+                    f"Got {len(buffer)} bytes: {buffer[:200]!r}"
+                )
+
+            try:
+                chunk = await self._connection.receive(timeout=remaining)
+            except TimeoutError as e:
+                raise TimeoutError(
+                    f"Response marker not received within {self._response_timeout:.1f}s. "
+                    f"Got {len(buffer)} bytes: {buffer[:200]!r}"
+                ) from e
+
+            if not chunk:
+                raise ConnectionError(
+                    f"Connection closed before response marker. "
+                    f"Got {len(buffer)} bytes: {buffer[:200]!r}"
+                )
+
+            buffer += chunk
+
     async def send_command(self, command: str) -> str:
         """Send a raw command string and return response.
 
@@ -155,94 +217,27 @@ class BlustreamDevice(ABC):
             # TEMP and UPTIME need more time to respond
             is_info_command = command.upper() in ["TEMP", "UPTIME"]
 
-            # For simple commands, use newline-based detection
-            # STATUS commands need special multi-line handling
+            # Simple commands reply with one of SIMPLE_RESPONSE_MARKERS followed
+            # by a message line. Read until that line is complete — race-free
+            # regardless of how the device chunks its echo and reply.
             if not is_status and not is_info_command:
-                # Simple commands typically return single-line or short responses
-                # Read until we see a newline, then check for prompt or short timeout
-                response_parts = []
+                return await self._read_until_response_marker()
 
-                try:
-                    # Initial read with reasonable timeout
-                    chunk = await self._connection.receive(timeout=TIMEOUT_INITIAL_READ)
-                    if chunk:
-                        response_parts.append(chunk)
-                        response_text = chunk.decode("utf-8", errors="replace")
-
-                        # Check if we have a newline (response likely complete)
-                        if "\n" in response_text or "\r\n" in response_text:
-                            # Check if prompt follows (device prompt typically ends with ">")
-                            # Try a very short read to see if prompt comes
-                            try:
-                                prompt_chunk = await self._connection.receive(timeout=TIMEOUT_SHORT)
-                                if prompt_chunk:
-                                    prompt_text = prompt_chunk.decode("utf-8", errors="replace")
-                                    response_parts.append(prompt_chunk)
-                                    response_text += prompt_text
-
-                                    # If we see a prompt pattern (ends with ">"), response is definitely complete
-                                    if response_text.rstrip().endswith(">"):
-                                        return b"".join(response_parts).decode("utf-8", errors="replace")
-                            except (TimeoutError, ConnectionError):
-                                # Timeout on prompt check is OK - might not have prompt
-                                pass
-
-                            # If we got a newline but no prompt, do one more very short check
-                            # to ensure no more data is coming
-                            try:
-                                more = await self._connection.receive(timeout=TIMEOUT_PROMPT_CHECK)
-                                if more:
-                                    response_parts.append(more)
-                                    response_text += more.decode("utf-8", errors="replace")
-                                    # Check again for prompt
-                                    if response_text.rstrip().endswith(">"):
-                                        return b"".join(response_parts).decode("utf-8", errors="replace")
-                            except (TimeoutError, ConnectionError):
-                                # No more data after newline - response is complete
-                                pass
-
-                            # We have a newline and no more data came - response is complete
-                            return b"".join(response_parts).decode("utf-8", errors="replace")
-
-                        # No newline yet, but got some data - might be incomplete
-                        # Check if it looks like a complete response anyway (very short)
-                        if len(response_text) < RESPONSE_SIZE_SHORT and len(response_text.strip()) > 0:
-                            # Very short response without newline - might be complete
-                            # Do a quick check for more data
-                            try:
-                                more = await self._connection.receive(timeout=TIMEOUT_SHORT)
-                                if more:
-                                    response_parts.append(more)
-                            except (TimeoutError, ConnectionError):
-                                # No more data - return what we have
-                                pass
-                            return b"".join(response_parts).decode("utf-8", errors="replace")
-
-                        # If we got here, response might be incomplete
-                        # Fall through to multi-read logic below
-
-                except (TimeoutError, ConnectionError, ValueError):
-                    # If newline-based read fails, fall through to multi-read logic
-                    pass
-
-            # Multi-read logic for STATUS or if fast read didn't work
+            # Multi-read logic for STATUS and info commands (TEMP/UPTIME). Simple
+            # commands take the marker-based path above and never reach here.
             response_parts = []
 
-            # Only sleep for STATUS commands (they need more processing time)
             if is_status:
                 await asyncio.sleep(SLEEP_STATUS_COMMAND)
-            elif is_info_command:
-                # TEMP and UPTIME need a bit of time to respond
+            else:
+                # TEMP and UPTIME need a moment before responding.
                 await asyncio.sleep(SLEEP_INFO_COMMAND)
 
-            # Read until we have a complete response
-            # STATUS responses end with input settings section
-            max_reads = MAX_READS_STATUS if is_status else (MAX_READS_INFO if is_info_command else MAX_READS_SIMPLE)
+            max_reads = MAX_READS_STATUS if is_status else MAX_READS_INFO
+            read_timeout = TIMEOUT_STATUS_COMMAND if is_status else TIMEOUT_INITIAL_READ
+            timeout_threshold = read_timeout
             read_count = 0
             last_data_time = time.time()
-
-            # Read with longer timeout for STATUS command
-            read_timeout = TIMEOUT_STATUS_COMMAND if is_status else (TIMEOUT_INITIAL_READ if is_info_command else TIMEOUT_INFO_COMMAND)
 
             while read_count < max_reads:
                 try:
@@ -250,12 +245,12 @@ class BlustreamDevice(ABC):
                     if chunk:
                         response_parts.append(chunk)
                         last_data_time = time.time()
-                        # Check if we have complete response
                         full_response = b"".join(response_parts).decode("utf-8", errors="replace")
-                        # STATUS is complete when we see "Input Settings Status" or multiple ===
+
                         if is_status:
+                            # STATUS is complete when we see the input-settings section
+                            # or at least three `===` separators.
                             if "Input Settings Status" in full_response or full_response.count("===") >= 3:
-                                # Try one more read to get any remaining data
                                 try:
                                     await asyncio.sleep(SLEEP_FINAL_READ)
                                     more = await self._connection.receive(timeout=TIMEOUT_INITIAL_READ)
@@ -265,75 +260,44 @@ class BlustreamDevice(ABC):
                                     pass
                                 break
                         else:
-                            # For simple commands, use newline-based completion detection
+                            # TEMP/UPTIME: the device echoes the command then returns
+                            # the value. Drain briefly to ensure we have the value,
+                            # not just the echo.
                             if len(full_response) < RESPONSE_SIZE_SIMPLE:
-                                # For info commands (TEMP, UPTIME), wait a bit longer and check for more data
-                                if is_info_command:
-                                    # These commands might echo the command, then return the value
-                                    # Wait a bit and try to get more data
+                                try:
+                                    await asyncio.sleep(TIMEOUT_SHORT)
+                                    more = await self._connection.receive(timeout=TIMEOUT_INFO_COMMAND)
+                                    if more:
+                                        response_parts.append(more)
+                                        full_response = b"".join(response_parts).decode("utf-8", errors="replace")
+                                except (TimeoutError, ConnectionError):
+                                    pass
+                                # Heuristic: TEMP shows digits + "C", UPTIME shows colons.
+                                if (":" in full_response or "C" in full_response.upper() or
+                                        any(c.isdigit() for c in full_response)):
                                     try:
-                                        await asyncio.sleep(TIMEOUT_SHORT)
-                                        more = await self._connection.receive(timeout=TIMEOUT_INFO_COMMAND)
+                                        more = await self._connection.receive(timeout=TIMEOUT_SHORT)
                                         if more:
                                             response_parts.append(more)
-                                            full_response = b"".join(response_parts).decode("utf-8", errors="replace")
                                     except (TimeoutError, ConnectionError):
                                         pass
-                                    # Check if we have the actual value (not just command echo)
-                                    # TEMP should have a number and C, UPTIME should have colons
-                                    if (is_info_command and
-                                        (":" in full_response or "C" in full_response.upper() or
-                                         any(c.isdigit() for c in full_response))):
-                                        # We likely have the value, but try one more quick check
-                                        try:
-                                            more = await self._connection.receive(timeout=TIMEOUT_SHORT)
-                                            if more:
-                                                response_parts.append(more)
-                                        except (TimeoutError, ConnectionError):
-                                            pass
-                                        break
-                                else:
-                                    # For simple commands, check for newline + prompt or newline + no more data
-                                    if "\n" in full_response or "\r\n" in full_response:
-                                        # Check for prompt (device prompt typically ends with ">")
-                                        if full_response.rstrip().endswith(">"):
-                                            # Response complete - found prompt
-                                            break
-
-                                        # No prompt, but have newline - check if more data is coming
-                                        try:
-                                            more = await self._connection.receive(timeout=TIMEOUT_PROMPT_CHECK)
-                                            if more:
-                                                response_parts.append(more)
-                                                full_response = b"".join(response_parts).decode("utf-8", errors="replace")
-                                                # Check again for prompt
-                                                if full_response.rstrip().endswith(">"):
-                                                    break
-                                            else:
-                                                # No more data after newline - response complete
-                                                break
-                                        except (TimeoutError, ConnectionError):
-                                            # No more data available after newline - response complete
-                                            break
+                                    break
                     else:
-                        # No data - if we haven't received anything in a while, we're done
-                        timeout_threshold = TIMEOUT_STATUS_COMMAND if is_status else (TIMEOUT_INITIAL_READ if is_info_command else TIMEOUT_INFO_COMMAND)
+                        # No data this iteration; if we've been idle past the
+                        # per-iteration threshold and have something buffered, stop.
                         if time.time() - last_data_time > timeout_threshold and response_parts:
                             break
                 except (TimeoutError, ConnectionError):
-                    # Timeout or error - if we have substantial data, use it
                     if response_parts:
                         full_response = b"".join(response_parts).decode("utf-8", errors="replace")
-                        # If we have the status header, we might have enough
+                        # STATUS minimally OK once we have the header section.
                         if is_status and "Power" in full_response and "Baud" in full_response:
                             break
-                        # For simple commands, any data is likely complete
+                        # Info commands accept any accumulated data on timeout.
                         if not is_status:
                             break
                     if read_count == 0:
-                        # First read failed - re-raise
                         raise
-                    # Subsequent timeouts are OK if we have data
                     if not response_parts:
                         raise
                     break

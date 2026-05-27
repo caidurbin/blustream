@@ -16,9 +16,13 @@ BUFFER_SIZE_INITIAL = 1024  # Buffer size for reading initial data
 BUFFER_SIZE_RECEIVE = 4096  # Buffer size for normal receive operations
 
 # Timeout constants (in seconds)
-TIMEOUT_DISCARD_INITIAL = 0.5  # Timeout for discarding initial welcome message data
+DEFAULT_BANNER_TIMEOUT = 2.0  # Overall budget to consume the welcome banner
 TIMEOUT_WAIT_CLOSED = 1.0  # Timeout for waiting for connection to close
 TIMEOUT_QUICK_READ = 0.1  # Quick read timeout for catching remaining data
+
+# Welcome-banner sentinel
+BANNER_SENTINEL = "=\r\n"  # The DMP168 banner brackets itself with two "=…=\r\n" lines
+BANNER_SENTINEL_COUNT = 2  # Stop after consuming this many sentinels
 
 
 class TCPConnection(Connection):
@@ -30,6 +34,7 @@ class TCPConnection(Connection):
         port: int = 23,
         timeout: float = 5.0,
         response_timeout: float = 5.0,
+        banner_timeout: float = DEFAULT_BANNER_TIMEOUT,
     ):
         """Initialize TCP connection.
 
@@ -38,11 +43,15 @@ class TCPConnection(Connection):
             port: TCP port (default 23 for Telnet)
             timeout: Connection timeout in seconds
             response_timeout: Response read timeout in seconds
+            banner_timeout: Overall budget for consuming the welcome banner on
+                connect. If the banner's two ``=\\r\\n`` sentinels are not seen
+                within this many seconds, the connect fails.
         """
         self.host = host
         self.port = port
         self.timeout = timeout
         self.response_timeout = response_timeout
+        self.banner_timeout = banner_timeout
         self._reader: Optional[telnetlib3.TelnetReader] = None
         self._writer: Optional[telnetlib3.TelnetWriter] = None
         self._connected = False
@@ -74,6 +83,9 @@ class TCPConnection(Connection):
                 f"Unable to connect to device at {self.host}:{self.port}. "
                 f"Error: {str(e)}. Please check the network connection, host address, and port number."
             ) from e
+        except (TimeoutError, ConnectionError):
+            # Banner-discard errors are already shaped for the user; pass through.
+            raise
         except Exception as e:
             raise ConnectionError(
                 f"An unexpected error occurred while connecting to {self.host}:{self.port}: {str(e)}. "
@@ -81,34 +93,53 @@ class TCPConnection(Connection):
             ) from e
 
     async def _discard_initial_data(self) -> None:
-        """Discard initial welcome message data from connection.
+        """Consume the welcome banner up to its bottom ``=…=\\r\\n`` sentinel.
 
-        telnetlib3 handles Telnet negotiation automatically, but we may still
-        receive welcome message data that should be discarded.
+        The DMP168 brackets its banner with two lines of ``=`` characters
+        terminated by ``\\r\\n``. We accumulate inbound data until two such
+        sentinels have been seen — race-free regardless of how the banner is
+        chunked across TCP packets.
+
+        If both sentinels do not arrive within ``self.banner_timeout``
+        seconds, raise ``TimeoutError`` so the caller fails the connect.
         """
         if not self._reader:
             return
 
-        try:
-            # Read and discard initial data (welcome message, etc.)
-            # until no more data is available (timeout)
-            while True:
-                try:
-                    # telnetlib3 returns strings, not bytes
-                    data_str = await asyncio.wait_for(
-                        self._reader.read(BUFFER_SIZE_INITIAL), timeout=TIMEOUT_DISCARD_INITIAL
-                    )
-                    if not data_str:
-                        break
-                    # Discard welcome message data
-                    logger.debug(f"Discarding welcome message data: {len(data_str)} chars")
-                    # Continue reading until timeout (no more data)
-                except asyncio.TimeoutError:
-                    # No more data available, we're done
-                    break
-        except asyncio.TimeoutError:
-            # No more data available
-            pass
+        buffer = ""
+        loop = asyncio.get_event_loop()
+        deadline = loop.time() + self.banner_timeout
+
+        while buffer.count(BANNER_SENTINEL) < BANNER_SENTINEL_COUNT:
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                raise TimeoutError(
+                    f"Welcome banner not consumed within {self.banner_timeout:.1f}s. "
+                    f"Got {len(buffer)} chars, expected two '=\\r\\n' sentinels. "
+                    f"The device may be unresponsive, or this port does not emit a banner."
+                )
+
+            try:
+                chunk = await asyncio.wait_for(
+                    self._reader.read(BUFFER_SIZE_INITIAL),
+                    timeout=remaining,
+                )
+            except asyncio.TimeoutError as e:
+                raise TimeoutError(
+                    f"Welcome banner not consumed within {self.banner_timeout:.1f}s. "
+                    f"Got {len(buffer)} chars, expected two '=\\r\\n' sentinels. "
+                    f"The device may be unresponsive, or this port does not emit a banner."
+                ) from e
+
+            if not chunk:
+                raise ConnectionError(
+                    f"Connection closed by remote during welcome banner. "
+                    f"Got {len(buffer)} chars."
+                )
+
+            buffer += chunk
+
+        logger.debug(f"Discarded welcome banner: {len(buffer)} chars")
 
     async def disconnect(self) -> None:
         """Close TCP connection."""

@@ -115,12 +115,12 @@ class TestBlustreamDevice:
     async def test_send_command_simple_response(self):
         """Test sending simple command."""
         conn = MockConnection()
-        conn._receive_responses = [b"OK\r\nDMP168>"]
+        conn._receive_responses = [b"TEST\r\n[SUCCESS]ok\r\n"]
         device = ConcreteDevice(conn)
         await device.connect()
 
         response = await device.send_command("TEST")
-        assert "OK" in response
+        assert "[SUCCESS]" in response
         assert len(conn._send_calls) == 1
         assert b"TEST\r\n" in conn._send_calls[0]
 
@@ -177,28 +177,48 @@ class TestBlustreamDevice:
             await device.send_command("TEST")
 
     @pytest.mark.asyncio
-    async def test_send_command_partial_response(self):
-        """Test sending command with partial response."""
+    async def test_send_command_no_marker_times_out(self):
+        """Response without [SUCCESS]/[ERROR] marker → CommandError on timeout.
+
+        Under the marker-based contract, a reply that never produces a
+        terminator line is a failure, not a "return what we have" success.
+        """
         conn = MockConnection()
-        # Response without prompt
+        # One non-marker chunk, then the mock's queue empties — its next
+        # receive() raises TimeoutError, which our marker reader translates
+        # into the "marker not received" failure.
         conn._receive_responses = [b"Partial response\n"]
-        device = ConcreteDevice(conn)
+        device = ConcreteDevice(conn, response_timeout=0.05)
         await device.connect()
 
-        response = await device.send_command("TEST")
-        assert "Partial response" in response
+        with pytest.raises(CommandError, match="Response marker not received"):
+            await device.send_command("TEST")
 
     @pytest.mark.asyncio
-    async def test_send_command_empty_response(self):
-        """Test sending command with empty response."""
+    async def test_send_command_error_marker(self):
+        """A [ERROR]…\\r\\n response is returned just like [SUCCESS]…\\r\\n."""
         conn = MockConnection()
-        conn._receive_responses = [b"\r\nDMP168>"]
+        conn._receive_responses = [b"BAD\r\n[ERROR]bad parameter\r\n"]
         device = ConcreteDevice(conn)
         await device.connect()
 
-        response = await device.send_command("TEST")
-        # Should return empty or minimal response
-        assert isinstance(response, str)
+        response = await device.send_command("BAD")
+        assert "[ERROR]bad parameter" in response
+
+    @pytest.mark.asyncio
+    async def test_send_command_marker_across_chunks(self):
+        """Marker line split across multiple receive() chunks is reassembled."""
+        conn = MockConnection()
+        conn._receive_responses = [
+            b"OUT 4 REM 2\r\n",
+            b"[SUCC",
+            b"ESS]Set output 4 L/R remove input 2 L/R.\r\n",
+        ]
+        device = ConcreteDevice(conn)
+        await device.connect()
+
+        response = await device.send_command("OUT 4 REM 2")
+        assert "[SUCCESS]Set output 4 L/R remove input 2 L/R." in response
 
     @pytest.mark.asyncio
     async def test_is_connected_true(self):
@@ -237,9 +257,9 @@ class TestBlustreamDevice:
 
         # MockConnection consumes one response per send_command (the prompt-check
         # read times out, which the device handles). Refill between calls.
-        conn._receive_responses = [b"OK\r\nDMP168>"]
+        conn._receive_responses = [b"POWER ON\r\n[SUCCESS]ok\r\n"]
         await device.send_command("POWER ON")
-        conn._receive_responses = [b"OK\r\nDMP168>"]
+        conn._receive_responses = [b"POWER ON\r\n[SUCCESS]ok\r\n"]
         await device.send_command("VOL CH=0 LR 50%")
 
         contents = log_path.read_text(encoding="utf-8")
@@ -254,7 +274,7 @@ class TestBlustreamDevice:
         """No file is written when command_log_path is not provided."""
         log_path = tmp_path / "commands.log"
         conn = MockConnection()
-        conn._receive_responses = [b"OK\r\nDMP168>"]
+        conn._receive_responses = [b"POWER ON\r\n[SUCCESS]ok\r\n"]
         device = ConcreteDevice(conn)
         await device.connect()
 
@@ -267,13 +287,13 @@ class TestBlustreamDevice:
         """A failing log write is logged as a warning but doesn't abort the command."""
         bad_path = tmp_path / "missing_dir" / "commands.log"  # parent does not exist
         conn = MockConnection()
-        conn._receive_responses = [b"OK\r\nDMP168>"]
+        conn._receive_responses = [b"POWER ON\r\n[SUCCESS]ok\r\n"]
         device = ConcreteDevice(conn, command_log_path=str(bad_path))
         await device.connect()
 
         with caplog.at_level("WARNING", logger="blustream.base.device"):
             response = await device.send_command("POWER ON")
 
-        assert "OK" in response
+        assert "[SUCCESS]" in response
         assert any("Failed to write command log" in rec.message for rec in caplog.records)
 
