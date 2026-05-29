@@ -10,7 +10,7 @@ See ``tests/integration/README.md``.
 from __future__ import annotations
 
 import os
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 import pytest
 import pytest_asyncio

@@ -1,7 +1,7 @@
 """Command metadata and protocol interface."""
 
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Type, Union
+from typing import Any, Callable, Optional, Union
 
 # Type alias for command handlers
 CommandHandler = Callable[..., str]
@@ -27,13 +27,13 @@ class Parameter:
     """Command parameter metadata."""
 
     name: str
-    type: Type
+    type: type
     required: bool = True
     default: Any = None
-    choices: Optional[List[Any]] = None
+    choices: Optional[list[Any]] = None
     help_text: str = ""
     validation: Optional[Callable[[Any], Optional[str]]] = None
-    depends_on: Optional[Union[str, Dependency, List[Dependency]]] = None
+    depends_on: Optional[Union[str, Dependency, list[Dependency]]] = None
     supports_relative: bool = False
 
 
@@ -43,9 +43,9 @@ class Command:
 
     name: str
     description: str
-    parameters: List[Parameter]
+    parameters: list[Parameter]
     handler: CommandHandler
-    return_type: Type = str
+    return_type: type = str
     requires_confirmation: bool = False
     format_result: Optional[Callable[[Any, RenderContext], str]] = None
     confirmation_message: Optional[Union[str, Callable[[dict], str]]] = None
@@ -56,7 +56,7 @@ class CommandRegistry:
 
     def __init__(self):
         """Initialize empty registry."""
-        self._commands: Dict[str, Command] = {}
+        self._commands: dict[str, Command] = {}
 
     def register(self, command: Command) -> None:
         """Register a command.
@@ -77,7 +77,7 @@ class CommandRegistry:
         """
         return self._commands.get(name)
 
-    def list_commands(self) -> List[str]:
+    def list_commands(self) -> list[str]:
         """List all registered command names.
 
         Returns:
@@ -85,7 +85,7 @@ class CommandRegistry:
         """
         return list(self._commands.keys())
 
-    def get_all(self) -> List[Command]:
+    def get_all(self) -> list[Command]:
         """Get all registered commands.
 
         Returns:

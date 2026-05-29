@@ -1,14 +1,14 @@
 """Centralized parameter validation."""
 
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Union
 
 from blustream.base.commands import CommandRegistry, Dependency
 from blustream.base.exceptions import CommandError, ValidationError
 
 
 def _normalize_depends_on(
-    depends_on: Union[str, Dependency, List[Dependency]],
-) -> List[Dependency]:
+    depends_on: Union[str, Dependency, list[Dependency]],
+) -> list[Dependency]:
     """Normalize depends_on field to a list of Dependency objects."""
     if isinstance(depends_on, str):
         return [Dependency(on=depends_on)]
@@ -18,7 +18,7 @@ def _normalize_depends_on(
 
 
 def validate(
-    registry: CommandRegistry, command_name: str, kwargs: Dict[str, Any]
+    registry: CommandRegistry, command_name: str, kwargs: dict[str, Any]
 ) -> None:
     """Validate parameters for a command.
 
@@ -45,7 +45,7 @@ def validate(
             "Use 'get_commands()' to see available commands."
         )
 
-    errors: List[Tuple[str, str]] = []
+    errors: list[tuple[str, str]] = []
 
     # Pass one: per-parameter checks
     for param in command.parameters:

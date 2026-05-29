@@ -1,6 +1,6 @@
 """Custom exception hierarchy for Blustream devices."""
 
-from typing import List, Optional, Tuple
+from typing import Optional
 
 
 class BlustreamError(Exception):
@@ -35,9 +35,9 @@ class ValidationError(BlustreamError):
     """
 
     def __init__(
-        self, message: str, errors: Optional[List[Tuple[str, str]]] = None
+        self, message: str, errors: Optional[list[tuple[str, str]]] = None
     ):
-        self.errors: List[Tuple[str, str]] = errors or []
+        self.errors: list[tuple[str, str]] = errors or []
         super().__init__(message)
 
 

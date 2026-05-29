@@ -1,7 +1,7 @@
 """Data models for DMP168 device."""
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Optional
 
 
 @dataclass
@@ -38,8 +38,8 @@ class SystemStatus:
     temperature: float  # Temperature in Celsius
     uptime: str  # Uptime string (DDDD:HH:MM:SS)
     firmware_version: str  # Firmware version
-    inputs: List[InputSettings]  # Input settings
-    routing: List[OutputRouting]  # Output routing
+    inputs: list[InputSettings]  # Input settings
+    routing: list[OutputRouting]  # Output routing
 
 
 @dataclass

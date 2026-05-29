@@ -1,6 +1,6 @@
 """Tests for base device class."""
 
-from typing import Callable, Iterable, List, Union
+from typing import Callable, Union
 
 import pytest
 
@@ -24,8 +24,8 @@ class MockConnection(Connection):
 
     def __init__(self):
         self._connected = False
-        self._send_calls: List[bytes] = []
-        self._chunks: List[Union[str, Exception]] = []
+        self._send_calls: list[bytes] = []
+        self._chunks: list[Union[str, Exception]] = []
         self._buffer = ""
 
     def queue(self, *chunks: Union[str, bytes, Exception]) -> None:

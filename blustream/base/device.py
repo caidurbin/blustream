@@ -3,7 +3,7 @@
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, Optional
 
 from blustream.base.connection import Connection
 from blustream.base.exceptions import CommandError, ConnectionError, TimeoutError
@@ -70,7 +70,7 @@ class BlustreamDevice(ABC):
         return self._connected and self._connection.is_connected()
 
     @abstractmethod
-    def get_commands(self) -> List[str]:
+    def get_commands(self) -> list[str]:
         ...
 
     @abstractmethod
