@@ -49,3 +49,30 @@ def test_every_fixture_has_expected_yaml():
     for txt in FIXTURES_DIR.glob("*.txt"):
         expected = txt.with_suffix(".expected.yaml")
         assert expected.exists(), f"missing {expected.name} for {txt.name}"
+
+
+def test_live_full_response_bounds_input_and_routing_sections():
+    """Real captured response (172 lines) yields exactly 16 inputs / 16 routes.
+
+    The full STATUS reply continues past the Input Settings table into
+    Input EQ, Output Settings, and Output EQ sections — each of which
+    has rows beginning with "In<n>" or "Out<n>". The section parsers
+    must bound on row shape so EQ / Settings rows aren't misparsed as
+    duplicates. Lives outside the parametrized shared-fixture set
+    because no Lua sibling consumes it.
+    """
+    live_fixture = Path(__file__).resolve().parent / "fixtures" / "status_live_full.txt"
+    response = live_fixture.read_text(newline="")
+
+    actual = parse(response)
+
+    assert len(actual["inputs"]) == 16, (
+        f"expected 16 input rows, got {len(actual['inputs'])} — "
+        "Input EQ rows likely leaked into the inputs list"
+    )
+    assert {row["port"] for row in actual["inputs"]} == set(range(1, 17))
+
+    assert len(actual["routing"]) == 16, (
+        f"expected 16 routing rows (8 outputs × L/R), got {len(actual['routing'])} — "
+        "Output Settings or Output EQ rows likely leaked into the routing list"
+    )
