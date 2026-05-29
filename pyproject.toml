@@ -1,3 +1,55 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "blustream"
+version = "0.1.0"
+description = "Python library and CLI for controlling Blustream audio devices"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Cai Durbin" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "telnetlib3>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+]
+codegen = [
+    # Build-time only: spec/codegen + spec/runner.py. Library users do not
+    # need these at runtime (generated files are committed).
+    "Jinja2>=3.0",
+    "PyYAML>=6.0",
+]
+
+[project.scripts]
+blustream = "blustream.cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/caidurbin/blustream"
+Repository = "https://github.com/caidurbin/blustream"
+Issues = "https://github.com/caidurbin/blustream/issues"
+
+[tool.setuptools.packages.find]
+include = ["blustream*"]
+
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
 exclude = [
