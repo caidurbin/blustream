@@ -21,8 +21,50 @@ def load_fixture(name: str) -> str:
     return fixture_path.read_text()
 
 
+def load_fixture_preserving_crlf(name: str) -> str:
+    """Load a fixture without universal-newline conversion.
+
+    Use for captured wire responses where the ``\\r\\n`` terminators
+    matter — ``read_text()`` normalises CRLF to LF, which would change
+    what the parser sees compared to live-device bytes.
+    """
+    fixture_path = Path(__file__).parent / "fixtures" / name
+    return fixture_path.read_text(newline="")
+
+
 class TestDMP168Parser:
     """Tests for DMP168Parser."""
+
+    def test_parse_status_live_full_response_bounds_input_section(self):
+        """Real captured response (172 lines) yields exactly 16 inputs / 16 routes.
+
+        The full STATUS reply continues past the Input Settings table into
+        an Input EQ section whose rows ("In1  L[20   ,off ][...]") share
+        the "In<n>" prefix. Before the section was bounded, every EQ row
+        was misparsed as a duplicate input, yielding 48-ish entries.
+        Same shape for the routing parser: Output Settings + Output EQ
+        sections both lead with "Out<n>" and would double-count.
+        """
+        # newline="" preserves the on-disk CRLFs so the parser sees the
+        # response exactly as it would arrive off the wire.
+        response = load_fixture_preserving_crlf("status_live_full.txt")
+        parser = DMP168Parser()
+        status = parser.parse_status(response)
+
+        assert len(status.inputs) == 16, (
+            f"expected 16 input rows, got {len(status.inputs)} — "
+            "EQ-section rows are likely leaking into the input list"
+        )
+        assert {i.port for i in status.inputs} == set(range(1, 17))
+
+        assert len(status.routing) == 16, (
+            f"expected 16 routing rows (8 outputs × L/R), got {len(status.routing)} — "
+            "Output Settings or Output EQ rows are likely leaking into the routing list"
+        )
+        # The first Matrix Config row in the fixture is "Out1 L  None"
+        assert status.routing[0].output == 1
+        assert status.routing[0].channel == "L"
+        assert status.routing[0].from_input is None
 
     def test_parse_status(self):
         """Test parsing STATUS response."""

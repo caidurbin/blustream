@@ -119,8 +119,11 @@ class DMP168Parser:
                     continue
                 if in_input_section and line.strip().startswith("In"):
                     # Format: In1     On   50  50   Off Off
+                    # The Input EQ section that follows uses the same "In<n>"
+                    # prefix but encodes per-band data as parts[1]="L[20" /
+                    # "R[20", so guard on parts[1] being the Lock value.
                     parts = line.split()
-                    if len(parts) >= 6:
+                    if len(parts) >= 6 and parts[1] in ("On", "Off"):
                         port_match = re.match(r"In(\d+)", parts[0])
                         if port_match:
                             port = int(port_match.group(1))
@@ -149,14 +152,18 @@ class DMP168Parser:
                     in_routing_section = True
                     continue
                 if in_routing_section and line.strip().startswith("Out"):
-                    # Format: Out1 L        In1 L
+                    # Format: Out1 L        In1 L   (or "Out1 L  None")
+                    # Output Settings rows ("Out1 On 100 100 ...") and Output
+                    # EQ rows ("Out1 L[20  ,off ]...") later in the response
+                    # also start with "Out<n>"; bound this section by
+                    # requiring parts[1] to be a channel literal ("L"/"R").
+                    # "L[20" / "On" both fail the literal check.
                     parts = line.split()
-                    if len(parts) >= 2:
-                        # Extract output number from "Out1" format
+                    if len(parts) >= 2 and parts[1] in ("L", "R"):
                         out_match = re.match(r"Out(\d+)", parts[0])
                         if out_match:
                             output = int(out_match.group(1))
-                            channel = parts[1] if len(parts) > 1 and parts[1] in ["L", "R"] else "L"
+                            channel = parts[1]
                             from_input = None
                             # Look for input in remaining parts
                             for part in parts[2:]:

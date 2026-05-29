@@ -98,6 +98,12 @@ def _parse_inputs(lines: list[str]) -> list[dict[str, Any]]:
         port_match = _INPUT_LINE_RE.match(parts[0])
         if not port_match:
             continue
+        # The Input EQ section further down also begins each row with
+        # "In<n>" but encodes per-band data as parts[1]="L[20" / "R[20",
+        # which would crash int(parts[2]) below. Require parts[1] to be
+        # the Lock value to keep the section bounded.
+        if parts[1] not in ("On", "Off"):
+            continue
         inputs.append(
             {
                 "port": int(port_match.group(1)),
@@ -126,6 +132,12 @@ def _parse_routing(lines: list[str]) -> list[dict[str, Any]]:
         output_match = _OUTPUT_LINE_RE.match(parts[0])
         if not output_match:
             continue
+        # Output Settings rows ("Out1 On 100 100 ...") and Output EQ rows
+        # ("Out1 L[20  ,off ]...") later in the response also begin with
+        # "Out<n>"; bound this section by requiring parts[1] to be a
+        # channel literal ("L"/"R"). "L[20" and "On" both fail.
+        if parts[1] not in ("L", "R"):
+            continue
         from_input: int | None = None
         for token in parts[2:]:
             in_match = _FROM_INPUT_RE.match(token)
@@ -135,7 +147,7 @@ def _parse_routing(lines: list[str]) -> list[dict[str, Any]]:
         routing.append(
             {
                 "output": int(output_match.group(1)),
-                "channel": parts[1] if parts[1] in ("L", "R") else "L",
+                "channel": parts[1],
                 "from_input": from_input,
             }
         )
