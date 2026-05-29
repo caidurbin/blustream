@@ -1,7 +1,7 @@
 """Metadata-driven CLI parser generator."""
 
 import argparse
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from blustream.base.commands import Command, CommandRegistry, Parameter
 
@@ -12,7 +12,7 @@ def _snake_to_kebab(name: str) -> str:
 
 def build_parser(
     registry: CommandRegistry,
-    parents: Optional[List[argparse.ArgumentParser]] = None,
+    parents: Optional[list[argparse.ArgumentParser]] = None,
 ) -> argparse.ArgumentParser:
     """Build an ArgumentParser from command registry metadata.
 
@@ -74,7 +74,7 @@ def _add_parameter(parser: argparse.ArgumentParser, param: Parameter) -> None:
             help=f"Decrease {param.name} by one step",
         )
     else:
-        kw: Dict[str, Any] = {}
+        kw: dict[str, Any] = {}
         if param.required:
             kw["required"] = True
         else:
@@ -88,12 +88,12 @@ def _add_parameter(parser: argparse.ArgumentParser, param: Parameter) -> None:
         parser.add_argument(flag, **kw)
 
 
-def extract_kwargs(namespace: argparse.Namespace, command: Command) -> Dict[str, Any]:
+def extract_kwargs(namespace: argparse.Namespace, command: Command) -> dict[str, Any]:
     """Extract command kwargs from a parsed argparse Namespace.
 
     Translates --increase-<name> / --decrease-<name> into kwargs[name] = "+" / "-".
     """
-    kwargs: Dict[str, Any] = {}
+    kwargs: dict[str, Any] = {}
 
     for param in command.parameters:
         if param.supports_relative and getattr(namespace, f"increase_{param.name}", False):

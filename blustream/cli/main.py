@@ -4,13 +4,12 @@ import argparse
 import asyncio
 import logging
 import sys
-from typing import Dict, Type
 
 from blustream.cli.dispatcher import dispatch
 from blustream.cli.parser import build_parser
 from blustream.devices.dmp168.device import DMP168
 
-DEVICES: Dict[str, Type] = {
+DEVICES: dict[str, type] = {
     "dmp168": DMP168,
 }
 

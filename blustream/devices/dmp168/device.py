@@ -2,7 +2,7 @@
 
 import logging
 import re
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 from blustream.base.commands import Command, CommandRegistry
 from blustream.base.connection import Connection
@@ -82,7 +82,7 @@ class DMP168(BlustreamDevice):
         self._parser = DMP168Parser()
         self._registry = self.__class__.commands
 
-    def get_commands(self) -> List[str]:
+    def get_commands(self) -> list[str]:
         """Get list of available command names.
 
         Returns:
@@ -230,7 +230,7 @@ class DMP168(BlustreamDevice):
             unit: Unit type ("percent" or "dB")
             channel: Channel ("L", "R", or "LR")
         """
-        kwargs: Dict[str, Any] = {
+        kwargs: dict[str, Any] = {
             "output": output,
             "level": level,
             "channel": channel,
@@ -303,7 +303,7 @@ class DMP168(BlustreamDevice):
             channel: Channel ("L", "R", or "LR")
             unit: Unit type ("percent" or "dB"), None for percent
         """
-        kwargs: Dict[str, Any] = {
+        kwargs: dict[str, Any] = {
             "input": input_ch,
             "gain": gain,
             "channel": channel,
@@ -388,7 +388,7 @@ class DMP168(BlustreamDevice):
             unit: Unit type ("percent" or "dB")
             channel: Channel ("L", "R", or "LR")
         """
-        kwargs: Dict[str, Any] = {"level": level, "channel": channel}
+        kwargs: dict[str, Any] = {"level": level, "channel": channel}
         if not _is_relative_adjustment(level):
             kwargs["unit"] = unit
         await self.execute_command("output_master_volume", **kwargs)
@@ -447,7 +447,7 @@ class DMP168(BlustreamDevice):
             unit: Unit type ("percent" or "dB")
             channel: Channel ("L", "R", or "LR")
         """
-        kwargs: Dict[str, Any] = {
+        kwargs: dict[str, Any] = {
             "group": group,
             "level": level,
             "channel": channel,
