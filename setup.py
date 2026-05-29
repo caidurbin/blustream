@@ -8,8 +8,6 @@ with open("README.md", encoding="utf-8") as fh:
 setup(
     name="blustream",
     version="0.1.0",
-    author="Your Name",
-    author_email="your.email@example.com",
     description="Python library and CLI for controlling Blustream audio devices",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -18,7 +16,7 @@ setup(
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.9",
