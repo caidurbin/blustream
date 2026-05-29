@@ -71,7 +71,7 @@ class TestValidatorIntegration:
         mock_conn.connect = AsyncMock()
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_conn.send = AsyncMock()
-        mock_conn.receive = AsyncMock(return_value=b"[SUCCESS]ok\r\n")
+        mock_conn.read_until = AsyncMock(return_value="[SUCCESS]ok\r\n")
         mock_connection_class.return_value = mock_conn
 
         device = DMP168(host="192.168.1.100")
