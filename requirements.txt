@@ -1,3 +1,0 @@
-# Blustream device control library
-telnetlib3>=2.0.0
-
