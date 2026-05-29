@@ -3,7 +3,7 @@
 These tests pin the contract for three artifacts that ship the project
 to its three audiences:
 
-* ``LICENSE`` — MIT, formalizing the existing setup.py classifier.
+* ``LICENSE`` — Apache 2.0, matching the setup.py classifier.
 * ``.github/workflows/release-pypi.yml`` — fires on ``v*`` tags and
   publishes the Python package to PyPI.
 * ``.github/workflows/release-c4z.yml`` — fires on ``c4-v*`` tags,
@@ -48,32 +48,34 @@ def _load_workflow(path: Path) -> dict:
 
 
 class TestLicense:
-    """Acceptance: a top-level LICENSE file formalizes MIT licensing."""
+    """Acceptance: a top-level LICENSE file formalizes Apache 2.0 licensing."""
 
     def test_license_file_exists_at_repo_root(self):
         assert LICENSE_PATH.is_file(), (
             "issue #19 requires a top-level LICENSE file"
         )
 
-    def test_license_is_mit(self):
+    def test_license_is_apache_2_0(self):
         text = LICENSE_PATH.read_text()
-        assert "MIT License" in text
+        assert "Apache License" in text
+        assert "Version 2.0" in text
 
     def test_license_contains_copyright_notice(self):
-        # The MIT template requires the copyright line; without it the
-        # license is incomplete.
+        # The Apache 2.0 text references copyright in its redistribution
+        # terms and appendix; without it the license is incomplete.
         text = LICENSE_PATH.read_text()
         assert "Copyright" in text
 
-    def test_license_contains_permission_clause(self):
-        # Pin the MIT permission grant so a future swap to a
-        # non-permissive license shows up as a deliberate test change.
+    def test_license_contains_grant_clauses(self):
+        # Pin the Apache 2.0 copyright + patent grants so a future swap
+        # to a different license shows up as a deliberate test change.
         text = LICENSE_PATH.read_text()
-        assert "Permission is hereby granted" in text
+        assert "Grant of Copyright License" in text
+        assert "Grant of Patent License" in text
 
     def test_license_contains_warranty_disclaimer(self):
         text = LICENSE_PATH.read_text()
-        assert "WITHOUT WARRANTY OF ANY KIND" in text
+        assert "WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND" in text
 
 
 class TestReleasePypiWorkflow:

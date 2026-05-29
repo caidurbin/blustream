@@ -47,7 +47,7 @@ The rename should be done as one mechanical commit before any other work in this
 
 ## 3. Distribution
 
-- **License:** MIT (existing).
+- **License:** Apache 2.0.
 - **GitHub:** Public repository.
 - **PyPI:** Python library published as `blustream`. Tags `v*` trigger PyPI release.
 - **HACS:** Future. Structure (`custom_components/blustream/` + `hacs.json` at repo root) is established now even though the integration code is deferred.
@@ -101,7 +101,7 @@ blustream/                             ← repo root
 ├── CONTEXT.md                         ← project domain context (per AGENTS.md)
 ├── AGENTS.md, CLAUDE.md               ← agent instructions (existing)
 ├── README.md
-├── LICENSE                            ← MIT
+├── LICENSE                            ← Apache 2.0
 ├── pyproject.toml                     ← Python lib + CLI entry point
 ├── hacs.json                          ← HACS integration metadata (forward-looking)
 ├── .github/workflows/                 ← CI: codegen-clean, pytest, lua tests, c4z build
@@ -322,7 +322,7 @@ Phases are ordered by dependency. Each is a discrete unit that can land in its o
 
 - Rename `bluestream` → `blustream` across Python package, repo, imports, package metadata.
 - Create top-level `spec/`, `control4/dmp168/`, `custom_components/blustream/` (stub), `docs/adr/` directories.
-- Add `LICENSE` (MIT), `hacs.json` (forward-looking), `.github/workflows/ci.yml` skeleton.
+- Add `LICENSE` (Apache 2.0), `hacs.json` (forward-looking), `.github/workflows/ci.yml` skeleton.
 - Move existing CLI entry point reference in `pyproject.toml` to use `blustream.cli.main`.
 
 ### Phase 1 — Codegen for Python only
