@@ -217,7 +217,6 @@ blustream/
 │   └── cli/                 # CLI implementation
 ├── tests/                   # Test suite
 ├── main.py                  # CLI entry point
-├── setup.py                 # Package setup
 └── README.md               # This file
 ```
 
