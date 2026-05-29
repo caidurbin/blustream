@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "blustream"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Python library and CLI for controlling Blustream audio devices"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -49,6 +49,9 @@ Issues = "https://github.com/caidurbin/blustream/issues"
 
 [tool.setuptools.packages.find]
 include = ["blustream*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "blustream.__version__" }
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
