@@ -324,7 +324,7 @@ class TestDMP168Device:
         mock_conn = MagicMock()
         mock_connection_class.return_value = mock_conn
         mock_conn.send = AsyncMock()
-        mock_conn.receive = AsyncMock(return_value=b"[SUCCESS]ok\r\n")
+        mock_conn.read_until = AsyncMock(return_value="[SUCCESS]ok\r\n")
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_conn.connect = AsyncMock()
 
@@ -413,7 +413,7 @@ class TestDMP168Device:
         mock_conn.connect = AsyncMock()
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_conn.send = AsyncMock()
-        mock_conn.receive = AsyncMock(return_value=b"[SUCCESS]The uptime of the system is 0000:08:57:01\r\nDMP168>")
+        mock_conn.read_until = AsyncMock(return_value="[SUCCESS]The uptime of the system is 0000:08:57:01\r\nDMP168>")
         mock_connection_class.return_value = mock_conn
 
         device = DMP168(host="192.168.1.100")
@@ -430,7 +430,7 @@ class TestDMP168Device:
         mock_conn.connect = AsyncMock()
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_conn.send = AsyncMock()
-        mock_conn.receive = AsyncMock(return_value=b"[SUCCESS]The temperature of the system is 47.4C\r\nDMP168>")
+        mock_conn.read_until = AsyncMock(return_value="[SUCCESS]The temperature of the system is 47.4C\r\nDMP168>")
         mock_connection_class.return_value = mock_conn
 
         device = DMP168(host="192.168.1.100")
@@ -447,7 +447,7 @@ class TestDMP168Device:
         mock_conn.connect = AsyncMock()
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_conn.send = AsyncMock()
-        mock_conn.receive = AsyncMock(return_value=b"0000:08:57:01\r\nDMP168>")
+        mock_conn.read_until = AsyncMock(return_value="0000:08:57:01\r\nDMP168>")
         mock_connection_class.return_value = mock_conn
 
         device = DMP168(host="192.168.1.100")
@@ -464,7 +464,7 @@ class TestDMP168Device:
         mock_conn.connect = AsyncMock()
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_conn.send = AsyncMock()
-        mock_conn.receive = AsyncMock(return_value=b"47.4C\r\nDMP168>")
+        mock_conn.read_until = AsyncMock(return_value="47.4C\r\nDMP168>")
         mock_connection_class.return_value = mock_conn
 
         device = DMP168(host="192.168.1.100")
@@ -577,7 +577,7 @@ class TestDMP168Device:
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_conn.send = AsyncMock()
         # Return invalid STATUS response
-        mock_conn.receive = AsyncMock(return_value=b"Invalid STATUS response\r\nDMP168>")
+        mock_conn.read_until = AsyncMock(return_value="Invalid STATUS response\r\nDMP168>")
         mock_connection_class.return_value = mock_conn
 
         device = DMP168(host="192.168.1.100")
@@ -598,7 +598,7 @@ class TestDMP168Device:
         mock_conn.send = AsyncMock()
         from blustream.base.exceptions import TimeoutError
 
-        mock_conn.receive = AsyncMock(side_effect=TimeoutError("Timeout"))
+        mock_conn.read_until = AsyncMock(side_effect=TimeoutError("Timeout"))
         mock_connection_class.return_value = mock_conn
 
         device = DMP168(host="192.168.1.100")
@@ -616,7 +616,7 @@ class TestDMP168Device:
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_conn.send = AsyncMock()
         # Response without [SUCCESS] pattern, but with uptime format
-        mock_conn.receive = AsyncMock(return_value=b"Some text 0000:12:34:56 more text\r\nDMP168>")
+        mock_conn.read_until = AsyncMock(return_value="Some text 0000:12:34:56 more text\r\nDMP168>")
         mock_connection_class.return_value = mock_conn
 
         device = DMP168(host="192.168.1.100")
@@ -634,7 +634,7 @@ class TestDMP168Device:
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_conn.send = AsyncMock()
         # Response without [SUCCESS] pattern, but with temp format
-        mock_conn.receive = AsyncMock(return_value=b"Temperature is 42.5C degrees\r\nDMP168>")
+        mock_conn.read_until = AsyncMock(return_value="Temperature is 42.5C degrees\r\nDMP168>")
         mock_connection_class.return_value = mock_conn
 
         device = DMP168(host="192.168.1.100")
@@ -652,7 +652,7 @@ class TestDMP168Device:
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_conn.send = AsyncMock()
         # Response that doesn't match any pattern
-        mock_conn.receive = AsyncMock(return_value=b"  0000:12:34:56  \r\nDMP168>")
+        mock_conn.read_until = AsyncMock(return_value="  0000:12:34:56  \r\nDMP168>")
         mock_connection_class.return_value = mock_conn
 
         device = DMP168(host="192.168.1.100")
@@ -687,7 +687,7 @@ class TestDMP168Device:
         mock_conn.connect = AsyncMock()
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_conn.send = AsyncMock()
-        mock_conn.receive = AsyncMock(return_value=b"[SUCCESS]ok\r\n")
+        mock_conn.read_until = AsyncMock(return_value="[SUCCESS]ok\r\n")
         mock_connection_class.return_value = mock_conn
 
         device = DMP168(host="192.168.1.100")
@@ -706,7 +706,7 @@ class TestDMP168Device:
         mock_conn.connect = AsyncMock()
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_conn.send = AsyncMock()
-        mock_conn.receive = AsyncMock(return_value=b"[SUCCESS]ok\r\n")
+        mock_conn.read_until = AsyncMock(return_value="[SUCCESS]ok\r\n")
         mock_connection_class.return_value = mock_conn
 
         device = DMP168(host="192.168.1.100")

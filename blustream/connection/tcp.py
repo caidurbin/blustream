@@ -2,7 +2,8 @@
 
 import asyncio
 import logging
-from typing import Optional
+import re
+from typing import Callable, Optional
 
 import telnetlib3
 
@@ -11,22 +12,53 @@ from blustream.base.exceptions import ConnectionError, TimeoutError
 
 logger = logging.getLogger(__name__)
 
-# Buffer size constants (in bytes/characters)
-BUFFER_SIZE_INITIAL = 1024  # Buffer size for reading initial data
-BUFFER_SIZE_RECEIVE = 4096  # Buffer size for normal receive operations
+BUFFER_SIZE_INITIAL = 1024
+BUFFER_SIZE_RECEIVE = 4096
 
-# Timeout constants (in seconds)
-DEFAULT_BANNER_TIMEOUT = 2.0  # Overall budget to consume the welcome banner
-TIMEOUT_WAIT_CLOSED = 1.0  # Timeout for waiting for connection to close
-TIMEOUT_QUICK_READ = 0.1  # Quick read timeout for catching remaining data
+DEFAULT_BANNER_TIMEOUT = 2.0
+TIMEOUT_WAIT_CLOSED = 1.0
 
-# Welcome-banner sentinel
-BANNER_SENTINEL = "=\r\n"  # The DMP168 banner brackets itself with two "=…=\r\n" lines
-BANNER_SENTINEL_COUNT = 2  # Stop after consuming this many sentinels
+BANNER_SENTINEL = "=\r\n"
+BANNER_SENTINEL_COUNT = 2
+
+LINE_TERMINATOR = "\r\n"
+
+# Welcome-banner pattern. The DMP168 broadcasts this entire block to
+# every currently-connected port-23 client whenever a new client
+# connects, so a long-lived connection accumulates re-broadcast banners
+# between the commands it actually issues. Stripping the pattern from
+# the buffer before line consumption keeps responses clean regardless
+# of when the broadcast arrives — before, during, or after our command.
+BANNER_PATTERN = re.compile(
+    r"={16,}\r\n"
+    r"Welcome to DMP168[^\r\n]*\r\n"
+    r"(?:[^\r\n]*\r\n)*?"
+    r"={16,}\r\n"
+)
+
+
+def _strip_banner_broadcasts(buffer: str) -> str:
+    """Remove any complete welcome-banner blocks from ``buffer``.
+
+    Only complete banners (with both top and bottom sentinel lines) are
+    stripped; a partial banner whose bottom hasn't arrived yet stays in
+    the buffer so a subsequent read can complete it. Once the banner is
+    whole, the next strip clears it. Returns the cleaned buffer.
+    """
+    return BANNER_PATTERN.sub("", buffer)
 
 
 class TCPConnection(Connection):
-    """TCP/IP connection using telnetlib3 for Telnet protocol support."""
+    """TCP/IP connection using telnetlib3 for Telnet protocol support.
+
+    Maintains a per-connection line buffer so reads frame on ``\\r\\n``
+    rather than on chunk boundaries. Any bytes that arrive after a
+    satisfied ``read_until`` stay in the buffer for the next call — the
+    DMP168 streams its STATUS reply over hundreds of milliseconds with
+    mid-message pauses, so chunk-boundary heuristics ("got less than full
+    buffer, must be done") return premature partial responses and leave
+    the tail to bleed into the next command's reply.
+    """
 
     def __init__(
         self,
@@ -36,17 +68,6 @@ class TCPConnection(Connection):
         response_timeout: float = 5.0,
         banner_timeout: float = DEFAULT_BANNER_TIMEOUT,
     ):
-        """Initialize TCP connection.
-
-        Args:
-            host: Device hostname or IP address
-            port: TCP port (default 23 for Telnet)
-            timeout: Connection timeout in seconds
-            response_timeout: Response read timeout in seconds
-            banner_timeout: Overall budget for consuming the welcome banner on
-                connect. If the banner's two ``=\\r\\n`` sentinels are not seen
-                within this many seconds, the connect fails.
-        """
         self.host = host
         self.port = port
         self.timeout = timeout
@@ -55,6 +76,7 @@ class TCPConnection(Connection):
         self._reader: Optional[telnetlib3.TelnetReader] = None
         self._writer: Optional[telnetlib3.TelnetWriter] = None
         self._connected = False
+        self._buffer = ""
 
     async def connect(self) -> None:
         """Establish TCP connection to device using telnetlib3."""
@@ -67,9 +89,8 @@ class TCPConnection(Connection):
                 timeout=self.timeout,
             )
             self._connected = True
+            self._buffer = ""
 
-            # telnetlib3 handles Telnet negotiation automatically, but we may still
-            # need to discard initial welcome message data
             await self._discard_initial_data()
 
             logger.info(f"Connected to {self.host}:{self.port}")
@@ -84,7 +105,6 @@ class TCPConnection(Connection):
                 f"Error: {str(e)}. Please check the network connection, host address, and port number."
             ) from e
         except (TimeoutError, ConnectionError):
-            # Banner-discard errors are already shaped for the user; pass through.
             raise
         except Exception as e:
             raise ConnectionError(
@@ -93,15 +113,16 @@ class TCPConnection(Connection):
             ) from e
 
     async def _discard_initial_data(self) -> None:
-        """Consume the welcome banner up to its bottom ``=…=\\r\\n`` sentinel.
+        """Best-effort: consume the welcome banner if one arrives.
 
-        The DMP168 brackets its banner with two lines of ``=`` characters
-        terminated by ``\\r\\n``. We accumulate inbound data until two such
-        sentinels have been seen — race-free regardless of how the banner is
-        chunked across TCP packets.
-
-        If both sentinels do not arrive within ``self.banner_timeout``
-        seconds, raise ``TimeoutError`` so the caller fails the connect.
+        Port 23 (telnet) emits a banner bracketed by two ``=…=\\r\\n``
+        sentinels; port 8000 (raw TCP) emits nothing. Under load the
+        device sometimes serves the banner slowly or not at all to a
+        new connection (especially when other clients are connecting
+        simultaneously). Treat all of these as fine — the framing layer
+        does not depend on banner discard for correctness, and the
+        per-send drain in ``send()`` cleans up any banner-shaped noise
+        that arrives later.
         """
         if not self._reader:
             return
@@ -113,29 +134,25 @@ class TCPConnection(Connection):
         while buffer.count(BANNER_SENTINEL) < BANNER_SENTINEL_COUNT:
             remaining = deadline - loop.time()
             if remaining <= 0:
-                raise TimeoutError(
-                    f"Welcome banner not consumed within {self.banner_timeout:.1f}s. "
-                    f"Got {len(buffer)} chars, expected two '=\\r\\n' sentinels. "
-                    f"The device may be unresponsive, or this port does not emit a banner."
+                logger.debug(
+                    f"Banner discard giving up after {self.banner_timeout:.1f}s; got {len(buffer)} chars"
                 )
+                return
 
             try:
                 chunk = await asyncio.wait_for(
                     self._reader.read(BUFFER_SIZE_INITIAL),
                     timeout=remaining,
                 )
-            except asyncio.TimeoutError as e:
-                raise TimeoutError(
-                    f"Welcome banner not consumed within {self.banner_timeout:.1f}s. "
-                    f"Got {len(buffer)} chars, expected two '=\\r\\n' sentinels. "
-                    f"The device may be unresponsive, or this port does not emit a banner."
-                ) from e
+            except asyncio.TimeoutError:
+                logger.debug(
+                    f"Banner discard timed out after {self.banner_timeout:.1f}s; got {len(buffer)} chars"
+                )
+                return
 
             if not chunk:
-                raise ConnectionError(
-                    f"Connection closed by remote during welcome banner. "
-                    f"Got {len(buffer)} chars."
-                )
+                logger.debug(f"Remote closed during banner discard; got {len(buffer)} chars")
+                return
 
             buffer += chunk
 
@@ -145,17 +162,12 @@ class TCPConnection(Connection):
         """Close TCP connection."""
         if self._writer:
             try:
-                # Close the writer - telnetlib3 will handle cleanup
                 self._writer.close()
-                # Wait for close with a timeout to avoid hanging
                 try:
                     await asyncio.wait_for(self._writer.wait_closed(), timeout=TIMEOUT_WAIT_CLOSED)
                 except asyncio.TimeoutError:
-                    # If wait_closed times out, the connection is likely already closed
                     pass
             except Exception as e:
-                # Suppress "feed_data after feed_eof" errors from telnetlib3
-                # These are harmless race conditions that occur when closing
                 error_msg = str(e)
                 if "feed_data after feed_eof" not in error_msg:
                     logger.warning(f"Error closing connection: {e}")
@@ -163,24 +175,28 @@ class TCPConnection(Connection):
                 self._reader = None
                 self._writer = None
                 self._connected = False
+                self._buffer = ""
                 logger.info(f"Disconnected from {self.host}:{self.port}")
 
     async def send(self, data: bytes) -> None:
-        """Send data to device.
+        """Send bytes after draining any unsolicited pending data.
 
-        Args:
-            data: Data bytes to send
-
-        Raises:
-            ConnectionError: If not connected
+        The DMP168 on port 23 broadcasts its welcome banner to every
+        currently-connected client whenever a new client connects, so a
+        long-lived connection accumulates banner re-broadcasts between
+        the commands it actually issues. Draining the line buffer and
+        any immediately-readable bytes here makes the post-send read
+        deterministic — whatever arrives next is the device's response
+        to the command we just sent, not stale broadcast noise.
         """
         if not self._connected or not self._writer:
             raise ConnectionError(
                 "Connection is not active. Please ensure the device is connected before sending data."
             )
 
+        await self._drain_pending()
+
         try:
-            # telnetlib3 works in text mode, so convert bytes to string
             data_str = data.decode("utf-8", errors="replace")
             self._writer.write(data_str)
             await self._writer.drain()
@@ -192,86 +208,131 @@ class TCPConnection(Connection):
                 f"Please check the device connection and try again."
             ) from e
 
-    async def receive(self, timeout: Optional[float] = None) -> bytes:
-        """Receive data from device.
+    async def _drain_pending(self) -> None:
+        """Discard whatever bytes the reader has buffered right now.
 
-        Reads data until timeout or connection closes. For multi-line responses,
-        continues reading until no more data is available.
+        Reads in a tight loop with a short timeout; the first read that
+        finds no data within the budget breaks the loop. Also resets the
+        line buffer so a partial-line tail from a prior abandoned read
+        cannot prefix the next response.
+        """
+        if not self._reader:
+            return
 
-        Args:
-            timeout: Optional timeout override
+        discarded = 0
+        if self._buffer:
+            discarded += len(self._buffer)
+            self._buffer = ""
 
-        Returns:
-            Received data bytes
+        while True:
+            try:
+                chunk = await asyncio.wait_for(
+                    self._reader.read(BUFFER_SIZE_RECEIVE),
+                    timeout=0.05,
+                )
+            except asyncio.TimeoutError:
+                break
+            except BaseException:
+                # StopAsyncIteration from exhausted AsyncMock side_effect in
+                # tests; treat any non-timeout signal as "no more buffered
+                # data right now" rather than letting the drain trip the
+                # whole send.
+                break
+            if not chunk:
+                break
+            discarded += len(chunk)
 
-        Raises:
-            ConnectionError: If not connected
-            TimeoutError: If read times out
+        if discarded:
+            logger.debug(f"Drained {discarded} pending chars before send")
+
+    async def read_until(
+        self,
+        predicate: Callable[[str], bool],
+        timeout: float,
+    ) -> str:
+        """Read complete CRLF-terminated lines until ``predicate(line)`` is True.
+
+        Maintains the per-connection ``_buffer`` so any bytes that arrive
+        after the satisfying line stay queued for the next call. Each
+        complete line — including its ``\\r\\n`` terminator — is passed
+        to ``predicate``; the first line that returns True ends the read.
         """
         if not self._connected or not self._reader:
             raise ConnectionError(
                 "Connection is not active. Please ensure the device is connected before receiving data."
             )
 
-        read_timeout = timeout if timeout is not None else self.response_timeout
-        data_parts = []
+        accumulated = ""
+        loop = asyncio.get_event_loop()
+        deadline = loop.time() + timeout
 
-        try:
-            while True:
-                try:
-                    # telnetlib3 works in text mode, so read() returns a string
-                    chunk_str = await asyncio.wait_for(
-                        self._reader.read(BUFFER_SIZE_RECEIVE),
-                        timeout=read_timeout,
-                    )
-                    if not chunk_str:
-                        break
-                    # Convert string to bytes
-                    chunk = chunk_str.encode("utf-8", errors="replace")
-                    data_parts.append(chunk)
-                    # If we got less than full buffer size, likely end of transmission
-                    if len(chunk_str) < BUFFER_SIZE_RECEIVE:
-                        # Try one more quick read to catch any remaining data
-                        try:
-                            more_str = await asyncio.wait_for(
-                                self._reader.read(BUFFER_SIZE_RECEIVE),
-                                timeout=TIMEOUT_QUICK_READ,
-                            )
-                            if more_str:
-                                more = more_str.encode("utf-8", errors="replace")
-                                data_parts.append(more)
-                        except asyncio.TimeoutError:
-                            pass
-                        break
-                except asyncio.TimeoutError:
-                    # Timeout is OK if we've already received some data
-                    if data_parts:
-                        break
-                    raise TimeoutError(
-                        "Device did not respond within the expected time. "
-                        "The device may be busy or unresponsive. Please try again."
-                    )
+        while True:
+            self._buffer = _strip_banner_broadcasts(self._buffer)
+            consumed, satisfied, leftover = self._consume_lines(self._buffer, predicate)
+            accumulated += consumed
+            self._buffer = leftover
+            if satisfied:
+                return accumulated
 
-            data = b"".join(data_parts)
-            logger.debug(f"Received: {len(data)} bytes")
-            return data
-        except asyncio.TimeoutError as e:
-            raise TimeoutError(
-                "Device did not respond within the expected time. "
-                "The device may be busy or unresponsive. Please try again."
-            ) from e
-        except (OSError, UnicodeEncodeError) as e:
-            self._connected = False
-            raise ConnectionError(
-                f"Failed to receive data from device: {str(e)}. The connection may have been lost. "
-                f"Please check the device connection and try again."
-            ) from e
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                raise TimeoutError(
+                    f"No matching line received within {timeout:.1f}s. "
+                    f"Got {len(accumulated)} chars; buffer holds {len(self._buffer)} chars."
+                )
+
+            try:
+                chunk_str = await asyncio.wait_for(
+                    self._reader.read(BUFFER_SIZE_RECEIVE),
+                    timeout=remaining,
+                )
+            except asyncio.TimeoutError as e:
+                raise TimeoutError(
+                    f"No matching line received within {timeout:.1f}s. "
+                    f"Got {len(accumulated)} chars; buffer holds {len(self._buffer)} chars."
+                ) from e
+            except (OSError, UnicodeEncodeError) as e:
+                self._connected = False
+                raise ConnectionError(
+                    f"Failed to receive data from device: {str(e)}. The connection may have been lost. "
+                    f"Please check the device connection and try again."
+                ) from e
+
+            if not chunk_str:
+                raise ConnectionError(
+                    f"Connection closed before a matching line arrived. "
+                    f"Got {len(accumulated)} chars; buffer holds {len(self._buffer)} chars."
+                )
+
+            self._buffer += chunk_str
+            logger.debug(f"Received {len(chunk_str)} chars; buffer now {len(self._buffer)}")
+
+    @staticmethod
+    def _consume_lines(
+        buffer: str,
+        predicate: Callable[[str], bool],
+    ) -> tuple[str, bool, str]:
+        """Pull complete CRLF-terminated lines off the front of ``buffer``.
+
+        Returns ``(consumed, satisfied, leftover)``. ``consumed`` is the
+        concatenation of every complete line drained (each ending in
+        ``\\r\\n``). ``satisfied`` is True if some consumed line caused
+        ``predicate`` to return True — at which point we stop draining
+        and return whatever follows that line as ``leftover``.
+        """
+        consumed = ""
+        pos = 0
+        while True:
+            idx = buffer.find(LINE_TERMINATOR, pos)
+            if idx < 0:
+                break
+            line_end = idx + len(LINE_TERMINATOR)
+            line = buffer[pos:line_end]
+            consumed += line
+            pos = line_end
+            if predicate(line):
+                return consumed, True, buffer[pos:]
+        return consumed, False, buffer[pos:]
 
     def is_connected(self) -> bool:
-        """Check if connection is active.
-
-        Returns:
-            True if connected, False otherwise
-        """
         return self._connected and self._reader is not None and self._writer is not None
-

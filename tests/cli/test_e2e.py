@@ -1,5 +1,6 @@
 """End-to-end CLI tests via MockConnection-backed device factory."""
 
+from typing import Callable
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,12 +13,20 @@ from blustream.devices.dmp168.device import DMP168
 
 
 class MockConnection(Connection):
-    """Mock connection that records sends and returns canned responses."""
+    """Mock connection that records sends and replays a canned reply.
+
+    Each call to ``read_until`` plays the configured response back through
+    the predicate exactly as the real TCPConnection would: lines are fed
+    in order until one satisfies the predicate, at which point the
+    accumulated text is returned. This means STATUS-shaped fixtures must
+    actually end with the second ``=``-only line that the STATUS
+    terminator expects.
+    """
 
     def __init__(self):
         self._connected = False
         self._send_calls = []
-        self._response = b"OK\r\nDMP168>"
+        self._response = "[SUCCESS]ok\r\n"
 
     async def connect(self) -> None:
         self._connected = True
@@ -30,37 +39,60 @@ class MockConnection(Connection):
             raise ConnectionError("Not connected")
         self._send_calls.append(data)
 
-    async def receive(self, timeout: float = 5.0) -> bytes:
+    async def read_until(self, predicate: Callable[[str], bool], timeout: float) -> str:
         if not self._connected:
             raise ConnectionError("Not connected")
-        return self._response
+        accumulated = ""
+        for line in _split_keep_terminator(self._response):
+            accumulated += line
+            if predicate(line):
+                return accumulated
+        # Replay exhausted without satisfying the predicate.
+        raise ConnectionError("mock response did not contain a satisfying line")
 
     def is_connected(self) -> bool:
         return self._connected
 
 
+def _split_keep_terminator(text: str) -> list[str]:
+    """Split on ``\\r\\n`` keeping each terminator attached to its line."""
+    lines: list[str] = []
+    pos = 0
+    while True:
+        idx = text.find("\r\n", pos)
+        if idx < 0:
+            if pos < len(text):
+                lines.append(text[pos:])
+            return lines
+        lines.append(text[pos : idx + 2])
+        pos = idx + 2
+
+
+# Real STATUS shape: opener ===, body, footer ===. Two =-only lines total —
+# the STATUS terminator fires on the second.
 STATUS_RESPONSE = (
-    b"====================================\r\n"
-    b"System Status\r\n"
-    b"====================================\r\n"
-    b"Power         Baud          Level Unit      Auto Standby Time   DSP Usage(%)  Fade          Temperature   Uptime\r\n"
-    b"On            57600         %               0 minute(s)         36.79         Off           47.2C         0000:08:57:01\r\n"
-    b"====================================\r\n"
-    b"FW Version: 1.0.0\r\n"
-    b"====================================\r\n"
-    b"Input Settings Status\r\n"
-    b"====================================\r\n"
-    b"Port          Lock          Gain L        Gain R        Mute L        Mute R\r\n"
-    b"In1           Off           50            50            Off           Off\r\n"
+    "================================================================\r\n"
+    "                      DMP168 Status\r\n"
+    "      FW Version:MCU_Main V1.0.0/Web_GUI V1.0.0\r\n"
+    "\r\n"
+    "Power         Baud    Level Unit    Auto Standby Time(mins)    DSP(%)    Fade    Temp(C)   Uptime(Day:Hour:Min:Sec)\r\n"
+    "On            57600   %             0                          36.79     Off     47.2C     0000:08:57:01\r\n"
+    "\r\n"
+    "Matrix Config Status\r\n"
+    "Output        FromIn\r\n"
+    "Out1 L        In1 L\r\n"
+    "Out1 R        In1 R\r\n"
+    "\r\n"
+    "Input Settings Status\r\n"
+    "Port    Lock   %       Mute\r\n"
+    "        LR   L   R    L   R\r\n"
+    "In1     Off  50  50   Off Off\r\n"
+    "================================================================\r\n"
 )
 
 
-def _factory(response=b"[SUCCESS]ok\r\n"):
-    """Create a MockConnection-backed DMP168 factory.
-
-    Default response carries a ``[SUCCESS]\\r\\n`` terminator so simple
-    commands satisfy the marker-based response reader.
-    """
+def _factory(response: str = "[SUCCESS]ok\r\n"):
+    """Create a MockConnection-backed DMP168 factory."""
     conn = MockConnection()
     conn._response = response
 

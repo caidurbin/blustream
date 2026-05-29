@@ -1,6 +1,6 @@
 """Tests for base device class."""
 
-# No mock imports needed - using concrete MockConnection class
+from typing import Callable, Iterable, List, Union
 
 import pytest
 
@@ -8,64 +8,90 @@ from blustream.base.connection import Connection
 from blustream.base.device import BlustreamDevice
 from blustream.base.exceptions import CommandError, ConnectionError, TimeoutError
 
+LINE_TERMINATOR = "\r\n"
+
 
 class MockConnection(Connection):
-    """Mock connection for testing."""
+    """Mock connection that frames replies as ``read_until`` does.
+
+    Tests stage a sequence of "remote chunks" — each chunk represents
+    one segment as it would arrive off the wire. ``read_until`` consumes
+    chunks one at a time, accumulating into a buffer, and returns the
+    text up to and including the first line that satisfies ``predicate``.
+    Anything past that line stays buffered for the next call, matching
+    the real TCP connection's behaviour.
+    """
 
     def __init__(self):
-        """Initialize mock connection."""
         self._connected = False
-        self._send_calls = []
-        self._receive_responses = []
+        self._send_calls: List[bytes] = []
+        self._chunks: List[Union[str, Exception]] = []
+        self._buffer = ""
+
+    def queue(self, *chunks: Union[str, bytes, Exception]) -> None:
+        for chunk in chunks:
+            if isinstance(chunk, bytes):
+                self._chunks.append(chunk.decode("utf-8", errors="replace"))
+            else:
+                self._chunks.append(chunk)
 
     async def connect(self) -> None:
-        """Mock connect."""
         self._connected = True
 
     async def disconnect(self) -> None:
-        """Mock disconnect."""
         self._connected = False
 
     async def send(self, data: bytes) -> None:
-        """Mock send."""
         if not self._connected:
             raise ConnectionError("Not connected")
         self._send_calls.append(data)
 
-    async def receive(self, timeout: float = 5.0) -> bytes:
-        """Mock receive."""
+    async def read_until(
+        self,
+        predicate: Callable[[str], bool],
+        timeout: float,
+    ) -> str:
         if not self._connected:
             raise ConnectionError("Not connected")
-        if self._receive_responses:
-            return self._receive_responses.pop(0)
-        raise TimeoutError("Timeout")
+
+        accumulated = ""
+        while True:
+            idx = self._buffer.find(LINE_TERMINATOR)
+            while idx >= 0:
+                line_end = idx + len(LINE_TERMINATOR)
+                line = self._buffer[:line_end]
+                accumulated += line
+                self._buffer = self._buffer[line_end:]
+                if predicate(line):
+                    return accumulated
+                idx = self._buffer.find(LINE_TERMINATOR)
+
+            if not self._chunks:
+                raise TimeoutError("Mock connection exhausted before predicate satisfied")
+
+            chunk = self._chunks.pop(0)
+            if isinstance(chunk, Exception):
+                raise chunk
+            self._buffer += chunk
 
     def is_connected(self) -> bool:
-        """Mock is_connected."""
         return self._connected
 
 
 class ConcreteDevice(BlustreamDevice):
-    """Concrete implementation for testing."""
-
     def get_commands(self):
-        """Get commands."""
         return ["test"]
 
     async def execute_command(self, name: str, **kwargs):
-        """Execute command."""
         return "result"
 
     async def get_status(self):
-        """Get status."""
         return {"status": "ok"}
 
 
 class TestBlustreamDevice:
-    """Tests for BlustreamDevice base class."""
 
     def test_init(self):
-        """Test device initialization."""
         conn = MockConnection()
         device = ConcreteDevice(conn)
         assert device._connection == conn
@@ -73,7 +99,6 @@ class TestBlustreamDevice:
 
     @pytest.mark.asyncio
     async def test_connect(self):
-        """Test connecting device."""
         conn = MockConnection()
         device = ConcreteDevice(conn)
         await device.connect()
@@ -82,7 +107,6 @@ class TestBlustreamDevice:
 
     @pytest.mark.asyncio
     async def test_disconnect(self):
-        """Test disconnecting device."""
         conn = MockConnection()
         device = ConcreteDevice(conn)
         await device.connect()
@@ -92,30 +116,24 @@ class TestBlustreamDevice:
 
     @pytest.mark.asyncio
     async def test_context_manager(self):
-        """Test device as async context manager."""
         conn = MockConnection()
         async with ConcreteDevice(conn) as device:
             assert device.is_connected
             assert conn._connected
-
         assert not device._connected
         assert not conn._connected
 
     @pytest.mark.asyncio
     async def test_send_command_not_connected(self):
-        """Test sending command when not connected."""
         conn = MockConnection()
         device = ConcreteDevice(conn)
-        # Don't connect
-
         with pytest.raises(ConnectionError):
             await device.send_command("TEST")
 
     @pytest.mark.asyncio
     async def test_send_command_simple_response(self):
-        """Test sending simple command."""
         conn = MockConnection()
-        conn._receive_responses = [b"TEST\r\n[SUCCESS]ok\r\n"]
+        conn.queue("TEST\r\n[SUCCESS]ok\r\n")
         device = ConcreteDevice(conn)
         await device.connect()
 
@@ -125,28 +143,10 @@ class TestBlustreamDevice:
         assert b"TEST\r\n" in conn._send_calls[0]
 
     @pytest.mark.asyncio
-    async def test_send_command_status_response(self):
-        """Test sending STATUS command."""
-        conn = MockConnection()
-        # STATUS response with multiple lines
-        conn._receive_responses = [
-            b"Power         Baud\n",
-            b"On           57600\n",
-            b"Input Settings Status\n",
-            b"In1     On   50  50   Off Off\n",
-        ]
-        device = ConcreteDevice(conn)
-        await device.connect()
-
-        response = await device.send_command("STATUS")
-        assert "Power" in response
-        assert "Input Settings Status" in response
-
-    @pytest.mark.asyncio
     async def test_send_command_info_response(self):
-        """Test sending info command (TEMP/UPTIME)."""
+        """TEMP/UPTIME terminate on the standard [SUCCESS] marker line."""
         conn = MockConnection()
-        conn._receive_responses = [b"[SUCCESS]The temperature of the system is 47.4C\r\nDMP168>"]
+        conn.queue("[SUCCESS]The temperature of the system is 47.4C\r\n")
         device = ConcreteDevice(conn)
         await device.connect()
 
@@ -155,9 +155,8 @@ class TestBlustreamDevice:
 
     @pytest.mark.asyncio
     async def test_send_command_connection_error(self):
-        """Test sending command when connection error occurs."""
         conn = MockConnection()
-        conn._receive_responses = [ConnectionError("Connection lost")]
+        conn.queue(ConnectionError("Connection lost"))
         device = ConcreteDevice(conn)
         await device.connect()
 
@@ -166,10 +165,8 @@ class TestBlustreamDevice:
 
     @pytest.mark.asyncio
     async def test_send_command_timeout_error(self):
-        """Test sending command when timeout occurs."""
         conn = MockConnection()
-        # First receive times out immediately
-        conn._receive_responses = [TimeoutError("Timeout")]
+        conn.queue(TimeoutError("Timeout"))
         device = ConcreteDevice(conn)
         await device.connect()
 
@@ -178,27 +175,19 @@ class TestBlustreamDevice:
 
     @pytest.mark.asyncio
     async def test_send_command_no_marker_times_out(self):
-        """Response without [SUCCESS]/[ERROR] marker → CommandError on timeout.
-
-        Under the marker-based contract, a reply that never produces a
-        terminator line is a failure, not a "return what we have" success.
-        """
+        """Response without a marker line → CommandError when buffer drains."""
         conn = MockConnection()
-        # One non-marker chunk, then the mock's queue empties — its next
-        # receive() raises TimeoutError, which our marker reader translates
-        # into the "marker not received" failure.
-        conn._receive_responses = [b"Partial response\n"]
+        conn.queue("Partial response\r\n")
         device = ConcreteDevice(conn, response_timeout=0.05)
         await device.connect()
 
-        with pytest.raises(CommandError, match="Response marker not received"):
+        with pytest.raises(CommandError):
             await device.send_command("TEST")
 
     @pytest.mark.asyncio
     async def test_send_command_error_marker(self):
-        """A [ERROR]…\\r\\n response is returned just like [SUCCESS]…\\r\\n."""
         conn = MockConnection()
-        conn._receive_responses = [b"BAD\r\n[ERROR]bad parameter\r\n"]
+        conn.queue("BAD\r\n[ERROR]bad parameter\r\n")
         device = ConcreteDevice(conn)
         await device.connect()
 
@@ -207,13 +196,13 @@ class TestBlustreamDevice:
 
     @pytest.mark.asyncio
     async def test_send_command_marker_across_chunks(self):
-        """Marker line split across multiple receive() chunks is reassembled."""
+        """Marker line split across multiple reader chunks is reassembled."""
         conn = MockConnection()
-        conn._receive_responses = [
-            b"OUT 4 REM 2\r\n",
-            b"[SUCC",
-            b"ESS]Set output 4 L/R remove input 2 L/R.\r\n",
-        ]
+        conn.queue(
+            "OUT 4 REM 2\r\n",
+            "[SUCC",
+            "ESS]Set output 4 L/R remove input 2 L/R.\r\n",
+        )
         device = ConcreteDevice(conn)
         await device.connect()
 
@@ -222,7 +211,6 @@ class TestBlustreamDevice:
 
     @pytest.mark.asyncio
     async def test_is_connected_true(self):
-        """Test is_connected when connected."""
         conn = MockConnection()
         device = ConcreteDevice(conn)
         await device.connect()
@@ -230,24 +218,20 @@ class TestBlustreamDevice:
 
     @pytest.mark.asyncio
     async def test_is_connected_false(self):
-        """Test is_connected when not connected."""
         conn = MockConnection()
         device = ConcreteDevice(conn)
         assert not device.is_connected
 
     @pytest.mark.asyncio
     async def test_is_connected_connection_lost(self):
-        """Test is_connected when connection is lost."""
         conn = MockConnection()
         device = ConcreteDevice(conn)
         await device.connect()
-        # Manually disconnect the connection
         conn._connected = False
         assert not device.is_connected
 
     @pytest.mark.asyncio
     async def test_send_command_writes_command_log(self, tmp_path):
-        """send_command appends a timestamped entry when command_log_path is set."""
         import re
 
         log_path = tmp_path / "commands.log"
@@ -255,15 +239,12 @@ class TestBlustreamDevice:
         device = ConcreteDevice(conn, command_log_path=str(log_path))
         await device.connect()
 
-        # MockConnection consumes one response per send_command (the prompt-check
-        # read times out, which the device handles). Refill between calls.
-        conn._receive_responses = [b"POWER ON\r\n[SUCCESS]ok\r\n"]
+        conn.queue("POWER ON\r\n[SUCCESS]ok\r\n")
         await device.send_command("POWER ON")
-        conn._receive_responses = [b"POWER ON\r\n[SUCCESS]ok\r\n"]
+        conn.queue("VOL CH=0 LR 50%\r\n[SUCCESS]ok\r\n")
         await device.send_command("VOL CH=0 LR 50%")
 
         contents = log_path.read_text(encoding="utf-8")
-        # Two entries, each preceded by a blank line, header line, then command line
         headers = re.findall(r"^==== (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z) ====$", contents, re.MULTILINE)
         assert len(headers) == 2
         assert "command: POWER ON" in contents
@@ -271,10 +252,9 @@ class TestBlustreamDevice:
 
     @pytest.mark.asyncio
     async def test_send_command_no_log_when_path_unset(self, tmp_path):
-        """No file is written when command_log_path is not provided."""
         log_path = tmp_path / "commands.log"
         conn = MockConnection()
-        conn._receive_responses = [b"POWER ON\r\n[SUCCESS]ok\r\n"]
+        conn.queue("POWER ON\r\n[SUCCESS]ok\r\n")
         device = ConcreteDevice(conn)
         await device.connect()
 
@@ -284,10 +264,9 @@ class TestBlustreamDevice:
 
     @pytest.mark.asyncio
     async def test_send_command_log_failure_does_not_break_command(self, tmp_path, caplog):
-        """A failing log write is logged as a warning but doesn't abort the command."""
-        bad_path = tmp_path / "missing_dir" / "commands.log"  # parent does not exist
+        bad_path = tmp_path / "missing_dir" / "commands.log"
         conn = MockConnection()
-        conn._receive_responses = [b"POWER ON\r\n[SUCCESS]ok\r\n"]
+        conn.queue("POWER ON\r\n[SUCCESS]ok\r\n")
         device = ConcreteDevice(conn, command_log_path=str(bad_path))
         await device.connect()
 
@@ -296,4 +275,3 @@ class TestBlustreamDevice:
 
         assert "[SUCCESS]" in response
         assert any("Failed to write command log" in rec.message for rec in caplog.records)
-

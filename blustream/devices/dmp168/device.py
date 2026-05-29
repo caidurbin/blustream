@@ -2,7 +2,7 @@
 
 import logging
 import re
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from blustream.base.commands import Command, CommandRegistry
 from blustream.base.connection import Connection
@@ -16,6 +16,39 @@ from blustream.devices.dmp168.models import PresetStatus, SystemStatus
 from blustream.devices.dmp168.parser import DMP168Parser
 
 logger = logging.getLogger(__name__)
+
+STATUS_RESPONSE_TIMEOUT = 5.0
+STATUS_FOOTER_MIN_WIDTH = 16
+
+
+def _status_terminator() -> Callable[[str], bool]:
+    """Stateful predicate that fires on the STATUS footer ``=``-only line.
+
+    The footer is unambiguous only AFTER the system header (the
+    ``Power … Baud …`` line) has come through — that header appears
+    exactly once in a STATUS reply and never in any other server-side
+    stream the device emits (welcome banner, command echo, error
+    response). Counting raw ``=`` lines was the previous heuristic and
+    misfired whenever the welcome banner — itself bracketed by two
+    ``=``-only sentinels — leaked into the response window via the
+    device's broadcast-on-peer-connect quirk on port 23.
+    """
+    saw_header = False
+
+    def predicate(line: str) -> bool:
+        nonlocal saw_header
+        if not saw_header:
+            if "Power" in line and "Baud" in line:
+                saw_header = True
+            return False
+        stripped = line.rstrip("\r\n")
+        return (
+            bool(stripped)
+            and len(stripped) >= STATUS_FOOTER_MIN_WIDTH
+            and set(stripped) == {"="}
+        )
+
+    return predicate
 
 
 class DMP168(BlustreamDevice):
@@ -114,13 +147,20 @@ class DMP168(BlustreamDevice):
                 f"An unexpected error occurred while building command '{name}': {str(e)}. Please try again."
             ) from e
 
-        # Send command and get response
+        # Send command and get response. STATUS streams a long multi-section
+        # reply ending in a "===" footer line; everything else terminates on a
+        # single [SUCCESS]/[ERROR] marker line, which is the default.
+        if name == "status":
+            response = await self.send_command(
+                cmd_str,
+                terminator=_status_terminator(),
+                timeout=STATUS_RESPONSE_TIMEOUT,
+            )
+            return self._parser.parse_status(response)
+
         response = await self.send_command(cmd_str)
 
-        # Parse response based on command type
-        if name == "status":
-            return self._parser.parse_status(response)
-        elif name == "preset_status":
+        if name == "preset_status":
             # Pass preset number to parser if available
             preset_number = kwargs.get("preset")
             return self._parser.parse_preset_status(response, preset_number=preset_number)
