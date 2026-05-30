@@ -37,6 +37,14 @@ codegen = [
     "Jinja2>=3.0",
     "PyYAML>=6.0",
 ]
+c4z = [
+    # Runtime dep of snap-one/drivers-driverpackager (dp3/), which imports
+    # lxml at module scope. Needed only to build the Control4 .c4z driver
+    # package locally or to run the TestC4zBuildEndToEnd end-to-end tests;
+    # the blustream library itself never imports lxml. Mirrors the ad-hoc
+    # `pip install lxml` in c4z-build.yml / release-c4z.yml.
+    "lxml>=5.0",
+]
 
 [project.scripts]
 blustream = "blustream.cli.main:main"
