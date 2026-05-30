@@ -15,6 +15,15 @@
       "discovery_confirm": {
         "title": "Blustream DMP168 discovered",
         "description": "Found Blustream DMP168 at {host} (MAC {mac}). Add it?"
+      },
+      "reconfigure": {
+        "title": "Reconfigure Blustream device",
+        "description": "Update the host, port, or MAC address of your Blustream DMP168. Leaving the MAC field empty keeps the existing identity.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "mac": "MAC address (optional)"
+        }
       }
     },
     "error": {
@@ -23,7 +32,8 @@
       "unknown": "Unexpected error"
     },
     "abort": {
-      "already_configured": "Device is already configured"
+      "already_configured": "Device is already configured",
+      "reconfigure_successful": "Reconfiguration was successful"
     }
   },
   "entity": {

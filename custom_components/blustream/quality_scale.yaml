@@ -143,9 +143,13 @@ rules:
     comment: |
       Standard device-class icon for SensorDeviceClass.UPTIME suffices.
   reconfiguration-flow:
-    status: todo
+    status: done
     comment: |
-      Reconfigure flow lands with the IP/MAC change slice.
+      async_step_reconfigure edits host, port, and MAC in place,
+      pre-filling the form with the entry's current values; entity
+      history is preserved (entry_id and unique_id stay unless the
+      MAC actually changes). Well-formedness-only invalid_mac
+      validation matches async_step_user.
   repair-issues:
     status: todo
     comment: |
