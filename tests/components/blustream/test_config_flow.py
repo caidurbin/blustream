@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -40,9 +41,7 @@ def _patched_device(uptime_side_effect=None) -> MagicMock:
     device.connect = AsyncMock()
     device.disconnect = AsyncMock()
     device.get_uptime = AsyncMock(
-        return_value=None if uptime_side_effect else __import__(
-            "datetime"
-        ).timedelta(seconds=120),
+        return_value=timedelta(seconds=120),
         side_effect=uptime_side_effect,
     )
     return device
