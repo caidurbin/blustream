@@ -48,9 +48,9 @@ async def async_get_config_entry_diagnostics(
     )
 
     update_interval = coordinator.update_interval
-    last_data = coordinator.data
+    last_uptime = coordinator.data
 
-    data: dict[str, Any] = {
+    return {
         "config_entry": async_redact_data(entry.as_dict(), TO_REDACT_ENTRY),
         "device": (
             async_redact_data(hass_device.dict_repr, TO_REDACT_DEVICE)
@@ -61,7 +61,7 @@ async def async_get_config_entry_diagnostics(
             "coordinator": {
                 "last_update_success": coordinator.last_update_success,
                 "last_uptime_seconds": (
-                    last_data.total_seconds() if last_data is not None else None
+                    last_uptime.total_seconds() if last_uptime is not None else None
                 ),
                 "update_interval_seconds": (
                     update_interval.total_seconds()
@@ -75,4 +75,3 @@ async def async_get_config_entry_diagnostics(
             "library_version": BLUSTREAM_LIBRARY_VERSION,
         },
     }
-    return data
