@@ -1,0 +1,47 @@
+name: Actionlint
+
+# Lints the GitHub Actions workflow files themselves: schema validation,
+# ${{ }} expression type-checks, and shellcheck over `run:` blocks (the
+# ubuntu-latest runner ships shellcheck, so those checks are active). Catches
+# mistakes a plain YAML parse can't — invalid keys, bad expressions, unquoted
+# shell vars. Triggers only when something under .github/workflows/ changes.
+#
+# The matching local gate is documented in AGENTS.md ("Editing GitHub Actions
+# workflows"): contributors run `actionlint` before committing workflow edits,
+# and this job is the CI backstop for the same check.
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+    paths:
+      - ".github/workflows/**"
+  push:
+    branches:
+      - main
+      - master
+      - develop
+    paths:
+      - ".github/workflows/**"
+
+permissions:
+  # Read-only: the job only checks out the repo and runs a linter.
+  contents: read
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run actionlint
+        # Install a pinned actionlint, fetching its installer from the matching
+        # release tag (not `main`) so the run is reproducible and not exposed to
+        # a moving script. Keep VERSION in sync with the version contributors
+        # run locally; bump it deliberately.
+        run: |
+          VERSION=1.7.12
+          bash <(curl -fsSL "https://raw.githubusercontent.com/rhysd/actionlint/v${VERSION}/scripts/download-actionlint.bash") "$VERSION"
+          ./actionlint -color

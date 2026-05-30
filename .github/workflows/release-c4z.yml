@@ -38,10 +38,11 @@ jobs:
       - name: Install drivers-driverpackager runtime deps
         # snap-one/drivers-driverpackager (dp3/) imports lxml at module
         # scope; mirrors the install step in c4z-build.yml so the two
-        # workflows do not drift on toolchain.
+        # workflows do not drift on toolchain. Installed via the `c4z`
+        # extra so the lxml version is single-sourced in pyproject.toml.
         run: |
           python -m pip install --upgrade pip
-          pip install lxml
+          pip install '.[c4z]'
 
       - name: Build release .c4z
         # `release` (clean, no -ae) is the flavor that ships to users.

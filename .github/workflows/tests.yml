@@ -72,7 +72,9 @@ jobs:
 
     - name: Coverage Summary
       run: |
-        echo "## Coverage Summary (${{ matrix.python-version }})" >> $GITHUB_STEP_SUMMARY
-        echo '```' >> $GITHUB_STEP_SUMMARY
-        uv run pytest --cov=blustream --cov-report=term --quiet 2>&1 | tail -20 >> $GITHUB_STEP_SUMMARY
-        echo '```' >> $GITHUB_STEP_SUMMARY
+        {
+          echo "## Coverage Summary (${{ matrix.python-version }})"
+          echo '```'
+          uv run pytest --cov=blustream --cov-report=term --quiet 2>&1 | tail -20
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"

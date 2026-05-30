@@ -9,6 +9,8 @@ subprocess call is replaced with a fake recorder.
 
 from __future__ import annotations
 
+import subprocess
+import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -407,9 +409,37 @@ def test_flavors_constant_is_dev_and_release():
     assert FLAVORS == ("dev", "release")
 
 
+_DRIVERPACKAGER_PATH = (
+    REPO_ROOT / ".cache" / "drivers-driverpackager" / "dp3" / "driverpackager.py"
+)
+
+
+def _lxml_available(python_executable: str = sys.executable) -> bool:
+    """Whether ``python_executable`` can import lxml.
+
+    driverpackager.py imports ``lxml`` at module scope, so a present
+    checkout with lxml missing fails the build hard rather than skipping.
+    We probe the *interpreter that will run the packager* (``sys.executable``,
+    matching ``build_one``'s default ``runner``) rather than this pytest
+    process, so the gate stays correct even if a build is ever pointed at a
+    different interpreter via ``python_executable``.
+    """
+    return (
+        subprocess.run(
+            [python_executable, "-c", "import lxml"],
+            capture_output=True,
+        ).returncode
+        == 0
+    )
+
+
 @pytest.mark.skipif(
-    not (REPO_ROOT / ".cache" / "drivers-driverpackager" / "dp3" / "driverpackager.py").exists(),
+    not _DRIVERPACKAGER_PATH.exists(),
     reason="drivers-driverpackager not available; run `python tools/build_c4z.py both --auto-clone` once.",
+)
+@pytest.mark.skipif(
+    not _lxml_available(),
+    reason="lxml not importable in the build interpreter; run `uv sync --extra c4z` (or pip install lxml).",
 )
 class TestC4zBuildEndToEnd:
     """End-to-end checks that exercise driverpackager + the real driver source.
