@@ -18,6 +18,16 @@ BUFFER_SIZE_RECEIVE = 4096
 DEFAULT_BANNER_TIMEOUT = 2.0
 TIMEOUT_WAIT_CLOSED = 1.0
 
+# Per-read budget for the pre-send drain in ``send()``. The drain is a
+# best-effort flush of anything the kernel already has buffered for us
+# right now — typically the welcome-banner re-broadcasts the device
+# sends to every connected port-23 client when another client connects.
+# This is NOT a framing knob: ``read_until`` does the real framing and
+# strips any banner bytes that arrive after the drain. The budget only
+# has to be long enough to scoop up bytes that are immediately
+# readable; anything that arrives later is handled in the read path.
+DRAIN_PENDING_POLL = 0.05
+
 BANNER_SENTINEL = "=\r\n"
 BANNER_SENTINEL_COUNT = 2
 
@@ -228,7 +238,7 @@ class TCPConnection(Connection):
             try:
                 chunk = await asyncio.wait_for(
                     self._reader.read(BUFFER_SIZE_RECEIVE),
-                    timeout=0.05,
+                    timeout=DRAIN_PENDING_POLL,
                 )
             except asyncio.TimeoutError:
                 break

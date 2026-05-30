@@ -466,3 +466,75 @@ class TestStreamingResponseFraming:
             timeout=10.0,
         )
         assert second == next_response, "second response must be exactly its own bytes"
+
+    @pytest.mark.asyncio
+    @patch("telnetlib3.open_connection")
+    async def test_send_then_read_isolates_responses_across_commands(
+        self, mock_open_connection
+    ):
+        """End-to-end framing: send #1 → read #1 → send #2 → read #2.
+
+        The companion ``test_back_to_back_commands_do_not_bleed`` covers
+        the read-side buffer carrying past a satisfied terminator. This
+        one covers the WRITE side: ``send`` calls ``_drain_pending`` to
+        flush stale bytes, but it must not eat the bytes of the response
+        to the command we are *about to* send. STATUS streams over
+        hundreds of milliseconds with pauses well past the drain budget,
+        so the drain shouldn't be load-bearing for framing — read_until
+        accumulates until the terminator regardless of when bytes arrive.
+        """
+        from blustream.devices.dmp168.device import _status_terminator
+
+        full_status = LIVE_STATUS_FIXTURE.read_bytes().decode("utf-8")
+        ok_response = "[SUCCESS]Set output 4 L/R to input 2 L/R.\r\n"
+
+        chunk_size = (len(full_status) + 5) // 6
+        status_chunks = [
+            full_status[i : i + chunk_size]
+            for i in range(0, len(full_status), chunk_size)
+        ]
+
+        # Reader plan: banner first, then on each call deliver one chunk
+        # of the staged sequence with a long mid-message pause. Models
+        # real TCP semantics — a cancelled read does NOT lose data from
+        # the kernel buffer, so we only consume a queue entry once we
+        # finish sleeping and are about to return it.
+        staged: list = [BANNER] + status_chunks + [ok_response]
+
+        async def reader_sequence(_size: int) -> str:
+            if not staged:
+                await asyncio.sleep(60)
+                return ""
+            # Peek; sleep first (so cancellation does not eat the chunk);
+            # only pop once we are committed to returning it.
+            chunk = staged[0]
+            if chunk is not BANNER:
+                await asyncio.sleep(0.25)
+            return staged.pop(0)
+
+        mock_reader = AsyncMock()
+        mock_writer = AsyncMock()
+        mock_reader.read = AsyncMock(side_effect=reader_sequence)
+        mock_writer.write = MagicMock()
+        mock_writer.drain = AsyncMock()
+        mock_open_connection.return_value = (mock_reader, mock_writer)
+
+        conn = TCPConnection(host="192.168.1.100", port=23)
+        await conn.connect()
+
+        await conn.send(b"STATUS\r\n")
+        first = await conn.read_until(_status_terminator(), timeout=10.0)
+        assert first == full_status
+
+        await conn.send(b"OUT 4 IN 2\r\n")
+        second = await conn.read_until(
+            lambda line: line.startswith("[SUCCESS]") or line.startswith("[ERROR]"),
+            timeout=10.0,
+        )
+        assert second == ok_response, (
+            "the second command's response must arrive intact — "
+            "the pre-send drain cannot eat its bytes"
+        )
+        # The STATUS body never bleeds into the second response.
+        assert "Power" not in second and "Baud" not in second
+        assert "===" not in second
