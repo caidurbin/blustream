@@ -1,0 +1,42 @@
+name: HA integration validate
+
+# Runs the canonical Home Assistant integration validators:
+#   * hassfest -- manifest/translations/config-flow lint
+#   * hacs/action -- HACS-side category=integration validation
+# Daily cron is the universal pattern in surveyed HACS integrations;
+# catches HA-side breakage that lands between PRs.
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+  push:
+    branches:
+      - main
+      - master
+      - develop
+  schedule:
+    # Daily at 06:13 UTC; offset minute reduces hourly-cron pile-up.
+    - cron: "13 6 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  hassfest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run hassfest
+        uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run HACS validation
+        uses: hacs/action@main
+        with:
+          category: integration

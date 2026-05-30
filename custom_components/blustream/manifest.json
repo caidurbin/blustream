@@ -1,0 +1,15 @@
+{
+  "domain": "blustream",
+  "name": "Blustream Audio Matrix",
+  "codeowners": ["@caidurbin"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/caidurbin/blustream",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/caidurbin/blustream/issues",
+  "loggers": ["blustream"],
+  "quality_scale": "gold",
+  "requirements": ["blustream==0.2.0"],
+  "version": "0.1.0"
+}

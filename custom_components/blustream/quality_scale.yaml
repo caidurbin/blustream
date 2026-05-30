@@ -1,0 +1,163 @@
+# HA Integration Quality Scale declarations for the Blustream integration.
+# See ADRs 0009 / 0012 for the gold-tier commitment and operational choices.
+
+rules:
+  # ---- Bronze ----
+  action-setup:
+    status: exempt
+    comment: |
+      No service actions registered in v0.1 (read-only uptime sensor).
+  appropriate-polling:
+    status: done
+    comment: |
+      30 s update interval; protocol is local TCP and the device tolerates
+      bursty polling. Hardcoded for v0.1, no options flow.
+  brands: done
+  common-modules:
+    status: done
+    comment: |
+      Coordinator in coordinator.py; entity-base inheritance via
+      CoordinatorEntity directly (single platform in v0.1).
+  config-flow: done
+  config-flow-test-coverage:
+    status: done
+    comment: |
+      100% coverage on config_flow.py: user step happy path, invalid_mac,
+      cannot_connect, unknown, and already_configured.
+  dependency-transparency: done
+  docs-actions:
+    status: exempt
+    comment: |
+      No service actions registered in v0.1.
+  docs-high-level-description: done
+  docs-installation-instructions: done
+  docs-removal-instructions: done
+  entity-event-setup:
+    status: exempt
+    comment: |
+      No event subscriptions; the coordinator drives all state.
+  entity-unique-id: done
+  has-entity-name: done
+  runtime-data:
+    status: done
+    comment: |
+      Coordinator stored on entry.runtime_data via typed
+      BlustreamConfigEntry alias; hass.data[DOMAIN] is not used.
+  test-before-configure:
+    status: done
+    comment: |
+      Config flow connects, fetches uptime, and disconnects before
+      creating the entry. cannot_connect distinguished from unknown.
+  test-before-setup:
+    status: done
+    comment: |
+      async_config_entry_first_refresh() runs in async_setup_entry;
+      ConfigEntryNotReady raised transitively when the device is offline.
+  unique-config-entry:
+    status: done
+    comment: |
+      MAC-bearing entries set unique_id = format_mac(mac); duplicate MACs
+      abort with already_configured.
+
+  # ---- Silver ----
+  action-exceptions:
+    status: exempt
+    comment: |
+      No service actions registered in v0.1.
+  config-entry-unloading: done
+  docs-configuration-parameters:
+    status: exempt
+    comment: |
+      No options flow in v0.1.
+  docs-installation-parameters: done
+  entity-unavailable:
+    status: done
+    comment: |
+      Inherited from CoordinatorEntity.available, which returns
+      coordinator.last_update_success.
+  integration-owner: done
+  log-when-unavailable:
+    status: done
+    comment: |
+      _async_update_data raises UpdateFailed; HA's DataUpdateCoordinator
+      logs once on down/up transitions automatically.
+  parallel-updates: done
+  reauthentication-flow:
+    status: exempt
+    comment: |
+      No credentials / no auth surface on the DMP168 protocol.
+  test-coverage:
+    status: done
+    comment: |
+      ≥95% on every non-config-flow module.
+
+  # ---- Gold ----
+  devices: done
+  diagnostics:
+    status: todo
+    comment: |
+      Diagnostics surface lands in a follow-up slice once the discovery
+      and reconfigure flows produce a richer entry payload to redact.
+  discovery-update-info:
+    status: todo
+    comment: |
+      DHCP/zeroconf landing in their own slices; this slice is manual-only.
+  discovery:
+    status: todo
+    comment: |
+      DHCP and zeroconf are declared with their own slices.
+  docs-data-update: done
+  docs-examples: done
+  docs-known-limitations: done
+  docs-supported-devices: done
+  docs-supported-functions: done
+  docs-troubleshooting: done
+  docs-use-cases: done
+  dynamic-devices:
+    status: exempt
+    comment: |
+      1:1 config-entry-to-device integration; no dynamic per-entry device
+      enumeration.
+  entity-category: done
+  entity-device-class: done
+  entity-disabled-by-default:
+    status: exempt
+    comment: |
+      The single uptime sensor is the integration's reason to exist;
+      hiding it by default would defeat the install.
+  entity-translations: done
+  exception-translations:
+    status: todo
+    comment: |
+      Exception messages will be translated when reconfigure/repair flows
+      add user-visible exception surfaces.
+  icon-translations:
+    status: exempt
+    comment: |
+      Standard device-class icon for SensorDeviceClass.UPTIME suffices.
+  reconfiguration-flow:
+    status: todo
+    comment: |
+      Reconfigure flow lands with the IP/MAC change slice.
+  repair-issues:
+    status: todo
+    comment: |
+      MAC-mismatch repair issue lands with the discovery/reconfigure slice.
+  stale-devices:
+    status: exempt
+    comment: |
+      1:1 config-entry-to-device integration; the device cannot become
+      stale independently of the config entry. async_remove_config_entry_device
+      is intentionally absent so HA hides the Delete Device button.
+
+  # ---- Platinum ----
+  async-dependency: done
+  inject-websession:
+    status: exempt
+    comment: |
+      Library uses TCP (telnetlib3), not HTTP/aiohttp.
+  strict-typing:
+    status: todo
+    comment: |
+      Stretch goal once the integration's surface area stabilizes; the
+      library ships py.typed so this is reachable without library churn.

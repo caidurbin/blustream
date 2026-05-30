@@ -1,0 +1,31 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add a Blustream device",
+        "description": "Enter the host and port of your Blustream DMP168. The optional MAC address is shown on the device's web GUI Information page; supply it for a stable identity that survives IP changes.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "name": "Name",
+          "mac": "MAC address (optional)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_mac": "The MAC address is not well-formed.",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "Device is already configured"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "uptime": {
+        "name": "Last boot"
+      }
+    }
+  }
+}

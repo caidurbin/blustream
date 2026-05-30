@@ -1,0 +1,66 @@
+name: HA integration tests
+
+# Runs the Home Assistant integration test suite under
+# pytest-homeassistant-custom-component. PHCC pins one HA version per
+# release, so a matrix would mostly exercise PHCC versions rather than
+# real-world HA variance -- pin a single Python version to match.
+#
+# Path-scoped: only fires when the integration, the library it consumes,
+# or this workflow itself changes.
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+    paths:
+      - "custom_components/blustream/**"
+      - "blustream/**"
+      - "tests/components/blustream/**"
+      - ".github/workflows/test-ha.yml"
+  push:
+    branches:
+      - main
+      - master
+      - develop
+    paths:
+      - "custom_components/blustream/**"
+      - "blustream/**"
+      - "tests/components/blustream/**"
+      - ".github/workflows/test-ha.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test-ha:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        # PHCC pins one Home Assistant version per release; the HA
+        # version we test against (and therefore the API surface the
+        # tests rely on, e.g. SensorDeviceClass.UPTIME from HA 2025.2)
+        # is set by this pin. Bump deliberately when consuming a newer
+        # HA API. Versions 0.13.317+ require Python 3.14; cap below
+        # that until the runner Python bumps.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install \
+            "pytest-homeassistant-custom-component>=0.13.220,<0.13.317" \
+            syrupy
+
+      - name: Run integration tests with coverage
+        run: |
+          pytest tests/components/blustream/ -v --tb=short \
+            --cov=custom_components.blustream \
+            --cov-report=xml \
+            --cov-report=term-missing
