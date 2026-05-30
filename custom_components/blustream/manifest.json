@@ -4,6 +4,12 @@
   "codeowners": ["@caidurbin"],
   "config_flow": true,
   "dependencies": [],
+  "dhcp": [
+    {
+      "macaddress": "34D0B82*",
+      "registered_devices": true
+    }
+  ],
   "documentation": "https://github.com/caidurbin/blustream",
   "integration_type": "device",
   "iot_class": "local_polling",

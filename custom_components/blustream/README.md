@@ -22,6 +22,16 @@ purely additive.
 
 ## Configuration
 
+The DMP168 is auto-discovered via DHCP on networks where Home Assistant can observe
+DHCP broadcasts. When a DMP168 joins the LAN it shows up under
+**Settings → Devices & Services → Discovered**; confirming the discovery creates the
+entry with the device's MAC as its stable identity. DHCP-reported IP changes for an
+already-configured entry update the stored host silently, with no entity history loss
+(ADR 0010).
+
+Manual setup remains available for environments where DHCP discovery doesn't work
+(see Networking caveats below):
+
 1. Open **Settings → Devices & Services → Add Integration** and choose **Blustream Audio
    Matrix**.
 2. Enter the device's **Host** (IP address or hostname) and **Port** (defaults to `23`,
@@ -47,11 +57,22 @@ one polling cycle (~30 s) once the device returns. HA logs "device unavailable" 
 
 ## Networking caveats
 
-Discovery via DHCP and zeroconf lands in later slices. Until then, manual setup is the
-only entry point. In Docker Desktop on macOS or Windows neither discovery path is
-reliable anyway — HA in those environments lives behind a NAT'd Linux VM that doesn't
-see DHCP broadcast traffic or have automatic Bonjour passthrough. Manual setup works
-everywhere.
+DHCP discovery requires Home Assistant to observe DHCP broadcast traffic on the same
+broadcast domain as the DMP168. The following environments cannot do that, and
+discovery will silently never fire:
+
+- **HA in Docker without `--network host`.** A bridged container only sees its own
+  Docker network; DHCP broadcasts on the host LAN never reach it.
+- **HA Container / HA Core on Docker Desktop (macOS, Windows).** Docker Desktop runs
+  the container inside a NAT'd Linux VM. The VM does not bridge LAN broadcast traffic
+  to the container, and mDNS / Bonjour likewise won't reach it.
+- **HA OS in a VM without bridged networking.** Same shape — NAT severs broadcast
+  visibility.
+
+In any of those environments, fall back to **manual setup** (entering the device's
+MAC manually gives you the same MAC-anchored stable identity DHCP discovery would
+have set). HA OS on bare metal, HA Container on `--network host`, and HA Supervised
+on Linux all observe DHCP normally and discovery just works.
 
 ## Removing the integration
 
@@ -67,8 +88,9 @@ removing the integration itself (ADR 0012).
 | -------------------- | ------------------------------- | ------------------------------- |
 | Manual setup         | ✅                              | —                               |
 | Uptime sensor        | ✅                              | —                               |
-| DHCP discovery       | Manifest only (matcher unused)  | Discovery slice                 |
-| Zeroconf discovery   | Manifest only (matcher unused)  | Discovery slice                 |
+| DHCP discovery       | ✅                              | —                               |
+| DHCP IP-change update | ✅                             | —                               |
+| Zeroconf discovery   | —                               | Discovery-UX slice              |
 | Reconfigure flow     | —                               | Reconfigure slice               |
 | MAC-mismatch repair  | —                               | Reconfigure slice               |
 | Diagnostics          | —                               | Diagnostics slice               |
