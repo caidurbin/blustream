@@ -99,13 +99,20 @@ rules:
       Diagnostics surface lands in a follow-up slice once the discovery
       and reconfigure flows produce a richer entry payload to redact.
   discovery-update-info:
-    status: todo
+    status: done
     comment: |
-      DHCP/zeroconf landing in their own slices; this slice is manual-only.
+      DHCP discovery for already-configured entries updates CONF_HOST
+      silently via _abort_if_unique_id_configured(updates={CONF_HOST: ip})
+      -- IP-change path, no user prompt, no loss of entity history.
   discovery:
-    status: todo
+    status: done
     comment: |
-      DHCP and zeroconf are declared with their own slices.
+      DHCP matcher in manifest.json scoped to Blustream's 28-bit MA-M
+      prefix (34D0B82*). async_step_dhcp confirms new devices and routes
+      IP changes for already-configured entries to the update path.
+      Zeroconf is intentionally deferred -- the DMP168's mDNS name is
+      fixed and carries no identity (ADR 0010), so zeroconf would be
+      discovery-UX only and is not in this slice.
   docs-data-update: done
   docs-examples: done
   docs-known-limitations: done

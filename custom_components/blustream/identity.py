@@ -7,8 +7,11 @@ sources at entry-creation time and never silently rewritten:
 * **Manual** -- user-entered MAC, also ``format_mac``-normalized.
 * **Entry-id** -- ``config_entry.entry_id`` as last-resort fallback.
 
-v0.1 implements the manual and entry-id tiers only; the DHCP path lands
-with the discovery slice.
+Both the discovered and manual tiers normalize through ``format_mac``, so
+``resolve_identity`` covers both -- the caller hands in whichever MAC it
+has (DHCP-supplied or user-entered) and the discriminator is the source,
+not the resolver. The DHCP source lives in ``config_flow.async_step_dhcp``;
+the manual source lives in ``config_flow.async_step_user``.
 """
 
 from __future__ import annotations

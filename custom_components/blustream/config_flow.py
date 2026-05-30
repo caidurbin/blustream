@@ -9,6 +9,7 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_HOST, CONF_MAC, CONF_NAME, CONF_PORT
 from homeassistant.helpers.device_registry import format_mac
+from homeassistant.helpers.service_info.dhcp import DhcpServiceInfo
 
 from blustream import DMP168
 from blustream.base.exceptions import (
@@ -60,6 +61,53 @@ class BlustreamConfigFlow(ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
     MINOR_VERSION = 1
+
+    _discovered_host: str | None = None
+    _discovered_mac: str | None = None
+
+    async def async_step_dhcp(
+        self, discovery_info: DhcpServiceInfo
+    ) -> ConfigFlowResult:
+        """Handle a DHCP discovery.
+
+        ``registered_devices: true`` in the manifest dispatches DHCP
+        callbacks for already-configured entries too -- that is the
+        IP-change path: ``_abort_if_unique_id_configured(updates={...})``
+        updates the stored host silently and schedules a reload, with no
+        user prompt and no loss of entity history. For brand-new devices
+        the user lands on the discovery confirmation step.
+        """
+        mac = format_mac(discovery_info.macaddress)
+        await self.async_set_unique_id(mac)
+        self._abort_if_unique_id_configured(updates={CONF_HOST: discovery_info.ip})
+
+        self._discovered_host = discovery_info.ip
+        self._discovered_mac = mac
+        self.context["title_placeholders"] = {"host": discovery_info.ip, "mac": mac}
+        return await self.async_step_discovery_confirm()
+
+    async def async_step_discovery_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Confirm a DHCP-discovered device before creating its entry."""
+        assert self._discovered_host is not None
+        assert self._discovered_mac is not None
+
+        if user_input is not None:
+            data = {
+                CONF_HOST: self._discovered_host,
+                CONF_PORT: DEFAULT_PORT,
+                CONF_MAC: self._discovered_mac,
+            }
+            return self.async_create_entry(title=self._discovered_host, data=data)
+
+        return self.async_show_form(
+            step_id="discovery_confirm",
+            description_placeholders={
+                "host": self._discovered_host,
+                "mac": self._discovered_mac,
+            },
+        )
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
