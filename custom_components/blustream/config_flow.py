@@ -206,9 +206,7 @@ class BlustreamConfigFlow(ConfigFlow, domain=DOMAIN):
                 except (BlustreamConnectionError, BlustreamTimeoutError):
                     errors["base"] = "cannot_connect"
                 except Exception:
-                    _LOGGER.exception(
-                        "Unexpected error validating Blustream device"
-                    )
+                    _LOGGER.exception("Unexpected error validating Blustream device")
                     errors["base"] = "unknown"
                 else:
                     data_updates: dict[str, Any] = {
