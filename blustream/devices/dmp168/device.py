@@ -2,6 +2,7 @@
 
 import logging
 import re
+from datetime import timedelta
 from typing import Any, Callable, Optional, Union
 
 from blustream.base.commands import Command, CommandRegistry
@@ -14,6 +15,7 @@ from blustream.devices.dmp168 import commands as cmd_module
 from blustream.devices.dmp168.commands import _is_relative_adjustment
 from blustream.devices.dmp168.models import PresetStatus, SystemStatus
 from blustream.devices.dmp168.parser import DMP168Parser
+from blustream.devices.dmp168.uptime_parser import parse as parse_uptime
 
 logger = logging.getLogger(__name__)
 
@@ -412,13 +414,26 @@ class DMP168(BlustreamDevice):
         """
         await self.execute_command("output_channel_lock", output=output, lock=lock, channel=channel)
 
-    async def get_uptime(self) -> str:
-        """Get system uptime.
+    async def get_uptime_raw(self) -> str:
+        """Get the raw system uptime-duration string.
 
         Returns:
-            Uptime string
+            The raw ``DDDD:HH:MM:SS`` uptime-duration string, exactly as the
+            device reports it (see CONTEXT.md "Uptime").
         """
         return await self.execute_command("uptime")
+
+    async def get_uptime(self) -> timedelta:
+        """Get system uptime as a duration.
+
+        Returns:
+            The system uptime parsed into a :class:`datetime.timedelta`.
+
+        Raises:
+            ParseError: If the device reply can't be parsed into a duration
+                (see :func:`blustream.devices.dmp168.uptime_parser.parse`).
+        """
+        return parse_uptime(await self.get_uptime_raw())
 
     async def get_temperature(self) -> str:
         """Get system temperature.

@@ -1,5 +1,6 @@
 """Tests for DMP168 device."""
 
+from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -716,4 +717,57 @@ class TestDMP168Device:
         await device.set_input_gain(1, "+")
         # Test relative gain decrease
         await device.set_input_gain(1, "-")
+
+    @pytest.mark.asyncio
+    @patch("blustream.devices.dmp168.device.TCPConnection")
+    async def test_get_uptime_raw_returns_raw_string(self, mock_connection_class):
+        """get_uptime_raw() preserves the old get_uptime() string behavior."""
+        mock_conn = AsyncMock()
+        mock_conn.connect = AsyncMock()
+        mock_conn.is_connected = MagicMock(return_value=True)
+        mock_conn.send = AsyncMock()
+        mock_conn.read_until = AsyncMock(
+            return_value="[SUCCESS]The uptime of the system is 0000:08:57:01\r\nDMP168>"
+        )
+        mock_connection_class.return_value = mock_conn
+
+        device = DMP168(host="192.168.1.100")
+        await device.connect()
+
+        raw = await device.get_uptime_raw()
+        assert raw == "0000:08:57:01"
+
+    @pytest.mark.asyncio
+    @patch("blustream.devices.dmp168.device.TCPConnection")
+    async def test_get_uptime_returns_timedelta(self, mock_connection_class):
+        """get_uptime() now returns a parsed timedelta, not the raw string."""
+        mock_conn = AsyncMock()
+        mock_conn.connect = AsyncMock()
+        mock_conn.is_connected = MagicMock(return_value=True)
+        mock_conn.send = AsyncMock()
+        mock_conn.read_until = AsyncMock(
+            return_value="[SUCCESS]The uptime of the system is 0000:08:57:01\r\nDMP168>"
+        )
+        mock_connection_class.return_value = mock_conn
+
+        device = DMP168(host="192.168.1.100")
+        await device.connect()
+
+        uptime = await device.get_uptime()
+        assert uptime == timedelta(hours=8, minutes=57, seconds=1)
+
+    @pytest.mark.asyncio
+    @patch("blustream.devices.dmp168.device.TCPConnection")
+    async def test_get_uptime_propagates_parse_error(self, mock_connection_class):
+        """get_uptime() surfaces ParseError when the raw reply isn't a duration."""
+        mock_conn = MagicMock()
+        mock_connection_class.return_value = mock_conn
+
+        device = DMP168(host="192.168.1.100")
+        device.get_uptime_raw = AsyncMock(return_value="garbage-not-uptime")
+
+        from blustream.base.exceptions import ParseError
+
+        with pytest.raises(ParseError):
+            await device.get_uptime()
 
