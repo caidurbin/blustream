@@ -9,11 +9,17 @@ import pytest
 
 pytest.importorskip("pytest_homeassistant_custom_component")
 
+from ipaddress import IPv4Address  # noqa: E402
+
+import voluptuous as vol  # noqa: E402
 from homeassistant import config_entries  # noqa: E402
 from homeassistant.const import CONF_HOST, CONF_MAC, CONF_NAME, CONF_PORT  # noqa: E402
 from homeassistant.core import HomeAssistant  # noqa: E402
 from homeassistant.data_entry_flow import FlowResultType  # noqa: E402
 from homeassistant.helpers.service_info.dhcp import DhcpServiceInfo  # noqa: E402
+from homeassistant.helpers.service_info.zeroconf import (  # noqa: E402
+    ZeroconfServiceInfo,
+)
 from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa: E402
 
 from blustream.base.exceptions import (  # noqa: E402
@@ -46,6 +52,16 @@ DHCP_DISCOVERY_SECOND_UNIT = DhcpServiceInfo(
     ip="192.0.2.51",
     hostname="dmp168",
     macaddress="34d0b8aabbcc",
+)
+
+ZEROCONF_DISCOVERY = ZeroconfServiceInfo(
+    ip_address=IPv4Address("192.0.2.70"),
+    ip_addresses=[IPv4Address("192.0.2.70")],
+    port=80,
+    hostname="DMP168.local.",
+    type="_http._tcp.local.",
+    name="DMP168._http._tcp.local.",
+    properties={},
 )
 
 
@@ -319,6 +335,85 @@ async def test_dhcp_two_units_on_one_lan_get_independent_identities(
     assert first["result"].data[CONF_HOST] == "192.0.2.50"
     assert second["result"].data[CONF_HOST] == "192.0.2.51"
     assert first["result"].entry_id != second["result"].entry_id
+
+
+async def test_zeroconf_discovery_routes_to_user_step_with_host_default(
+    hass: HomeAssistant,
+) -> None:
+    """A zeroconf hit routes into the manual step pre-filled with the
+    discovered host. The mDNS hostname is the fixed, non-unique
+    ``DMP168.local`` so zeroconf is host-only assist (ADR 0010); no
+    unique_id is set by the discovery step itself."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_ZEROCONF},
+        data=ZEROCONF_DISCOVERY,
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "user"
+
+    schema_defaults = {
+        key.schema: key.default()
+        for key in result["data_schema"].schema
+        if key.default is not vol.UNDEFINED
+    }
+    assert schema_defaults[CONF_HOST] == "192.0.2.70"
+
+
+async def test_zeroconf_no_mac_creates_entry_without_unique_id(
+    hass: HomeAssistant,
+) -> None:
+    """Completing the zeroconf-routed user step without a MAC creates an
+    entry with no ``unique_id`` -- identity then falls back to the
+    entry-id tier in ``async_setup_entry``."""
+    device = _patched_device()
+    with patch(
+        "custom_components.blustream.config_flow.DMP168", return_value=device
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": config_entries.SOURCE_ZEROCONF},
+            data=ZEROCONF_DISCOVERY,
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_HOST: "192.0.2.70", CONF_PORT: 23},
+        )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_HOST] == "192.0.2.70"
+    assert CONF_MAC not in result["data"]
+    assert result["result"].unique_id is None
+
+
+async def test_zeroconf_with_user_supplied_mac_uses_mac_unique_id(
+    hass: HomeAssistant,
+) -> None:
+    """If the user fills the optional MAC in the zeroconf-routed user
+    step, the MAC-anchored identity path applies -- same as a fully
+    manual setup."""
+    device = _patched_device()
+    with patch(
+        "custom_components.blustream.config_flow.DMP168", return_value=device
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": config_entries.SOURCE_ZEROCONF},
+            data=ZEROCONF_DISCOVERY,
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                CONF_HOST: "192.0.2.70",
+                CONF_PORT: 23,
+                CONF_MAC: "34:D0:B8:21:22:33",
+            },
+        )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["result"].unique_id == "34:d0:b8:21:22:33"
+    assert result["data"][CONF_MAC] == "34:d0:b8:21:22:33"
 
 
 async def test_handoff_validation_connect_disconnect_is_isolated_from_coordinator(

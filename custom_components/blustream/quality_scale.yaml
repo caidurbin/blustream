@@ -110,9 +110,11 @@ rules:
       DHCP matcher in manifest.json scoped to Blustream's 28-bit MA-M
       prefix (34D0B82*). async_step_dhcp confirms new devices and routes
       IP changes for already-configured entries to the update path.
-      Zeroconf is intentionally deferred -- the DMP168's mDNS name is
-      fixed and carries no identity (ADR 0010), so zeroconf would be
-      discovery-UX only and is not in this slice.
+      Zeroconf is declared as discovery-UX assist only -- the DMP168's
+      mDNS name is the fixed, non-unique DMP168.local and carries no
+      identity (ADR 0010). async_step_zeroconf routes the user into the
+      manual step with the host pre-filled and sets no unique_id;
+      manual or entry-id identity takes over.
   docs-data-update: done
   docs-examples: done
   docs-known-limitations: done
