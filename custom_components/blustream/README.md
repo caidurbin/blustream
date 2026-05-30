@@ -74,6 +74,13 @@ MAC manually gives you the same MAC-anchored stable identity DHCP discovery woul
 have set). HA OS on bare metal, HA Container on `--network host`, and HA Supervised
 on Linux all observe DHCP normally and discovery just works.
 
+Zeroconf (mDNS) acts as a secondary discovery assist: when a DMP168 advertises
+`DMP168._http._tcp.local.` and HA's zeroconf surface can see it, the device shows up
+under Discovered and routes you into the manual step with the **Host** pre-filled.
+Zeroconf cannot supply a stable identity (the DMP168's mDNS hostname is the fixed
+`DMP168.local`), so identity still resolves via the manual MAC field or the entry-id
+fallback (ADR 0010).
+
 ## Removing the integration
 
 **Settings → Devices & Services → Blustream Audio Matrix → kebab menu → Delete**.
@@ -90,7 +97,7 @@ removing the integration itself (ADR 0012).
 | Uptime sensor        | ✅                              | —                               |
 | DHCP discovery       | ✅                              | —                               |
 | DHCP IP-change update | ✅                             | —                               |
-| Zeroconf discovery   | —                               | Discovery-UX slice              |
+| Zeroconf discovery   | ✅ (host-only assist)           | —                               |
 | Reconfigure flow     | —                               | Reconfigure slice               |
 | MAC-mismatch repair  | —                               | Reconfigure slice               |
 | Diagnostics          | —                               | Diagnostics slice               |

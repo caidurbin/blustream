@@ -10,6 +10,7 @@ from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_HOST, CONF_MAC, CONF_NAME, CONF_PORT
 from homeassistant.helpers.device_registry import format_mac
 from homeassistant.helpers.service_info.dhcp import DhcpServiceInfo
+from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 from blustream import DMP168
 from blustream.base.exceptions import (
@@ -23,11 +24,28 @@ from .const import DEFAULT_PORT, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-STEP_USER_DATA_SCHEMA = vol.Schema(
+
+def _user_data_schema(default_host: str | None = None) -> vol.Schema:
+    """Schema for the manual step; pre-fills ``host`` when discovery
+    routed the user here (zeroconf is host-only assist, ADR 0010)."""
+    host_field = (
+        vol.Required(CONF_HOST, default=default_host)
+        if default_host is not None
+        else vol.Required(CONF_HOST)
+    )
+    return vol.Schema(
+        {
+            host_field: str,
+            vol.Required(CONF_PORT, default=DEFAULT_PORT): int,
+            vol.Optional(CONF_NAME): str,
+            vol.Optional(CONF_MAC): str,
+        }
+    )
+
+STEP_RECONFIGURE_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): str,
         vol.Required(CONF_PORT, default=DEFAULT_PORT): int,
-        vol.Optional(CONF_NAME): str,
         vol.Optional(CONF_MAC): str,
     }
 )
@@ -158,6 +176,92 @@ class BlustreamConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=STEP_USER_DATA_SCHEMA,
+            data_schema=_user_data_schema(self._discovered_host),
+            errors=errors,
+        )
+
+    async def async_step_zeroconf(
+        self, discovery_info: ZeroconfServiceInfo
+    ) -> ConfigFlowResult:
+        """Handle a zeroconf discovery -- host-only assist.
+
+        The DMP168's mDNS hostname is the fixed, non-unique
+        ``DMP168.local`` and its TXT records carry no identity, so
+        zeroconf cannot supply a stable ``unique_id`` (ADR 0010). The
+        only thing it saves is the user typing the host: stash the
+        discovered IP as the user-step default and route into
+        ``async_step_user``. Manual or entry-id identity takes over.
+        """
+        host = discovery_info.host
+        self._async_abort_entries_match({CONF_HOST: host})
+        self._discovered_host = host
+        self.context["title_placeholders"] = {"host": host}
+        return await self.async_step_user()
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Edit host, port, and MAC on an existing entry.
+
+        Pre-fills the form with the entry's current values. Validates
+        the MAC for well-formedness (``invalid_mac``) and connectivity
+        (``cannot_connect`` / ``unknown``) before committing. The
+        entry_id is preserved -- entity history survives -- and when the
+        MAC changes, the entry's ``unique_id`` follows. Submitting with
+        the MAC field cleared is treated as "leave identity alone" so
+        that this slice does not silently downgrade a MAC-anchored entry
+        to entry-id identity (ADR 0010 / no-automatic-rewrites). The
+        documented MAC-mismatch repair path is built in the repair-issue
+        slice.
+        """
+        reconfigure_entry = self._get_reconfigure_entry()
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            mac_raw = user_input.get(CONF_MAC)
+            mac_normalized: str | None = None
+            if mac_raw:
+                if not _is_valid_mac(mac_raw):
+                    errors["base"] = "invalid_mac"
+                else:
+                    mac_normalized = format_mac(mac_raw)
+
+            if not errors:
+                try:
+                    await _validate_connectivity(
+                        user_input[CONF_HOST], user_input[CONF_PORT]
+                    )
+                except (BlustreamConnectionError, BlustreamTimeoutError):
+                    errors["base"] = "cannot_connect"
+                except Exception:
+                    _LOGGER.exception("Unexpected error validating Blustream device")
+                    errors["base"] = "unknown"
+                else:
+                    data_updates: dict[str, Any] = {
+                        CONF_HOST: user_input[CONF_HOST],
+                        CONF_PORT: user_input[CONF_PORT],
+                    }
+                    if mac_normalized is not None:
+                        data_updates[CONF_MAC] = mac_normalized
+                        return self.async_update_reload_and_abort(
+                            reconfigure_entry,
+                            data_updates=data_updates,
+                            unique_id=mac_normalized,
+                        )
+                    return self.async_update_reload_and_abort(
+                        reconfigure_entry,
+                        data_updates=data_updates,
+                    )
+
+        suggested = {
+            CONF_HOST: reconfigure_entry.data.get(CONF_HOST, ""),
+            CONF_PORT: reconfigure_entry.data.get(CONF_PORT, DEFAULT_PORT),
+            CONF_MAC: reconfigure_entry.data.get(CONF_MAC, ""),
+        }
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=self.add_suggested_values_to_schema(
+                STEP_RECONFIGURE_DATA_SCHEMA, suggested
+            ),
             errors=errors,
         )

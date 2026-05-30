@@ -94,10 +94,15 @@ rules:
   # ---- Gold ----
   devices: done
   diagnostics:
-    status: todo
+    status: done
     comment: |
-      Diagnostics surface lands in a follow-up slice once the discovery
-      and reconfigure flows produce a richer entry payload to redact.
+      async_get_config_entry_diagnostics returns
+      {config_entry, device, data}. Host, MAC, hostname, unique_id, and
+      device-registry connections / identifiers run through
+      async_redact_data. Coordinator state (last_update_success, last
+      uptime, interval), parsed status via SystemStatus.to_dict(), raw
+      uptime via get_uptime_raw(), and integration + library versions
+      are included.
   discovery-update-info:
     status: done
     comment: |
@@ -110,9 +115,11 @@ rules:
       DHCP matcher in manifest.json scoped to Blustream's 28-bit MA-M
       prefix (34D0B82*). async_step_dhcp confirms new devices and routes
       IP changes for already-configured entries to the update path.
-      Zeroconf is intentionally deferred -- the DMP168's mDNS name is
-      fixed and carries no identity (ADR 0010), so zeroconf would be
-      discovery-UX only and is not in this slice.
+      Zeroconf is declared as discovery-UX assist only -- the DMP168's
+      mDNS name is the fixed, non-unique DMP168.local and carries no
+      identity (ADR 0010). async_step_zeroconf routes the user into the
+      manual step with the host pre-filled and sets no unique_id;
+      manual or entry-id identity takes over.
   docs-data-update: done
   docs-examples: done
   docs-known-limitations: done
@@ -143,9 +150,13 @@ rules:
     comment: |
       Standard device-class icon for SensorDeviceClass.UPTIME suffices.
   reconfiguration-flow:
-    status: todo
+    status: done
     comment: |
-      Reconfigure flow lands with the IP/MAC change slice.
+      async_step_reconfigure edits host, port, and MAC in place,
+      pre-filling the form with the entry's current values; entity
+      history is preserved (entry_id and unique_id stay unless the
+      MAC actually changes). Well-formedness-only invalid_mac
+      validation matches async_step_user.
   repair-issues:
     status: todo
     comment: |

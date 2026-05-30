@@ -17,5 +17,11 @@
   "loggers": ["blustream"],
   "quality_scale": "gold",
   "requirements": ["blustream==0.2.0"],
-  "version": "0.1.0"
+  "version": "0.1.0",
+  "zeroconf": [
+    {
+      "type": "_http._tcp.local.",
+      "name": "dmp168*"
+    }
+  ]
 }
