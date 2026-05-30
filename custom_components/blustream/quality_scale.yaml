@@ -94,10 +94,15 @@ rules:
   # ---- Gold ----
   devices: done
   diagnostics:
-    status: todo
+    status: done
     comment: |
-      Diagnostics surface lands in a follow-up slice once the discovery
-      and reconfigure flows produce a richer entry payload to redact.
+      async_get_config_entry_diagnostics returns
+      {config_entry, device, data}. Host, MAC, hostname, unique_id, and
+      device-registry connections / identifiers run through
+      async_redact_data. Coordinator state (last_update_success, last
+      uptime, interval), parsed status via SystemStatus.to_dict(), raw
+      uptime via get_uptime_raw(), and integration + library versions
+      are included.
   discovery-update-info:
     status: done
     comment: |
