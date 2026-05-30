@@ -49,6 +49,11 @@ Issues = "https://github.com/caidurbin/blustream/issues"
 [tool.setuptools.packages.find]
 include = ["blustream*"]
 
+[tool.setuptools.package-data]
+# PEP 561 marker: ship the inline type information to downstream consumers.
+# Included in both the wheel and the sdist by setuptools.
+"blustream" = ["py.typed"]
+
 [tool.setuptools.dynamic]
 version = { attr = "blustream.__version__" }
 

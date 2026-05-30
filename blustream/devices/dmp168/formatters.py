@@ -18,39 +18,9 @@ OUTPUT_MIX_MODE_NAMES = (
 
 def format_status(result: Any, ctx: RenderContext) -> str:
     if ctx.json:
-        return json.dumps(
-            {
-                "power": result.power,
-                "baud": result.baud,
-                "level_unit": result.level_unit,
-                "auto_standby_time": result.auto_standby_time,
-                "dsp_usage": result.dsp_usage,
-                "fade": result.fade,
-                "temperature": result.temperature,
-                "uptime": result.uptime,
-                "firmware_version": result.firmware_version,
-                "inputs": [
-                    {
-                        "port": inp.port,
-                        "lock": inp.lock,
-                        "gain_l": inp.gain_l,
-                        "gain_r": inp.gain_r,
-                        "mute_l": inp.mute_l,
-                        "mute_r": inp.mute_r,
-                    }
-                    for inp in result.inputs
-                ],
-                "routing": [
-                    {
-                        "output": r.output,
-                        "channel": r.channel,
-                        "from_input": r.from_input,
-                    }
-                    for r in result.routing
-                ],
-            },
-            indent=2,
-        )
+        # SystemStatus.to_dict() is the single source of the --json shape;
+        # delegate so the CLI surface can't drift from the library serializer.
+        return json.dumps(result.to_dict(), indent=2)
 
     lines = [
         f"Power: {result.power}",

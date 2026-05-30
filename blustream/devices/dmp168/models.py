@@ -1,7 +1,7 @@
 """Data models for DMP168 device."""
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
 
 @dataclass
@@ -40,6 +40,46 @@ class SystemStatus:
     firmware_version: str  # Firmware version
     inputs: list[InputSettings]  # Input settings
     routing: list[OutputRouting]  # Output routing
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to the primitives dict used by the CLI ``--json`` surface.
+
+        This is the single source of the hand-built JSON shape that
+        :func:`blustream.devices.dmp168.formatters.format_status` emits. Built
+        by hand rather than via :func:`dataclasses.asdict` so the serialized
+        shape stays pinned to the Lua-parity contract instead of tracking the
+        dataclass field layout (ADR 0011).
+        """
+        return {
+            "power": self.power,
+            "baud": self.baud,
+            "level_unit": self.level_unit,
+            "auto_standby_time": self.auto_standby_time,
+            "dsp_usage": self.dsp_usage,
+            "fade": self.fade,
+            "temperature": self.temperature,
+            "uptime": self.uptime,
+            "firmware_version": self.firmware_version,
+            "inputs": [
+                {
+                    "port": inp.port,
+                    "lock": inp.lock,
+                    "gain_l": inp.gain_l,
+                    "gain_r": inp.gain_r,
+                    "mute_l": inp.mute_l,
+                    "mute_r": inp.mute_r,
+                }
+                for inp in self.inputs
+            ],
+            "routing": [
+                {
+                    "output": r.output,
+                    "channel": r.channel,
+                    "from_input": r.from_input,
+                }
+                for r in self.routing
+            ],
+        }
 
 
 @dataclass

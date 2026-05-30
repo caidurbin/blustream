@@ -209,6 +209,60 @@ class TestFormatStatus:
         assert result == expected
 
 
+class TestSystemStatusToDict:
+    """Acceptance: SystemStatus.to_dict() is the primitives source for --json."""
+
+    def test_to_dict_shape(self, sample_status):
+        assert sample_status.to_dict() == {
+            "power": "On",
+            "baud": 115200,
+            "level_unit": "%",
+            "auto_standby_time": 30,
+            "dsp_usage": 45.2,
+            "fade": True,
+            "temperature": 47.4,
+            "uptime": "0000:08:57:01",
+            "firmware_version": "1.2.3",
+            "inputs": [
+                {"port": 1, "lock": False, "gain_l": 80, "gain_r": 80, "mute_l": False, "mute_r": False},
+                {"port": 2, "lock": True, "gain_l": 50, "gain_r": 60, "mute_l": True, "mute_r": False},
+            ],
+            "routing": [
+                {"output": 1, "channel": "L", "from_input": 1},
+                {"output": 1, "channel": "R", "from_input": 2},
+                {"output": 2, "channel": "L", "from_input": None},
+            ],
+        }
+
+    def test_to_dict_matches_format_status_json(self, sample_status):
+        """Parity: to_dict() equals the parsed --json formatter output."""
+        ctx = RenderContext(json=True)
+        assert json.loads(format_status(sample_status, ctx)) == sample_status.to_dict()
+
+    def test_to_dict_returns_only_primitives(self, sample_status):
+        """The dict must be JSON-serializable (no dataclass instances leak)."""
+        # Round-trips cleanly iff every value is a JSON primitive/container.
+        assert json.loads(json.dumps(sample_status.to_dict())) == sample_status.to_dict()
+
+    def test_to_dict_empty_collections(self):
+        status = SystemStatus(
+            power="Off(Standby)",
+            baud=9600,
+            level_unit="dB",
+            auto_standby_time=0,
+            dsp_usage=0.0,
+            fade=False,
+            temperature=30.0,
+            uptime="0000:00:00:00",
+            firmware_version="0.0.1",
+            inputs=[],
+            routing=[],
+        )
+        result = status.to_dict()
+        assert result["inputs"] == []
+        assert result["routing"] == []
+
+
 class TestFormatPresetStatus:
     def test_human_mode_exists(self, preset_exists):
         ctx = RenderContext(json=False)
