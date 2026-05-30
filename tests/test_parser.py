@@ -29,7 +29,9 @@ def load_fixture_preserving_crlf(name: str) -> str:
     what the parser sees compared to live-device bytes.
     """
     fixture_path = Path(__file__).parent / "fixtures" / name
-    return fixture_path.read_text(newline="")
+    # Bytes + decode preserves CRLF without translation and stays portable
+    # to Python < 3.13 (read_text gained its newline kwarg in 3.13).
+    return fixture_path.read_bytes().decode("utf-8")
 
 
 class TestDMP168Parser:

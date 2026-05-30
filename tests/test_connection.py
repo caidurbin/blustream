@@ -300,10 +300,11 @@ class TestStreamingResponseFraming:
         """
         from blustream.devices.dmp168.device import _status_terminator
 
-        # newline="" preserves the on-disk \r\n terminators verbatim — the
-        # default text-mode read normalises them to \n, which would defeat
-        # the framing under test.
-        full_response = LIVE_STATUS_FIXTURE.read_text(newline="")
+        # Read bytes + decode to preserve the on-disk \r\n terminators
+        # verbatim — text-mode read normalises them to \n, which would
+        # defeat the framing under test. (read_text(newline="") does this
+        # too, but its newline kwarg only exists on Python 3.13+.)
+        full_response = LIVE_STATUS_FIXTURE.read_bytes().decode("utf-8")
         # 6 chunks of roughly equal size
         n_chunks = 6
         chunk_size = (len(full_response) + n_chunks - 1) // n_chunks
@@ -365,7 +366,7 @@ class TestStreamingResponseFraming:
         """
         from blustream.devices.dmp168.device import _status_terminator
 
-        full_status = LIVE_STATUS_FIXTURE.read_text(newline="")
+        full_status = LIVE_STATUS_FIXTURE.read_bytes().decode("utf-8")
         banner = (
             "\r\n"
             "================================================================\r\n"
@@ -415,7 +416,7 @@ class TestStreamingResponseFraming:
         """
         from blustream.devices.dmp168.device import _status_terminator
 
-        full_status = LIVE_STATUS_FIXTURE.read_text(newline="")
+        full_status = LIVE_STATUS_FIXTURE.read_bytes().decode("utf-8")
         next_response = "[SUCCESS]ok\r\n"
 
         # Chunk plan: banner, then STATUS body split into 4 chunks where
