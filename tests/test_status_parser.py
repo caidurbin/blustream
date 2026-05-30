@@ -62,7 +62,9 @@ def test_live_full_response_bounds_input_and_routing_sections():
     because no Lua sibling consumes it.
     """
     live_fixture = Path(__file__).resolve().parent / "fixtures" / "status_live_full.txt"
-    response = live_fixture.read_text(newline="")
+    # Bytes + decode preserves CRLF without translation and stays portable
+    # to Python < 3.13 (read_text gained its newline kwarg in 3.13).
+    response = live_fixture.read_bytes().decode("utf-8")
 
     actual = parse(response)
 
