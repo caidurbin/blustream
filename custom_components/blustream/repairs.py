@@ -62,12 +62,6 @@ def async_create_mac_mismatch_issue(
     )
 
 
-@callback
-def async_delete_mac_mismatch_issue(hass: HomeAssistant, entry_id: str) -> None:
-    """Remove the MAC-mismatch repair issue for ``entry_id`` if present."""
-    ir.async_delete_issue(hass, DOMAIN, _mac_mismatch_issue_id(entry_id))
-
-
 class MacMismatchRepairFlow(RepairsFlow):
     """Two-choice repair flow: confirm device replacement, or restore."""
 

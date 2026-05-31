@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -28,15 +27,6 @@ from custom_components.blustream.const import DOMAIN  # noqa: E402
 from custom_components.blustream.repairs import (  # noqa: E402
     _mac_mismatch_issue_id,
 )
-
-
-def _patched_device() -> MagicMock:
-    device = MagicMock()
-    device.connect = AsyncMock()
-    device.disconnect = AsyncMock()
-    device.get_uptime = AsyncMock(return_value=timedelta(seconds=120))
-    return device
-
 
 # ---------------------------------------------------------------------------
 # DHCP trigger
@@ -203,19 +193,17 @@ async def test_reconfigure_to_conflicting_mac_raises_repair_issue(
     entry_a.add_to_hass(hass)
     entry_b.add_to_hass(hass)
 
-    device = _patched_device()
-    with patch(
-        "custom_components.blustream.config_flow.DMP168", return_value=device
-    ):
-        result = await entry_a.start_reconfigure_flow(hass)
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {
-                CONF_HOST: "192.0.2.10",
-                CONF_PORT: 23,
-                CONF_MAC: "34:D0:B8:AA:BB:CC",
-            },
-        )
+    # The mac-mismatch abort fires before _validate_connectivity, so no
+    # DMP168 patch is needed -- the flow never reaches the network step.
+    result = await entry_a.start_reconfigure_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_HOST: "192.0.2.10",
+            CONF_PORT: 23,
+            CONF_MAC: "34:D0:B8:AA:BB:CC",
+        },
+    )
 
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "mac_mismatch"
