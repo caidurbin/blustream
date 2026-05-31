@@ -15,10 +15,14 @@ name: Release (HACS)
 # tree at the release tag (hacs.json declares no `zip_release`), so this
 # workflow just publishes the GitHub release. The tag must point at a
 # commit whose manifest.json is current -- the version-guard step below
-# enforces that, since HACS shows the manifest `version` while keying the
-# download off the tag, and a silent mismatch between the two is the one
-# footgun the c4z lane doesn't have (its artifact filename carries the
-# version).
+# enforces that, since HACS shows the manifest `version` to users while
+# keying the download off the tag, so a silent mismatch between the two
+# would install a version that disagrees with what HACS displays. (The
+# sibling lanes guard differently: release-pypi.yml bakes the version
+# into the immutable wheel at build time and checks it there; the
+# Control4 `.c4z` basename carries no version and its driver.xml
+# `<version>` is a decoupled integer for Composer update detection, so
+# release-c4z.yml has no tag-vs-version guard at all.)
 
 on:
   push:

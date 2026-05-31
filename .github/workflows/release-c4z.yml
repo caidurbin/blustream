@@ -11,6 +11,18 @@ name: Release (.c4z)
 # regular CI build in `.github/workflows/c4z-build.yml`. Running it
 # here keeps the released artifact byte-equivalent to what reviewers
 # saw on the merging PR.
+#
+# No tag-vs-version guard, by design (unlike release-pypi.yml and
+# release-hacs.yml). Control4's driver.xml `<version>` is an integer
+# that Composer uses for update detection -- it starts at 0 and
+# increments -- and is intentionally decoupled from the `c4-v*` release
+# semver (see driver.xml's header note; docs/control4-driver-plan.md
+# "Independent versioning"). The `.c4z` basename (`blustream-dmp168.c4z`) carries no
+# version at all. A `c4-v0.1.0`-vs-`<version>` check would therefore
+# compare two unrelated schemes (and reject the intended first release,
+# 0.1.0 vs 0). This lane is also the most reversible of the three --
+# delete the GitHub release / move the tag -- so a guard's value is low.
+# Do not add one without first reconciling the integer/semver split.
 
 on:
   push:
