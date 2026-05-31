@@ -62,7 +62,3 @@ The default mDNS Domain Name is `DMP168` (fixed `dmp168.local`, not
 MAC-derived), so two out-of-the-box units on one LAN collide on mDNS
 until renamed. mDNS therefore serves as a discovery UX assist (find
 the IP automatically) but **cannot** carry stable per-device identity.
-
-
-
-

@@ -117,4 +117,4 @@ jobs:
         # Uses Trusted Publishing by default; falls back to a token if
         # PYPI_API_TOKEN is set in repo secrets. Neither is configured
         # in this slice -- see issue #19 acceptance criteria.
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1

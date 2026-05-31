@@ -226,9 +226,7 @@ These were discovered during the design conversation and are not in the manufact
 - **`POFF` is documented as "Power Save State", not a hard power-off.** TCP listeners remain alive after `POFF`. The driver can detect off-state and issue `PON` over the network.
 - **Firmware version drift in references:** the manufacturer manual is rev'd against firmware 1.1.0; current firmware on the test device is **1.5.0**. Command surface is consistent but minor diffs may exist; the driver pins firmware 1.5.0 as its tested baseline in `spec/protocol.yaml`.
 - **mDNS:** the device publishes itself as `dmp168.local`. Suitable for the `Host` property as an alternative to a static IP (D8).
-- **Default credentials (factory):** username `blustream`, password `********`. First admin login is forced to set a new password.
-
-
+- **Default credentials (factory):** the vendor ships a documented factory username/password (see the Blustream DMP168 user manual). First admin login is forced to set a new password.
 ---
 
 ## 8. Codegen specification

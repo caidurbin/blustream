@@ -39,6 +39,9 @@ DEFAULT_MANIFEST = "manifest.xml"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "dist" / "c4z"
 DEFAULT_CACHE_DIR = REPO_ROOT / ".cache" / "drivers-driverpackager"
 DRIVERPACKAGER_GIT_URL = "https://github.com/snap-one/drivers-driverpackager.git"
+# Pin the upstream packager to an immutable commit so a compromised or
+# force-pushed upstream cannot inject code into the build. Bump deliberately.
+DRIVERPACKAGER_GIT_REF = "16eef8beb70303606f066524cda516b2aa7ce38d"  # master @ 2026-05-31
 
 FLAVORS = ("dev", "release")
 
@@ -137,18 +140,23 @@ def _expand_dp_candidates(path: Path) -> list[Path]:
 
 
 def _clone_driverpackager(cache_dir: Path) -> Path:
-    """Clone (or update) the upstream driverpackager into cache_dir."""
+    """Clone the upstream driverpackager into cache_dir, pinned to an
+    immutable commit (``DRIVERPACKAGER_GIT_REF``) for supply-chain safety."""
     cache_dir.parent.mkdir(parents=True, exist_ok=True)
-    if (cache_dir / ".git").is_dir():
+    if not (cache_dir / ".git").is_dir():
         subprocess.run(
-            ["git", "-C", str(cache_dir), "pull", "--ff-only"],
+            ["git", "clone", DRIVERPACKAGER_GIT_URL, str(cache_dir)],
             check=True,
         )
     else:
         subprocess.run(
-            ["git", "clone", "--depth", "1", DRIVERPACKAGER_GIT_URL, str(cache_dir)],
+            ["git", "-C", str(cache_dir), "fetch", "origin", DRIVERPACKAGER_GIT_REF],
             check=True,
         )
+    subprocess.run(
+        ["git", "-C", str(cache_dir), "checkout", "--quiet", DRIVERPACKAGER_GIT_REF],
+        check=True,
+    )
     return cache_dir / "dp3" / "driverpackager.py"
 
 

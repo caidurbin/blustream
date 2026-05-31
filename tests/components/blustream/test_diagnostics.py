@@ -73,7 +73,7 @@ def _patched_device() -> MagicMock:
 async def _setup_entry(hass: HomeAssistant, device: MagicMock) -> MockConfigEntry:
     entry = MockConfigEntry(
         domain=DOMAIN,
-        title="Test DMP168",
+        title=HOST,  # DHCP/manual-no-name entries surface the host IP as the title
         data={
             CONF_HOST: HOST,
             CONF_PORT: 23,
@@ -104,6 +104,7 @@ async def test_diagnostics_returns_expected_shape(hass: HomeAssistant) -> None:
     assert config_entry["data"][CONF_MAC] == REDACTED
     assert config_entry["data"][CONF_PORT] == 23
     assert config_entry[CONF_UNIQUE_ID] == REDACTED
+    assert config_entry["title"] == REDACTED
 
     device_dict = result["device"]
     assert device_dict is not None

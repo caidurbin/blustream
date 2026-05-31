@@ -21,12 +21,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Lua 5.1
-        uses: leafo/gh-actions-lua@v10
+        uses: leafo/gh-actions-lua@35bcb06abec04ec87df82e08caa84d545348536e # v10
         with:
           luaVersion: "5.1.5"
 
       - name: Set up LuaRocks
-        uses: leafo/gh-actions-luarocks@v4
+        uses: leafo/gh-actions-luarocks@e65774a6386cb4f24e293dca7fc4ff89165b64c5 # v4
 
       - name: Install libyaml (lyaml build dep)
         # lyaml binds libyaml; the Lua VectorRunner uses it to load the same

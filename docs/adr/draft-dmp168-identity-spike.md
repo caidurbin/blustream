@@ -59,16 +59,11 @@ Method: `dns-sd -G v4 dmp168.local`, `dns-sd -B _services._dns-sd._udp local`, p
 |---|---|---|---|---|
 | `_http._tcp.local.` | `DMP168._http._tcp.local.` | `DMP168.local.` | 80 | `path=/` |
 
-
 ### Hostname
 
 - **Hostname is the fixed string `DMP168.local`** — not MAC-derived, not serial-derived. Two DMP168s on the same LAN will collide. (`_userspace.dmp168.local` collision behaviour not tested.)
 - A-record resolves cleanly: `DMP168.local → 192.0.2.176`.
 - No custom `_blustream._tcp` / `_dmp168._tcp` service type. No TXT field carries MAC, serial, model, or firmware.
-
-
-
-
 
 ## Task 3 — DHCP capture
 

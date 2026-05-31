@@ -2,8 +2,9 @@
 
 Returns a downloadable ``{config_entry, device, data}`` payload for
 one-shot triage. Home-network-identifying fields (host IP, MAC,
-hostname, unique_id, device-registry connections / identifiers) are
-auto-redacted via :func:`async_redact_data`.
+hostname, config-entry title and discovery_keys, unique_id, and
+device-registry connections / identifiers) are auto-redacted via
+:func:`async_redact_data`.
 """
 
 from __future__ import annotations
@@ -27,7 +28,7 @@ from blustream import __version__ as BLUSTREAM_LIBRARY_VERSION  # noqa: N812
 from .const import DOMAIN
 from .coordinator import BlustreamConfigEntry
 
-TO_REDACT_ENTRY = {CONF_HOST, CONF_MAC, "hostname", CONF_UNIQUE_ID}
+TO_REDACT_ENTRY = {CONF_HOST, CONF_MAC, "hostname", "title", "discovery_keys", CONF_UNIQUE_ID}
 TO_REDACT_DEVICE = {ATTR_CONNECTIONS, ATTR_IDENTIFIERS}
 
 
