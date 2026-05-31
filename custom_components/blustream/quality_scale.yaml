@@ -133,7 +133,15 @@ rules:
       1:1 config-entry-to-device integration; no dynamic per-entry device
       enumeration.
   entity-category: done
-  entity-device-class: done
+  entity-device-class:
+    status: done
+    comment: |
+      The single sensor uses SensorDeviceClass.UPTIME. The canonical
+      ``utcnow() - timedelta`` pattern (also used by wled, fritz,
+      brother) is safe per-poll: HA's SensorEntity._normalize_uptime
+      applies a 60 s UPTIME_DEFAULT_TOLERANCE_SECONDS so per-poll
+      clock drift does not generate spurious state changes, and we
+      therefore don't quantize in our code.
   entity-disabled-by-default:
     status: exempt
     comment: |
