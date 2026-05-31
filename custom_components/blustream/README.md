@@ -45,6 +45,27 @@ Manual setup remains available for environments where DHCP discovery doesn't wor
 The integration verifies connectivity before creating the entry. If it can't reach the
 device you'll see a `cannot_connect` error; an ill-formed MAC reports `invalid_mac`.
 
+## Reconfigure
+
+Use **Settings → Devices & Services → Blustream Audio Matrix → Configure** to change
+the host, port, or MAC without removing and re-adding the integration. The form
+pre-fills with the entry's current values, re-runs the same connectivity check as
+the setup form (`cannot_connect`, `invalid_mac`), and preserves entity history on
+success. Clearing the MAC field is a no-op for identity — a MAC-anchored entry is
+not silently downgraded to entry-id identity (ADR 0010).
+
+## Diagnostics
+
+Use **Settings → Devices & Services → Blustream Audio Matrix → kebab menu →
+Download diagnostics** to capture a triage payload (coordinator state, parsed and
+raw system status, integration + library versions). Sensitive fields — host IP,
+MAC, hostname, unique_id, and the device-registry connections / identifiers — are
+auto-redacted, so the download is safe to attach to a public GitHub issue.
+
+Toggle **Enable debug logging** on the same page for protocol-level detail from
+the underlying `blustream` library (the integration registers `blustream` as a
+logger namespace so HA's debug toggle reaches the wire layer).
+
 ## Entities
 
 | Entity   | Class                       | Description                              |
@@ -98,9 +119,9 @@ removing the integration itself (ADR 0012).
 | DHCP discovery       | ✅                              | —                               |
 | DHCP IP-change update | ✅                             | —                               |
 | Zeroconf discovery   | ✅ (host-only assist)           | —                               |
-| Reconfigure flow     | —                               | Reconfigure slice               |
-| MAC-mismatch repair  | —                               | Reconfigure slice               |
-| Diagnostics          | —                               | Diagnostics slice               |
+| Reconfigure flow     | ✅                              | —                               |
+| Diagnostics          | ✅ (with redaction)             | —                               |
+| MAC-mismatch repair  | —                               | Repair-issue slice              |
 | Volume / mute / routing entities | —                   | v0.2+                           |
 
 ## Context
