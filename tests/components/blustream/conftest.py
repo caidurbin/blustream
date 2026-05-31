@@ -18,13 +18,16 @@ pytest.importorskip("pytest_homeassistant_custom_component")
 
 from homeassistant.components.sensor import SensorDeviceClass  # noqa: E402
 
-# ``SensorDeviceClass.UPTIME`` was introduced in HA 2025.2 (and therefore
-# pytest-homeassistant-custom-component 0.13.220+). PHCC pins one HA
-# version per release, so older PHCC lanes (e.g. the cap-at-0.13.205
-# lane forced by Python 3.12) cannot even import the integration's sensor
-# module at collection time. Skip the whole directory via
+# ``SensorDeviceClass.UPTIME`` was introduced in HA 2026.5.0 (core PR
+# #164266), shipped by pytest-homeassistant-custom-component 0.13.329+,
+# which requires Python 3.14. PHCC pins one HA version per release, so a
+# lane on an older PHCC/HA (e.g. PHCC <=0.13.316 -> HA 2026.2.3, the last
+# Python-3.13 HA) lacks the symbol and cannot import the integration's
+# sensor module at collection time. Skip the whole directory via
 # ``collect_ignore_glob`` -- a pytest hook that runs before any test file
-# is imported -- rather than letting collection blow up.
+# is imported -- rather than letting collection blow up. test-ha.yml pins
+# PHCC 0.13.329+ on Python 3.14, so this guard is a no-op in CI; it only
+# trips in a mismatched local/older environment.
 if not hasattr(SensorDeviceClass, "UPTIME"):
     collect_ignore_glob = ["test_*.py"]
 

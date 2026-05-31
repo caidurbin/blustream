@@ -87,8 +87,11 @@ async def test_user_step_form_initial(hass: HomeAssistant) -> None:
 
 async def test_user_step_happy_path_with_mac(hass: HomeAssistant) -> None:
     device = _patched_device()
-    with patch(
-        "custom_components.blustream.config_flow.DMP168", return_value=device
+    with (
+        patch(
+            "custom_components.blustream.config_flow.DMP168", return_value=device
+        ),
+        patch("custom_components.blustream.async_setup_entry", return_value=True),
     ):
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER}
@@ -96,6 +99,7 @@ async def test_user_step_happy_path_with_mac(hass: HomeAssistant) -> None:
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], USER_INPUT_WITH_MAC
         )
+        await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "Test DMP168"
@@ -112,8 +116,11 @@ async def test_user_step_happy_path_no_mac_uses_no_unique_id_yet(
     hass: HomeAssistant,
 ) -> None:
     device = _patched_device()
-    with patch(
-        "custom_components.blustream.config_flow.DMP168", return_value=device
+    with (
+        patch(
+            "custom_components.blustream.config_flow.DMP168", return_value=device
+        ),
+        patch("custom_components.blustream.async_setup_entry", return_value=True),
     ):
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER}
@@ -121,6 +128,7 @@ async def test_user_step_happy_path_no_mac_uses_no_unique_id_yet(
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], USER_INPUT_NO_MAC
         )
+        await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "192.0.2.11"
@@ -217,15 +225,22 @@ async def test_dhcp_discovery_creates_entry_with_mac_unique_id(
 ) -> None:
     """Confirming a DHCP discovery creates an entry with format_mac(mac)
     as ``unique_id`` and the discovered IP as ``CONF_HOST``."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN,
-        context={"source": config_entries.SOURCE_DHCP},
-        data=DHCP_DISCOVERY,
-    )
-    assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "discovery_confirm"
+    with patch(
+        "custom_components.blustream.async_setup_entry", return_value=True
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": config_entries.SOURCE_DHCP},
+            data=DHCP_DISCOVERY,
+        )
+        assert result["type"] is FlowResultType.FORM
+        assert result["step_id"] == "discovery_confirm"
 
-    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {}
+        )
+        await hass.async_block_till_done()
+
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_HOST] == "192.0.2.50"
     assert result["data"][CONF_MAC] == "34:d0:b8:21:22:33"
@@ -237,14 +252,21 @@ async def test_dhcp_discovery_normalizes_mac_to_format_mac(
 ) -> None:
     """The DHCP-source MAC arrives unseparated and lowercase; the entry's
     unique_id must be the format_mac-normalized colon-and-lowercase form."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN,
-        context={"source": config_entries.SOURCE_DHCP},
-        data=DhcpServiceInfo(
-            ip="192.0.2.60", hostname="dmp168", macaddress="34D0B8AABBCC"
-        ),
-    )
-    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    with patch(
+        "custom_components.blustream.async_setup_entry", return_value=True
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": config_entries.SOURCE_DHCP},
+            data=DhcpServiceInfo(
+                ip="192.0.2.60", hostname="dmp168", macaddress="34d0b8aabbcc"
+            ),
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {}
+        )
+        await hass.async_block_till_done()
+
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["result"].unique_id == "34:d0:b8:aa:bb:cc"
 
@@ -314,21 +336,29 @@ async def test_dhcp_two_units_on_one_lan_get_independent_identities(
     """Two DMP168s discovered concurrently must end up as two separate
     entries -- each MAC-anchored to its own unique_id, neither one
     overwriting the other's CONF_HOST."""
-    first = await hass.config_entries.flow.async_init(
-        DOMAIN,
-        context={"source": config_entries.SOURCE_DHCP},
-        data=DHCP_DISCOVERY,
-    )
-    first = await hass.config_entries.flow.async_configure(first["flow_id"], {})
-    assert first["type"] is FlowResultType.CREATE_ENTRY
+    with patch(
+        "custom_components.blustream.async_setup_entry", return_value=True
+    ):
+        first = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": config_entries.SOURCE_DHCP},
+            data=DHCP_DISCOVERY,
+        )
+        first = await hass.config_entries.flow.async_configure(
+            first["flow_id"], {}
+        )
+        assert first["type"] is FlowResultType.CREATE_ENTRY
 
-    second = await hass.config_entries.flow.async_init(
-        DOMAIN,
-        context={"source": config_entries.SOURCE_DHCP},
-        data=DHCP_DISCOVERY_SECOND_UNIT,
-    )
-    second = await hass.config_entries.flow.async_configure(second["flow_id"], {})
-    assert second["type"] is FlowResultType.CREATE_ENTRY
+        second = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": config_entries.SOURCE_DHCP},
+            data=DHCP_DISCOVERY_SECOND_UNIT,
+        )
+        second = await hass.config_entries.flow.async_configure(
+            second["flow_id"], {}
+        )
+        assert second["type"] is FlowResultType.CREATE_ENTRY
+        await hass.async_block_till_done()
 
     assert first["result"].unique_id == "34:d0:b8:21:22:33"
     assert second["result"].unique_id == "34:d0:b8:aa:bb:cc"
@@ -368,8 +398,11 @@ async def test_zeroconf_no_mac_creates_entry_without_unique_id(
     entry with no ``unique_id`` -- identity then falls back to the
     entry-id tier in ``async_setup_entry``."""
     device = _patched_device()
-    with patch(
-        "custom_components.blustream.config_flow.DMP168", return_value=device
+    with (
+        patch(
+            "custom_components.blustream.config_flow.DMP168", return_value=device
+        ),
+        patch("custom_components.blustream.async_setup_entry", return_value=True),
     ):
         result = await hass.config_entries.flow.async_init(
             DOMAIN,
@@ -380,6 +413,7 @@ async def test_zeroconf_no_mac_creates_entry_without_unique_id(
             result["flow_id"],
             {CONF_HOST: "192.0.2.70", CONF_PORT: 23},
         )
+        await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_HOST] == "192.0.2.70"
@@ -394,8 +428,11 @@ async def test_zeroconf_with_user_supplied_mac_uses_mac_unique_id(
     step, the MAC-anchored identity path applies -- same as a fully
     manual setup."""
     device = _patched_device()
-    with patch(
-        "custom_components.blustream.config_flow.DMP168", return_value=device
+    with (
+        patch(
+            "custom_components.blustream.config_flow.DMP168", return_value=device
+        ),
+        patch("custom_components.blustream.async_setup_entry", return_value=True),
     ):
         result = await hass.config_entries.flow.async_init(
             DOMAIN,
@@ -410,6 +447,7 @@ async def test_zeroconf_with_user_supplied_mac_uses_mac_unique_id(
                 CONF_MAC: "34:D0:B8:21:22:33",
             },
         )
+        await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["result"].unique_id == "34:d0:b8:21:22:33"
@@ -515,7 +553,7 @@ async def test_reconfigure_updates_host_and_port_in_place(
         patch(
             "custom_components.blustream.config_flow.DMP168", return_value=device
         ),
-        patch("custom_components.blustream.DMP168", return_value=device),
+        patch("custom_components.blustream.async_setup_entry", return_value=True),
     ):
         result = await entry.start_reconfigure_flow(hass)
         result = await hass.config_entries.flow.async_configure(

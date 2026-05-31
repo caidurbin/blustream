@@ -102,9 +102,16 @@ async def test_coordinator_command_error_raises_config_entry_not_ready_on_first_
     assert entry.state is ConfigEntryState.SETUP_RETRY
 
 
-async def test_coordinator_unexpected_exception_propagates_setup_error(
+async def test_coordinator_unexpected_exception_retries_setup(
     hass: HomeAssistant,
 ) -> None:
+    """An unexpected (non-Blustream) exception on the first refresh is not
+    distinguished from a connection failure: HA's DataUpdateCoordinator
+    catches it, marks the update unsuccessful, and
+    ``async_config_entry_first_refresh`` raises ``ConfigEntryNotReady`` --
+    so the entry lands in SETUP_RETRY, same as the expected error paths
+    above. (The coordinator does not force a hard SETUP_ERROR; a transient
+    bug should still be retried rather than wedging the entry.)"""
     device = _setup_device(uptime_side_effect=RuntimeError("surprise"))
     entry = MockConfigEntry(
         domain=DOMAIN, data=ENTRY_DATA, unique_id="34:d0:b8:21:22:33"
@@ -113,7 +120,7 @@ async def test_coordinator_unexpected_exception_propagates_setup_error(
     with patch("custom_components.blustream.DMP168", return_value=device):
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-    assert entry.state is ConfigEntryState.SETUP_ERROR
+    assert entry.state is ConfigEntryState.SETUP_RETRY
 
 
 async def test_coordinator_recovery_after_transient_failure(

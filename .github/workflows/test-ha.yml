@@ -42,20 +42,23 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - name: Install dependencies
-        # PHCC pins one Home Assistant version per release; the HA
-        # version we test against (and therefore the API surface the
-        # tests rely on, e.g. SensorDeviceClass.UPTIME from HA 2025.2)
-        # is set by this pin. Bump deliberately when consuming a newer
-        # HA API. Versions 0.13.317+ require Python 3.14; cap below
-        # that until the runner Python bumps.
+        # PHCC pins one Home Assistant version per release, which sets the
+        # HA API surface the tests run against. The uptime sensor depends
+        # on SensorDeviceClass.UPTIME and SensorEntity._normalize_uptime,
+        # both introduced in HA 2026.5.0 (core PR #164266). That HA -- and
+        # every HA since 2026.3.0 -- requires Python 3.14, so the runner
+        # above is 3.14 and PHCC is floored at 0.13.329, the first release
+        # pinning the 2026.5.0 stable. (PHCC <=0.13.316 pins HA 2026.2.3,
+        # which lacks UPTIME, so the conftest guard would skip the whole
+        # suite.) Bump deliberately when consuming a newer HA API.
         run: |
           python -m pip install --upgrade pip
           pip install -e .
           pip install \
-            "pytest-homeassistant-custom-component>=0.13.220,<0.13.317" \
+            "pytest-homeassistant-custom-component>=0.13.329" \
             syrupy
 
       - name: Run integration tests with coverage
