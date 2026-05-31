@@ -15,6 +15,13 @@ logger = logging.getLogger(__name__)
 BUFFER_SIZE_INITIAL = 1024
 BUFFER_SIZE_RECEIVE = 4096
 
+# Hard ceiling on a single ``read_until`` accumulation. The library is a
+# LAN client pointed at an operator-trusted device, but a malfunctioning
+# or hostile device could otherwise stream indefinitely within the read
+# timeout window and inflate memory. 1 MiB is far larger than any real
+# DMP168 response (a full STATUS dump is a few KiB).
+MAX_RESPONSE_CHARS = 1024 * 1024
+
 DEFAULT_BANNER_TIMEOUT = 2.0
 TIMEOUT_WAIT_CLOSED = 1.0
 
@@ -316,6 +323,13 @@ class TCPConnection(Connection):
 
             self._buffer += chunk_str
             logger.debug(f"Received {len(chunk_str)} chars; buffer now {len(self._buffer)}")
+
+            if len(accumulated) + len(self._buffer) > MAX_RESPONSE_CHARS:
+                raise ConnectionError(
+                    f"Response exceeded {MAX_RESPONSE_CHARS} chars without a "
+                    f"matching line; aborting to avoid unbounded buffering. "
+                    f"The device may be malfunctioning."
+                )
 
     @staticmethod
     def _consume_lines(
