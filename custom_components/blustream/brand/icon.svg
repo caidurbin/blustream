@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <title>Blustream audio matrix</title>
+  <desc>Crosspoint routing matrix: 5x5 grid with three active crosspoints.</desc>
+  <circle cx="44" cy="44" r="14" fill="#297DC2"/>
+  <circle cx="86" cy="44" r="14" fill="#297DC2"/>
+  <circle cx="128" cy="44" r="14" fill="#297DC2"/>
+  <circle cx="170" cy="44" r="14" fill="#297DC2"/>
+  <circle cx="212" cy="44" r="14" fill="#297DC2"/>
+  <circle cx="44" cy="86" r="14" fill="#297DC2"/>
+  <circle cx="86" cy="86" r="14" fill="#297DC2"/>
+  <circle cx="86" cy="86" r="10" fill="#CDEFFB"/>
+  <circle cx="128" cy="86" r="14" fill="#297DC2"/>
+  <circle cx="170" cy="86" r="14" fill="#297DC2"/>
+  <circle cx="212" cy="86" r="14" fill="#297DC2"/>
+  <circle cx="44" cy="128" r="14" fill="#297DC2"/>
+  <circle cx="86" cy="128" r="14" fill="#297DC2"/>
+  <circle cx="128" cy="128" r="14" fill="#297DC2"/>
+  <circle cx="128" cy="128" r="10" fill="#CDEFFB"/>
+  <circle cx="170" cy="128" r="14" fill="#297DC2"/>
+  <circle cx="212" cy="128" r="14" fill="#297DC2"/>
+  <circle cx="44" cy="170" r="14" fill="#297DC2"/>
+  <circle cx="86" cy="170" r="14" fill="#297DC2"/>
+  <circle cx="128" cy="170" r="14" fill="#297DC2"/>
+  <circle cx="170" cy="170" r="14" fill="#297DC2"/>
+  <circle cx="170" cy="170" r="10" fill="#CDEFFB"/>
+  <circle cx="212" cy="170" r="14" fill="#297DC2"/>
+  <circle cx="44" cy="212" r="14" fill="#297DC2"/>
+  <circle cx="86" cy="212" r="14" fill="#297DC2"/>
+  <circle cx="128" cy="212" r="14" fill="#297DC2"/>
+  <circle cx="170" cy="212" r="14" fill="#297DC2"/>
+  <circle cx="212" cy="212" r="14" fill="#297DC2"/>
+</svg>
