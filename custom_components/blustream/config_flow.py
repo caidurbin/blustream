@@ -107,7 +107,11 @@ class BlustreamConfigFlow(ConfigFlow, domain=DOMAIN):
         for entry in self._async_current_entries(include_ignore=False):
             if entry.data.get(CONF_HOST) != discovery_info.ip:
                 continue
-            if entry.unique_id == mac:
+            # Defensive: _abort_if_unique_id_configured (above) already aborts
+            # when any existing entry carries this MAC, so a same-MAC entry
+            # never reaches this loop. The guard is kept in case that abort
+            # path changes; it is unreachable today, hence no-cover.
+            if entry.unique_id == mac:  # pragma: no cover
                 continue
             async_create_mac_mismatch_issue(
                 self.hass,

@@ -661,6 +661,32 @@ async def test_reconfigure_cannot_connect(hass: HomeAssistant) -> None:
     assert entry.data[CONF_HOST] == "192.0.2.10"
 
 
+async def test_reconfigure_unknown_error(hass: HomeAssistant) -> None:
+    """An unexpected (non-Blustream) error during reconfigure validation
+    surfaces as the ``unknown`` error key on the form; the entry data is
+    left untouched."""
+    entry = _existing_mac_entry()
+    entry.add_to_hass(hass)
+
+    device = _patched_device(uptime_side_effect=RuntimeError("boom"))
+    with patch(
+        "custom_components.blustream.config_flow.DMP168", return_value=device
+    ):
+        result = await entry.start_reconfigure_flow(hass)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                CONF_HOST: "192.0.2.222",
+                CONF_PORT: 23,
+                CONF_MAC: "34:d0:b8:21:22:33",
+            },
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "unknown"}
+    assert entry.data[CONF_HOST] == "192.0.2.10"
+
+
 async def test_reconfigure_can_add_mac_to_entry_id_anchored_entry(
     hass: HomeAssistant,
 ) -> None:

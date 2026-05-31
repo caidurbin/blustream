@@ -22,8 +22,12 @@ rules:
   config-flow-test-coverage:
     status: done
     comment: |
-      100% coverage on config_flow.py: user step happy path, invalid_mac,
-      cannot_connect, unknown, and already_configured.
+      100% coverage on config_flow.py across the user, DHCP, zeroconf, and
+      reconfigure steps -- happy paths plus invalid_mac, cannot_connect,
+      unknown, already_configured, and mac_mismatch. One unreachable
+      defensive branch in async_step_dhcp (a same-MAC entry can't get past
+      _abort_if_unique_id_configured to reach the loop) is marked
+      "# pragma: no cover".
   dependency-transparency: done
   docs-actions:
     status: exempt
