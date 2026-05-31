@@ -1,0 +1,62 @@
+name: Release (HACS)
+
+# Publishes a GitHub release for the Blustream Home Assistant integration
+# on `hacs-v*` tags so HACS can detect and install the version.
+#
+# The `hacs-v*` prefix is the integration's release lane, disjoint from
+# the Python library's `v*` lane (release-pypi.yml) and the Control4
+# driver's `c4-v*` lane (release-c4z.yml) so the three components version
+# independently (PRD #9, README "Independent versioning"). Listing only
+# `hacs-v*` here keeps a library `v1.2.3` or driver `c4-v1.2.3` push from
+# accidentally firing an integration release.
+#
+# Unlike release-c4z.yml there is nothing to build: HACS installs the
+# integration by downloading custom_components/blustream/ from the repo
+# tree at the release tag (hacs.json declares no `zip_release`), so this
+# workflow just publishes the GitHub release. The tag must point at a
+# commit whose manifest.json is current -- the version-guard step below
+# enforces that, since HACS shows the manifest `version` while keying the
+# download off the tag, and a silent mismatch between the two is the one
+# footgun the c4z lane doesn't have (its artifact filename carries the
+# version).
+
+on:
+  push:
+    tags:
+      - "hacs-v*"
+
+permissions:
+  # Creating a GitHub release requires write access to repository contents.
+  # Without this the publish step fails with HTTP 403.
+  contents: write
+
+jobs:
+  release:
+    name: Publish GitHub release for HACS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify tag matches manifest version
+        # `hacs-v0.1.0` must correspond to manifest version `0.1.0`. The
+        # tag name arrives via env (not inlined `${{ }}`) so a crafted ref
+        # can't be interpolated into the shell. jq ships on ubuntu-latest.
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          manifest_version="$(jq -r '.version' custom_components/blustream/manifest.json)"
+          tag_version="${TAG#hacs-v}"
+          if [ "$manifest_version" != "$tag_version" ]; then
+            echo "::error::Tag $TAG implies version $tag_version but manifest.json declares $manifest_version"
+            exit 1
+          fi
+          echo "Manifest version $manifest_version matches tag $TAG"
+
+      - name: Create GitHub release
+        # softprops/action-gh-release reads the tag from the trigger ref
+        # and creates a release named after it (e.g. hacs-v0.1.0). No
+        # artifact is attached: HACS pulls custom_components/blustream/
+        # from the repo tree at the tag.
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
