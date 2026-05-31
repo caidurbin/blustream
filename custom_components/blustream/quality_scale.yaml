@@ -149,10 +149,17 @@ rules:
       hiding it by default would defeat the install.
   entity-translations: done
   exception-translations:
-    status: todo
+    status: exempt
     comment: |
-      Exception messages will be translated when reconfigure/repair flows
-      add user-visible exception surfaces.
+      The integration raises no user-facing exceptions, so there is no
+      exception message to translate. Config-flow failures surface as
+      form error keys (cannot_connect / invalid_mac / unknown) and abort
+      reasons (already_configured / mac_mismatch) defined in strings.json;
+      the MAC-mismatch repair surfaces through an issue-registry
+      translation_key; and the coordinator's UpdateFailed is logged via
+      the log-when-unavailable path, not shown to the user. No
+      HomeAssistantError subclass is raised across config flow, the
+      reconfigure flow (#34), or the repair flow (#36).
   icon-translations:
     status: exempt
     comment: |
@@ -195,5 +202,9 @@ rules:
   strict-typing:
     status: todo
     comment: |
-      Stretch goal once the integration's surface area stabilizes; the
-      library ships py.typed so this is reachable without library churn.
+      Platinum rule, above the committed Gold tier and therefore not
+      required for this sign-off (hassfest only enforces rules at or
+      below the declared tier). Deliberately deferred per ADR 0009/0012:
+      a reachable stretch goal, not committed for v0.1.0. The library
+      ships py.typed so Platinum stays reachable without later
+      library-side breaking churn.
