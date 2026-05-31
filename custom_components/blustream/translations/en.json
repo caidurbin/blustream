@@ -33,13 +33,31 @@
     },
     "abort": {
       "already_configured": "Device is already configured",
-      "reconfigure_successful": "Reconfiguration was successful"
+      "reconfigure_successful": "Reconfiguration was successful",
+      "mac_mismatch": "The MAC address does not match the configured device. A repair issue has been raised so you can confirm whether to replace the device or restore the stored identity."
     }
   },
   "entity": {
     "sensor": {
       "uptime": {
         "name": "Last boot"
+      }
+    }
+  },
+  "issues": {
+    "mac_mismatch": {
+      "title": "Blustream device MAC mismatch",
+      "fix_flow": {
+        "step": {
+          "init": {
+            "title": "Blustream device MAC mismatch",
+            "description": "A different MAC address ({discovered_mac}) was observed at the host previously associated with MAC {stored_mac}. Did you replace the physical device, or is this a transient observation?",
+            "menu_options": {
+              "confirm_replacement": "Confirm replacement (adopt the new MAC and keep entity history)",
+              "restore": "Restore (keep the stored identity; treat the new MAC as transient)"
+            }
+          }
+        }
       }
     }
   }

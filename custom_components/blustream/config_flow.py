@@ -21,6 +21,7 @@ from blustream.base.exceptions import (
 )
 
 from .const import DEFAULT_PORT, DOMAIN
+from .repairs import async_create_mac_mismatch_issue
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -98,6 +99,23 @@ class BlustreamConfigFlow(ConfigFlow, domain=DOMAIN):
         mac = format_mac(discovery_info.macaddress)
         await self.async_set_unique_id(mac)
         self._abort_if_unique_id_configured(updates={CONF_HOST: discovery_info.ip})
+
+        # MAC-mismatch repair path (ADR 0010 -- no automatic identity
+        # upgrades): if another entry already lives at this host with a
+        # different MAC (or none at all -- a Tier-3 entry), surface a
+        # fixable repair issue rather than silently rewriting identity.
+        for entry in self._async_current_entries(include_ignore=False):
+            if entry.data.get(CONF_HOST) != discovery_info.ip:
+                continue
+            if entry.unique_id == mac:
+                continue
+            async_create_mac_mismatch_issue(
+                self.hass,
+                entry.entry_id,
+                stored_mac=entry.data.get(CONF_MAC),
+                discovered_mac=mac,
+            )
+            return self.async_abort(reason="mac_mismatch")
 
         self._discovered_host = discovery_info.ip
         self._discovered_mac = mac
@@ -210,9 +228,13 @@ class BlustreamConfigFlow(ConfigFlow, domain=DOMAIN):
         MAC changes, the entry's ``unique_id`` follows. Submitting with
         the MAC field cleared is treated as "leave identity alone" so
         that this slice does not silently downgrade a MAC-anchored entry
-        to entry-id identity (ADR 0010 / no-automatic-rewrites). The
-        documented MAC-mismatch repair path is built in the repair-issue
-        slice.
+        to entry-id identity (ADR 0010 / no-automatic-rewrites).
+
+        Changing the MAC to a value that already belongs to another
+        configured entry would silently rebind one entry's history onto
+        the other's identity; that path is blocked here and surfaced as
+        a fixable repair issue via :func:`async_create_mac_mismatch_issue`
+        instead. The user resolves the issue from the Repairs panel.
         """
         reconfigure_entry = self._get_reconfigure_entry()
         errors: dict[str, str] = {}
@@ -225,6 +247,34 @@ class BlustreamConfigFlow(ConfigFlow, domain=DOMAIN):
                     errors["base"] = "invalid_mac"
                 else:
                     mac_normalized = format_mac(mac_raw)
+
+            if (
+                not errors
+                and mac_normalized is not None
+                and mac_normalized != reconfigure_entry.unique_id
+            ):
+                # MAC-mismatch repair path: changing identity to a MAC
+                # that already belongs to another entry would either
+                # collide or silently rebind history -- surface it as a
+                # fixable issue rather than committing the rewrite
+                # (ADR 0010 / no-automatic-rewrites).
+                conflicting = next(
+                    (
+                        entry
+                        for entry in self._async_current_entries(include_ignore=False)
+                        if entry.entry_id != reconfigure_entry.entry_id
+                        and entry.unique_id == mac_normalized
+                    ),
+                    None,
+                )
+                if conflicting is not None:
+                    async_create_mac_mismatch_issue(
+                        self.hass,
+                        reconfigure_entry.entry_id,
+                        stored_mac=reconfigure_entry.data.get(CONF_MAC),
+                        discovered_mac=mac_normalized,
+                    )
+                    return self.async_abort(reason="mac_mismatch")
 
             if not errors:
                 try:

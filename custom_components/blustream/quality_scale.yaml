@@ -166,9 +166,19 @@ rules:
       MAC actually changes). Well-formedness-only invalid_mac
       validation matches async_step_user.
   repair-issues:
-    status: todo
+    status: done
     comment: |
-      MAC-mismatch repair issue lands with the discovery/reconfigure slice.
+      MAC-mismatch repair issue (ADR 0010 / no-automatic-rewrites): when
+      DHCP rediscovers a different MAC for an already-configured host, or
+      a reconfigure submits a MAC that would collide with another entry,
+      the config flow creates a fixable issue via
+      issue_registry.async_create_issue(is_fixable=True) and aborts with
+      reason="mac_mismatch" rather than silently rewriting unique_id.
+      repairs.MacMismatchRepairFlow resolves it: "confirm replacement"
+      adopts the new MAC on the existing entry (entry_id preserved so
+      entity history survives) and reloads; "restore" treats the
+      observed MAC as transient and clears the issue without touching
+      the entry.
   stale-devices:
     status: exempt
     comment: |
