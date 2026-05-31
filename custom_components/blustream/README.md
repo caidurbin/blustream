@@ -54,6 +54,23 @@ the setup form (`cannot_connect`, `invalid_mac`), and preserves entity history o
 success. Clearing the MAC field is a no-op for identity — a MAC-anchored entry is
 not silently downgraded to entry-id identity (ADR 0010).
 
+## MAC-mismatch repair
+
+When DHCP rediscovers a different MAC at an already-configured host, or a
+Reconfigure submission would point the entry's identity at another configured
+entry's MAC, the integration raises a fixable **Repair** in **Settings →
+System → Repairs** instead of silently rewriting `unique_id`. Open the issue
+and choose:
+
+- **Confirm replacement** — adopt the newly observed MAC on the existing
+  entry. The `entry_id` (and therefore entity history) is preserved, the
+  `unique_id` updates, and the integration reloads.
+- **Restore** — treat the observed MAC as transient. The stored identity is
+  unchanged; the issue is cleared.
+
+This honours ADR 0010 (no automatic identity upgrades) for user story 15:
+the user always confirms a device swap before HA acts on it.
+
 ## Diagnostics
 
 Use **Settings → Devices & Services → Blustream Audio Matrix → kebab menu →
@@ -121,7 +138,7 @@ removing the integration itself (ADR 0012).
 | Zeroconf discovery   | ✅ (host-only assist)           | —                               |
 | Reconfigure flow     | ✅                              | —                               |
 | Diagnostics          | ✅ (with redaction)             | —                               |
-| MAC-mismatch repair  | —                               | Repair-issue slice              |
+| MAC-mismatch repair  | ✅                              | —                               |
 | Volume / mute / routing entities | —                   | v0.2+                           |
 
 ## Context
