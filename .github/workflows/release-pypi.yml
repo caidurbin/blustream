@@ -3,31 +3,46 @@ name: Release (PyPI)
 # Publishes the blustream Python library + CLI to PyPI on `v*` tags.
 #
 # The `v*` prefix is the library's release lane; the Control4 driver
-# uses the disjoint `c4-v*` prefix in release-c4z.yml so the two
-# components version independently (PRD #9, README "Independent
-# versioning"). Listing only `v*` here keeps a `c4-v1.2.3` push from
-# accidentally firing a PyPI publish against driver-only changes.
+# uses the disjoint `c4-v*` prefix in release-c4z.yml and the Home
+# Assistant integration the `hacs-v*` prefix in release-hacs.yml, so the
+# three components version independently (PRD #9, README "Independent
+# versioning"). Listing only `v*` here keeps a `c4-v1.2.3` or
+# `hacs-v1.2.3` push from accidentally firing a PyPI publish.
 #
 # Account creation, the PyPI Trusted Publisher binding, and any
 # fallback API-token secrets are explicitly out of scope for issue
 # #19. The workflow ships ready to fire as soon as those credentials
 # land in repo settings.
+#
+# A PyPI publish is irreversible -- a version's files are immutable and
+# can never be replaced, only yanked. Two checks therefore run on the
+# built artifact BEFORE the publish job:
+#   * version guard -- the built wheel's version must equal the tag. The
+#     version is dynamic from `blustream.__version__` (pyproject
+#     `[tool.setuptools.dynamic]`) and so is decoupled from the git tag;
+#     without this guard a `v0.3.0` tag would publish whatever
+#     `__version__` happens to say.
+#   * artifact smoke -- the wheel is installed into a clean virtualenv,
+#     imported, and `blustream --help` is run, so a wheel that can't
+#     import or whose console entry point is broken never ships.
+# `id-token: write` (PyPI OIDC) is granted ONLY to the publish job; the
+# build/verify job runs project and dependency code (pip install,
+# import) and must not be able to mint a publishing token.
 
 on:
   push:
     tags:
       - "v*"
 
-permissions:
-  contents: read
-  # Required for PyPI Trusted Publishing (OIDC). Harmless if a token
-  # fallback is configured instead.
-  id-token: write
+# No workflow-wide privileges; each job requests only what it needs.
+permissions: {}
 
 jobs:
-  build-and-publish:
-    name: Build sdist + wheel and publish to PyPI
+  build:
+    name: Build, version-guard, and smoke-test the wheel
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -44,8 +59,35 @@ jobs:
       - name: Build sdist and wheel
         # `python -m build` produces both dist/*.tar.gz and dist/*.whl;
         # PyPI rejects releases that ship only one or the other.
+        run: python -m build
+
+      - name: Verify the built version matches the tag
+        # Reads the version straight off the built wheel filename
+        # (blustream-<version>-py3-none-any.whl) so the check is against
+        # the exact artifact about to be published. The tag arrives via
+        # env, never inlined into the script.
+        env:
+          TAG: ${{ github.ref_name }}
         run: |
-          python -m build
+          wheel="$(ls dist/blustream-*-py3-none-any.whl)"
+          wheel_version="$(basename "$wheel" | sed -E 's/^blustream-([^-]+)-.*/\1/')"
+          tag_version="${TAG#v}"
+          if [ "$wheel_version" != "$tag_version" ]; then
+            echo "::error::Tag $TAG implies version $tag_version but the built wheel is $wheel_version. Bump blustream.__version__ to match the tag before releasing."
+            exit 1
+          fi
+          echo "Built version $wheel_version matches tag $TAG"
+
+      - name: Smoke-test the wheel in a clean environment
+        # Install only the built wheel (plus its real deps) into a fresh
+        # venv -- proves the published artifact imports and its console
+        # entry point runs, independent of the build checkout.
+        run: |
+          python -m venv /tmp/smoke
+          /tmp/smoke/bin/pip install --upgrade pip
+          /tmp/smoke/bin/pip install dist/blustream-*-py3-none-any.whl
+          /tmp/smoke/bin/python -c "import blustream; print('import OK:', blustream.__version__)"
+          /tmp/smoke/bin/blustream --help
 
       - name: Upload distribution artifacts
         uses: actions/upload-artifact@v4
@@ -55,8 +97,24 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      # PyPI Trusted Publishing (OIDC) -- scoped to this job alone so the
+      # build/verify job (which runs project + dependency code) cannot
+      # mint a publishing token.
+      id-token: write
+    steps:
+      - name: Download the verified distribution artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: blustream-pypi-dist
+          path: dist
+
       - name: Publish to PyPI
         # Uses Trusted Publishing by default; falls back to a token if
         # PYPI_API_TOKEN is set in repo secrets. Neither is configured
-        # in this slice — see issue #19 acceptance criteria.
+        # in this slice -- see issue #19 acceptance criteria.
         uses: pypa/gh-action-pypi-publish@release/v1
