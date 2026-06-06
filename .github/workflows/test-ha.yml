@@ -1,12 +1,12 @@
-name: HA integration tests
+name: "Test: HA"
 
-# Runs the Home Assistant integration test suite under
-# pytest-homeassistant-custom-component. PHCC pins one HA version per
-# release, so a matrix would mostly exercise PHCC versions rather than
-# real-world HA variance -- pin a single Python version to match.
+# Home Assistant integration test suite under pytest-homeassistant-custom-component.
+# PHCC pins one HA version per release, so a matrix would mostly exercise PHCC
+# versions rather than real-world HA variance -- pin a single Python version to
+# match.
 #
-# Path-scoped: only fires when the integration, the library it consumes,
-# or this workflow itself changes.
+# Path-scoped: only fires when the integration, the library it consumes, or this
+# workflow itself changes.
 
 on:
   pull_request:
@@ -34,7 +34,7 @@ permissions:
   contents: read
 
 jobs:
-  test-ha:
+  ha:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

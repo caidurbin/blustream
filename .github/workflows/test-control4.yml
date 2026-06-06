@@ -1,4 +1,8 @@
-name: Lua
+name: "Test: Control4"
+
+# busted unit tests for the Control4 driver. Lua 5.1 is pinned because Control4
+# drivers run inside the Composer Lua 5.1 sandbox; CI must test against the same
+# version the driver targets. luacheck linting runs in lint-control4.yml.
 
 on:
   pull_request:
@@ -12,10 +16,11 @@ on:
       - master
       - develop
 
-# Lua 5.1 is pinned because Control4 drivers run inside the Composer Lua 5.1
-# sandbox; CI must lint and test against the same version the driver targets.
+permissions:
+  contents: read
+
 jobs:
-  lint-and-test:
+  control4:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,14 +38,10 @@ jobs:
         # spec/vectors/formatters.yaml the Python runner consumes.
         run: sudo apt-get install -y libyaml-dev
 
-      - name: Install luacheck, busted, lyaml
+      - name: Install busted, lyaml
         run: |
-          luarocks install luacheck 1.2.0
           luarocks install busted 2.2.0
           luarocks install lyaml
-
-      - name: Run luacheck
-        run: luacheck .
 
       - name: Run busted
         # Includes control4/dmp168/spec/vector_runner_spec.lua, which calls

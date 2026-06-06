@@ -104,7 +104,7 @@ blustream/                             ← repo root
 ├── LICENSE                            ← Apache 2.0
 ├── pyproject.toml                     ← Python lib + CLI entry point
 ├── hacs.json                          ← HACS integration metadata (forward-looking)
-├── .github/workflows/                 ← CI: codegen-clean, pytest, lua tests, c4z build
+├── .github/workflows/                 ← CI: lint-*/test-* (per component), secret-scan, c4z build
 │
 ├── blustream/                         ← Python library (formerly bluestream/)
 │   ├── base/                          ← existing
