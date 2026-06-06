@@ -37,5 +37,6 @@ for a genuinely-new public value (e.g. another vendor-published identifier).
 | `2001:db8::/32` | RFC 3849 documentation IPv6 range | Reserved by RFC for documentation |
 | `255.255.255.x` | Subnet mask / broadcast address | Network parameter, not a host identifier |
 | `0000::57:01` | A `DDDD:HH:MM:SS` uptime duration that happens to parse as a compressed IPv6 literal | Time value in `tests/test_uptime_parser.py`, not an address |
+| `v1.2.3.4`, `version = "1.2.3.4"` | A four-part dotted *version* string | Exempted only on lines with a leading `v` or a `version` key — not `==` comparisons, so a real IP in `host == "8.8.8.8"` still fails |
 | `dmp168.local`, `DMP168` | Vendor default mDNS hostname | Fixed default for every unit; not user-specific |
 | `name@example.com` | Placeholder author/contact email | Used in doc author lines; not a real address |

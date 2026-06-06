@@ -1,7 +1,8 @@
 name: "Lint: library"
 
-# Ruff lint of the blustream library (everything under blustream/ except the
-# CLI, plus the shared tests). The CLI is linted separately in lint-cli.yml.
+# Ruff lint of all Python except the CLI (which is linted in lint-cli.yml):
+# blustream/ (minus cli), custom_components/, spec/, tools/, tests/ and the
+# top-level scripts. Mirrors the old `ruff check .` coverage.
 
 on:
   pull_request:
@@ -29,4 +30,4 @@ jobs:
         run: uv sync --locked --extra dev
 
       - name: Run ruff
-        run: uv run ruff check blustream tests --extend-exclude 'blustream/cli,tests/cli'
+        run: uv run ruff check . --extend-exclude 'blustream/cli,tests/cli'

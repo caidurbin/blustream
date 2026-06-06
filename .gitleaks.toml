@@ -39,6 +39,7 @@ paths = [
   '''(^|/)node_modules/''',
   '''(^|/)\.tox/''',
   '''(^|/)(build|dist)/''',
+  '''(^|/)[^/]*\.egg-info/''',
 ]
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -53,7 +54,7 @@ id = "ipv4-non-doc-range"
 description = "IPv4 address outside RFC 5737 documentation ranges (possible real device identifier)"
 regex = '''\b[0-9]{1,3}(?:\.[0-9]{1,3}){3}\b'''
 
-  [rules.allowlist]
+  [[rules.allowlists]]
   regexTarget = "match"
   regexes = [
     # RFC 5737 documentation ranges (leading-zero tolerant for padded octets).
@@ -63,6 +64,17 @@ regex = '''\b[0-9]{1,3}(?:\.[0-9]{1,3}){3}\b'''
     # Netmask / broadcast and the unspecified address — not host identifiers.
     '''\b255\.255\.255\.[0-9]{1,3}\b''',
     '''\b0+\.0+\.0+\.0+\b''',
+  ]
+
+  # Four-part dotted version strings (e.g. `v1.2.3.4`, `__version__ = "1.2.3.4"`)
+  # are not IP addresses. Scoped to the whole line and limited to a leading `v`
+  # or an explicit `version` key — deliberately NOT comparison operators like
+  # `==`, which would wrongly exempt a real IP in `host == "8.8.8.8"`.
+  [[rules.allowlists]]
+  regexTarget = "line"
+  regexes = [
+    '''(?i)\bv[0-9]{1,3}(?:\.[0-9]{1,3}){3}\b''',
+    '''(?i)version\w*["'\s:=]+[0-9]{1,3}(?:\.[0-9]{1,3}){3}''',
   ]
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -76,7 +88,7 @@ id = "ipv6-non-doc-range"
 description = "IPv6 address outside RFC 3849 documentation range (possible real device identifier)"
 regex = '''(?i)\b(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}\b|\b(?:[0-9a-f]{1,4}:)+:(?:[0-9a-f]{1,4}:)*[0-9a-f]{1,4}\b'''
 
-  [rules.allowlist]
+  [[rules.allowlists]]
   regexTarget = "match"
   regexes = [
     # RFC 3849 documentation range, padded or not (2001:db8::/32).
@@ -98,7 +110,7 @@ id = "mac-non-doc-range"
 description = "MAC address outside the Blustream OUI / RFC 7042 documentation range (possible real device identifier)"
 regex = '''(?i)\b(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}\b'''
 
-  [rules.allowlist]
+  [[rules.allowlists]]
   regexTarget = "match"
   regexes = [
     # Blustream IEEE OUI 34:D0:B8 (and the 34:D0:B8:2* MA-M sub-block) — public by
