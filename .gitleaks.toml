@@ -1,0 +1,109 @@
+# Shared secret-scanning config — single source of truth.
+#
+# Consumed by BOTH:
+#   * the local pre-commit gate (`betterleaks`, see .pre-commit-config.yaml), and
+#   * the Claude hook layer / any ad-hoc scan, via `betterleaks --config .gitleaks.toml`
+#     (auto-detected by name; betterleaks looks for `.gitleaks.toml` if no -c is given).
+#
+# Engine: betterleaks (gitleaks' feature-frozen successor) — same gitleaks v8 TOML
+# schema and CLI, so a `rev` bump in .pre-commit-config.yaml can fall back to
+# gitleaks with no changes here.
+#
+# Beyond the bundled secret rules (`[extend].useDefault`), this adds custom rules
+# for the device identifiers token-shaped scanners miss — IPv4, IPv6 and MAC
+# addresses in test fixtures, spec vectors and monitor logs. Every example
+# identifier in the repo lives in an IETF documentation range, so the allowlists
+# below permit ONLY those ranges (RFC 5737 / 3849 / 7042) plus the vendor OUI that
+# is required to be public. Any *real* (non-documentation) IP or MAC therefore
+# fails the scan by design.
+#
+# See docs/secret-scanning-allowlist.md for the human-readable rationale.
+
+title = "blustream secret-scanning rules"
+
+[extend]
+# Pull in the full bundled rule set (AWS keys, tokens, private keys, …) and add
+# the device-identifier rules below on top.
+useDefault = true
+
+# Never scan build artifacts / caches. The pre-commit hook only sees staged
+# (tracked) files, but a full-tree scan (`--no-git`, used in CI and ad-hoc runs)
+# would otherwise walk these — e.g. a .pyc embeds a mangled copy of source string
+# literals. These paths contain no authored secrets.
+[allowlist]
+paths = [
+  '''(^|/)\.git/''',
+  '''(^|/)__pycache__/''',
+  '''\.pyc$''',
+  '''(^|/)\.(cache|venv|ruff_cache|mypy_cache|pytest_cache)/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)\.tox/''',
+  '''(^|/)(build|dist)/''',
+]
+
+# ──────────────────────────────────────────────────────────────────────────────
+# IPv4 — block anything outside the RFC 5737 documentation ranges
+#   192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24
+# The detector is intentionally permissive (it also matches zero-padded octets
+# such as the device's `192.000.002.176` status output) so the allowlist, not the
+# detector, decides what is documentation-safe.
+# ──────────────────────────────────────────────────────────────────────────────
+[[rules]]
+id = "ipv4-non-doc-range"
+description = "IPv4 address outside RFC 5737 documentation ranges (possible real device identifier)"
+regex = '''\b[0-9]{1,3}(?:\.[0-9]{1,3}){3}\b'''
+
+  [rules.allowlist]
+  regexTarget = "match"
+  regexes = [
+    # RFC 5737 documentation ranges (leading-zero tolerant for padded octets).
+    '''\b192\.0*\.0*2\.[0-9]{1,3}\b''',
+    '''\b198\.0*51\.0*100\.[0-9]{1,3}\b''',
+    '''\b203\.0*\.0*113\.[0-9]{1,3}\b''',
+    # Netmask / broadcast and the unspecified address — not host identifiers.
+    '''\b255\.255\.255\.[0-9]{1,3}\b''',
+    '''\b0+\.0+\.0+\.0+\b''',
+  ]
+
+# ──────────────────────────────────────────────────────────────────────────────
+# IPv6 — block anything outside the RFC 3849 documentation range 2001:db8::/32.
+# Matches only genuine IPv6 shapes (a `::` run or a full eight-group address) so
+# it does not collide with MAC addresses (5 colons, no `::`) or the
+# colon-delimited uptime vectors in tests/test_uptime_parser.py.
+# ──────────────────────────────────────────────────────────────────────────────
+[[rules]]
+id = "ipv6-non-doc-range"
+description = "IPv6 address outside RFC 3849 documentation range (possible real device identifier)"
+regex = '''(?i)\b(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}\b|\b(?:[0-9a-f]{1,4}:)+:(?:[0-9a-f]{1,4}:)*[0-9a-f]{1,4}\b'''
+
+  [rules.allowlist]
+  regexTarget = "match"
+  regexes = [
+    # RFC 3849 documentation range, padded or not (2001:db8::/32).
+    '''(?i)2001:0*db8\b''',
+    '''(?i)2001:0*db8:''',
+    # Documented false positive: a DDDD:HH:MM:SS uptime duration that happens to
+    # parse as a compressed IPv6 literal (tests/test_uptime_parser.py).
+    '''\b0000::57:01\b''',
+  ]
+
+# ──────────────────────────────────────────────────────────────────────────────
+# MAC — block anything outside the Blustream OUI (required public — declared in
+# the HA manifest `dhcp: 34D0B82*` for discovery) and the RFC 7042 documentation
+# range 00:00:5E:00:53:00–FF. Only colon/dash separated forms are detected; the
+# bare 12-hex form is intentionally out of scope to avoid flagging git SHAs.
+# ──────────────────────────────────────────────────────────────────────────────
+[[rules]]
+id = "mac-non-doc-range"
+description = "MAC address outside the Blustream OUI / RFC 7042 documentation range (possible real device identifier)"
+regex = '''(?i)\b(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}\b'''
+
+  [rules.allowlist]
+  regexTarget = "match"
+  regexes = [
+    # Blustream IEEE OUI 34:D0:B8 (and the 34:D0:B8:2* MA-M sub-block) — public by
+    # design; the integration matches on it for DHCP discovery.
+    '''(?i)\b34[:-]d0[:-]b8(?:[:-][0-9a-f]{2}){3}\b''',
+    # RFC 7042 documentation MAC range 00:00:5E:00:53:00–FF.
+    '''(?i)\b00[:-]00[:-]5e[:-]00[:-]53[:-][0-9a-f]{2}\b''',
+  ]

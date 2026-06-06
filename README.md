@@ -64,7 +64,7 @@ pip install -e ".[dev]"
 Or run the CLI directly from the checkout without installing:
 
 ```bash
-uvx --from . blustream --host 192.168.1.100 status
+uvx --from . blustream --host 192.0.2.100 status
 ```
 
 ### Control4 driver
@@ -81,7 +81,7 @@ from blustream import DMP168
 
 async def main():
     # Connect to device
-    device = DMP168(host='192.168.1.100', port=23)
+    device = DMP168(host='192.0.2.100', port=23)
     await device.connect()
 
     # Read status
@@ -95,7 +95,7 @@ async def main():
     await device.route_input_to_output(input_ch=2, output=1)
 
     # Context manager support
-    async with DMP168(host='192.168.1.100') as device:
+    async with DMP168(host='192.0.2.100') as device:
         status = await device.get_status()
         await device.power_on()
 
@@ -114,67 +114,67 @@ to list all commands and `blustream <command> --help` for parameter details.
 ### Get Device Status
 
 ```bash
-blustream --host 192.168.1.100 status
+blustream --host 192.0.2.100 status
 ```
 
 ### Power Control
 
 ```bash
-blustream --host 192.168.1.100 power-on
-blustream --host 192.168.1.100 power-off
+blustream --host 192.0.2.100 power-on
+blustream --host 192.0.2.100 power-off
 ```
 
 ### Volume Control
 
 ```bash
 # Set output 1 volume to 75%
-blustream --host 192.168.1.100 output-volume --output 1 --level 75
+blustream --host 192.0.2.100 output-volume --output 1 --level 75
 
 # Set output 1 volume to -10 dB
-blustream --host 192.168.1.100 output-volume --output 1 --level -10 --unit dB
+blustream --host 192.0.2.100 output-volume --output 1 --level -10 --unit dB
 
 # Increase output 1 volume by one step
-blustream --host 192.168.1.100 output-volume --output 1 --increase-level
+blustream --host 192.0.2.100 output-volume --output 1 --increase-level
 
 # Decrease output 1 volume by one step
-blustream --host 192.168.1.100 output-volume --output 1 --decrease-level
+blustream --host 192.0.2.100 output-volume --output 1 --decrease-level
 ```
 
 ### Mute Control
 
 ```bash
 # Mute output 1
-blustream --host 192.168.1.100 output-mute --output 1 --mute
+blustream --host 192.0.2.100 output-mute --output 1 --mute
 
 # Unmute output 1
-blustream --host 192.168.1.100 output-mute --output 1 --no-mute
+blustream --host 192.0.2.100 output-mute --output 1 --no-mute
 ```
 
 ### Routing
 
 ```bash
 # Route input 2 to output 1
-blustream --host 192.168.1.100 route --input 2 --output 1
+blustream --host 192.0.2.100 route --input 2 --output 1
 ```
 
 ### Presets
 
 ```bash
 # Save current configuration to preset 1
-blustream --host 192.168.1.100 preset-save --preset 1
+blustream --host 192.0.2.100 preset-save --preset 1
 
 # Recall preset 1
-blustream --host 192.168.1.100 preset-recall --preset 1
+blustream --host 192.0.2.100 preset-recall --preset 1
 
 # Get preset status
-blustream --host 192.168.1.100 preset-status --preset 1
+blustream --host 192.0.2.100 preset-status --preset 1
 ```
 
 ### JSON Output
 
 ```bash
 # Get status as JSON
-blustream --host 192.168.1.100 status --json
+blustream --host 192.0.2.100 status --json
 ```
 
 ## Command Line Options
@@ -230,9 +230,10 @@ pytest tests/
 
 The Control4 driver lives under `control4/` and targets Lua 5.1 (the version
 the Control4 Composer sandbox runs). CI lints all Lua sources with
-[`luacheck`](https://github.com/lunarmodules/luacheck) and runs the unit
-tests with [`busted`](https://lunarmodules.github.io/busted/) — see
-[`.github/workflows/lua.yml`](.github/workflows/lua.yml).
+[`luacheck`](https://github.com/lunarmodules/luacheck) (see
+[`lint-control4.yml`](.github/workflows/lint-control4.yml)) and runs the unit
+tests with [`busted`](https://lunarmodules.github.io/busted/) (see
+[`test-control4.yml`](.github/workflows/test-control4.yml)).
 
 To install the toolchain locally:
 
@@ -255,13 +256,54 @@ luacheck .                              # lint all Lua source
 busted --pattern=_spec control4/        # run Lua unit tests
 ```
 
+### Commit hooks (secret scanning + linting)
+
+Commits are gated by [`pre-commit`](https://pre-commit.com), which runs
+[`betterleaks`](https://github.com/betterleaks/betterleaks) (a secret scanner —
+gitleaks' feature-frozen successor) alongside `ruff`, `ruff-format`, `luacheck`
+and a large-file guard. The secret scanner uses the shared
+[`.gitleaks.toml`](.gitleaks.toml), which adds custom IPv4/IPv6/MAC rules so a
+real device identifier can't be committed — example identifiers must use the
+IETF documentation ranges listed in
+[`docs/secret-scanning-allowlist.md`](docs/secret-scanning-allowlist.md).
+
+Install once per clone:
+
+```bash
+# macOS
+brew install betterleaks pre-commit
+
+# Debian / Ubuntu (betterleaks: see its release page or `go install`)
+pipx install pre-commit
+go install github.com/betterleaks/betterleaks@v1.4.1
+
+pre-commit install          # wire the hooks into git
+```
+
+Then commits are scanned automatically. To run everything on demand:
+
+```bash
+pre-commit run --all-files                       # all hooks, whole tree
+betterleaks detect --no-git --config .gitleaks.toml   # just the secret scan
+```
+
+CI enforces the same checks server-side so the gate holds even without the local
+hook installed: the secret scan runs in
+[`secret-scan.yml`](.github/workflows/secret-scan.yml), and `ruff` / `luacheck` /
+the tests run in the per-component `lint-*` and `test-*` workflows. `ruff-format`
+and the large-file guard are local-only (CI does not enforce whole-tree
+formatting, so legacy files aren't reformatted until touched).
+
 ## License
 
 This project is licensed under the [Apache License 2.0](LICENSE).
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please feel free to submit a Pull Request. Before
+your first commit, install the [commit hooks](#commit-hooks-secret-scanning--linting)
+(`brew install betterleaks pre-commit && pre-commit install`) so the secret scan
+and linters run locally.
 
 ## Future Enhancements
 

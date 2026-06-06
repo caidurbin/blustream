@@ -48,15 +48,21 @@ async def vary_volume_sine(
             print("Reading current input gain from device status...")
             status = await device.get_status()
             # Find the input in the status
-            input_settings = next((inp for inp in status.inputs if inp.port == input_ch), None)
+            input_settings = next(
+                (inp for inp in status.inputs if inp.port == input_ch), None
+            )
             if input_settings:
                 # Use average of L and R channels, or just L if they differ
                 stored_gain = (input_settings.gain_l + input_settings.gain_r) // 2
-                print(f"Found current gain: L={input_settings.gain_l}%, R={input_settings.gain_r}%")
+                print(
+                    f"Found current gain: L={input_settings.gain_l}%, R={input_settings.gain_r}%"
+                )
                 print(f"Using average: {stored_gain}% as stored gain.")
             else:
                 stored_gain = 50
-                print(f"Input {input_ch} not found in status. Using {stored_gain}% as stored gain.")
+                print(
+                    f"Input {input_ch} not found in status. Using {stored_gain}% as stored gain."
+                )
 
         print(f"Operating on INPUT {input_ch} only (outputs will not be affected)")
         print(f"Stored gain: {stored_gain}% (will be restored at end)")
@@ -70,7 +76,9 @@ async def vary_volume_sine(
         max_gain = center + amplitude  # 75%
         num_steps = 100
 
-        print(f"\nVarying gain linearly: {center}% -> {max_gain}% -> {min_gain}% -> {center}%")
+        print(
+            f"\nVarying gain linearly: {center}% -> {max_gain}% -> {min_gain}% -> {center}%"
+        )
 
         # Measure command execution time to determine feasible step count
         print("Measuring command execution time...")
@@ -81,11 +89,17 @@ async def vary_volume_sine(
         # Calculate maximum feasible steps based on command execution time
         # Reserve 10% of duration for overhead
         available_time = duration * 0.9
-        max_feasible_steps = int(available_time / command_time) if command_time > 0 else num_steps
+        max_feasible_steps = (
+            int(available_time / command_time) if command_time > 0 else num_steps
+        )
 
         if max_feasible_steps < num_steps:
-            print(f"Warning: Command execution time ({command_time:.3f}s) is too slow for {num_steps} steps.")
-            print(f"Reducing to {max_feasible_steps} steps to complete within {duration}s duration.")
+            print(
+                f"Warning: Command execution time ({command_time:.3f}s) is too slow for {num_steps} steps."
+            )
+            print(
+                f"Reducing to {max_feasible_steps} steps to complete within {duration}s duration."
+            )
             num_steps = max(1, max_feasible_steps)  # At least 1 step
 
         print(f"Using triangular wave over {duration} seconds ({num_steps} steps)...")
@@ -123,12 +137,18 @@ async def vary_volume_sine(
             volume_int = max(0, min(100, volume_int))
 
             # Set input gain (only affects the specified input, not outputs)
-            await device.set_input_gain(input_ch=input_ch, gain=volume_int, unit="percent")
+            await device.set_input_gain(
+                input_ch=input_ch, gain=volume_int, unit="percent"
+            )
 
             # Progress indicator
-            if step % max(1, num_steps // 10) == 0:  # Adjust progress reporting for fewer steps
+            if (
+                step % max(1, num_steps // 10) == 0
+            ):  # Adjust progress reporting for fewer steps
                 elapsed = time.time() - start_time
-                print(f"Step {step:3d}/{num_steps}: Gain = {volume_int:3d}% (t={t:.3f}, elapsed={elapsed:.2f}s)")
+                print(
+                    f"Step {step:3d}/{num_steps}: Gain = {volume_int:3d}% (t={t:.3f}, elapsed={elapsed:.2f}s)"
+                )
 
             # Sleep until target time for next step (except on last step)
             if step < num_steps:
@@ -153,7 +173,9 @@ async def vary_volume_sine(
     except KeyboardInterrupt:
         print("\n\nInterrupted. Restoring gain...")
         try:
-            await device.set_input_gain(input_ch=input_ch, gain=stored_gain, unit="percent")
+            await device.set_input_gain(
+                input_ch=input_ch, gain=stored_gain, unit="percent"
+            )
             print("Gain restored.")
         except:
             pass
@@ -175,14 +197,17 @@ def main() -> int:
         print("\nNote: This script ONLY affects the specified input channel.")
         print("      Output channels are not modified.")
         print("\nExample:")
-        print("  python3 vary_volume.py 192.168.1.100 1 10")
+        print("  python3 vary_volume.py 192.0.2.100 1 10")
         return 1
 
     host = sys.argv[1]
     try:
         input_ch = int(sys.argv[2])
     except (ValueError, IndexError):
-        print("Error: Input channel number is required and must be an integer", file=sys.stderr)
+        print(
+            "Error: Input channel number is required and must be an integer",
+            file=sys.stderr,
+        )
         return 1
 
     try:
@@ -206,15 +231,19 @@ def main() -> int:
         return 1
 
     try:
-        asyncio.run(vary_volume_sine(host=host, input_ch=input_ch, duration=duration, stored_gain=stored_gain))
+        asyncio.run(
+            vary_volume_sine(
+                host=host, input_ch=input_ch, duration=duration, stored_gain=stored_gain
+            )
+        )
         return 0
     except Exception as e:
         print(f"Unexpected error: {e}", file=sys.stderr)
         import traceback
+
         traceback.print_exc()
         return 1
 
 
 if __name__ == "__main__":
     sys.exit(main())
-
