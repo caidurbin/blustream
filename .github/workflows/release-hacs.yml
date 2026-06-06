@@ -63,4 +63,23 @@ jobs:
         # from the repo tree at the tag.
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
-          generate_release_notes: true
+          # Curated, version-generic body. Auto-generated notes are declined:
+          # with no prior release they span the entire repo history and read
+          # as noise on a first cut, and the integration's user-facing surface
+          # (one uptime sensor today) is not what a per-PR changelog conveys.
+          # `github.ref_name` is the trigger tag (e.g. hacs-v0.1.0); it is an
+          # action input here, not a `run:` shell block, so direct `${{ }}`
+          # interpolation carries no shell-injection risk (unlike the guard
+          # step above, which reads the tag via env for exactly that reason).
+          body: |
+            **Blustream Audio Matrix** — Home Assistant integration, ${{ github.ref_name }}.
+
+            Install via **HACS → Custom repositories** (category *Integration*) using this
+            repository's URL, then add it from **Settings → Devices & Services**. If it is
+            already installed, HACS offers this version as an update. The matrix is also
+            auto-discovered via DHCP and zeroconf.
+
+            - Requires Home Assistant ≥ 2026.5.0; integration domain `blustream`.
+            - Built to the HA Integration Quality Scale **Gold** tier.
+            - Details: see the [README](https://github.com/caidurbin/blustream#home-assistant-integration)
+              and `docs/adr/`.

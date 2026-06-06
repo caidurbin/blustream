@@ -1,6 +1,6 @@
 # Control4 Driver for Blustream DMP168 — Implementation Plan
 
-**Status:** Draft. Synthesis of design conversation, 2026-05-06.
+**Status:** Historical plan (Draft, 2026-05-06). This is a point-in-time record. The Home Assistant integration described below as deferred/future work has since shipped as **v0.1.0** (HACS `hacs-v0.1.0`) — see the README and ADRs 0009–0012. Forward-looking mentions of the integration reflect the plan's original v1 scope, not current state.
 **Author:** Cai Durbin (`name@example.com`)
 **Scope:** Add a Control4 driver to the existing Python project, restructured as a monorepo, with a codegen-driven protocol layer that prevents drift across implementations. A Home Assistant integration is reserved as future work but not implemented in this phase.
 
