@@ -39,7 +39,7 @@ jobs:
     name: Publish GitHub release for HACS
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Verify tag matches manifest version
         # `hacs-v0.1.0` must correspond to manifest version `0.1.0`. The

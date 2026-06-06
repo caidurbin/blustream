@@ -8,7 +8,7 @@ name: Release (.c4z)
 #
 # The build itself is delegated to `tools/build_c4z.py`, which is
 # the same path exercised by `tests/test_c4z_build.py` and the
-# regular CI build in `.github/workflows/c4z-build.yml`. Running it
+# regular CI build in `.github/workflows/build-c4z.yml`. Running it
 # here keeps the released artifact byte-equivalent to what reviewers
 # saw on the merging PR.
 #
@@ -40,16 +40,16 @@ jobs:
     name: Build release .c4z and publish GitHub release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.12"
 
       - name: Install drivers-driverpackager runtime deps
         # snap-one/drivers-driverpackager (dp3/) imports lxml at module
-        # scope; mirrors the install step in c4z-build.yml so the two
+        # scope; mirrors the install step in build-c4z.yml so the two
         # workflows do not drift on toolchain. Installed via the `c4z`
         # extra so the lxml version is single-sourced in pyproject.toml.
         run: |
@@ -58,7 +58,7 @@ jobs:
 
       - name: Build release .c4z
         # `release` (clean, no -ae) is the flavor that ships to users.
-        # `--auto-clone` mirrors c4z-build.yml so the runner doesn't
+        # `--auto-clone` mirrors build-c4z.yml so the runner doesn't
         # need a pre-staged drivers-driverpackager checkout.
         run: |
           python tools/build_c4z.py release --auto-clone
@@ -66,7 +66,7 @@ jobs:
       - name: Upload .c4z as workflow artifact
         # Belt-and-braces: even if the GitHub release step fails, the
         # built .c4z is still downloadable from the workflow run.
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: blustream-dmp168-release-c4z
           path: dist/c4z/release/*.c4z
