@@ -16,11 +16,12 @@ protocol contract under `spec/`:
    `.c4z` archive that exposes the matrix as a standard Control4 audio
    matrix. Ships as a **GitHub release** with the `.c4z` attached on
    `c4-v*` tags.
-3. **Home Assistant integration** (`custom_components/blustream/`). The
-   directory is reserved and registered with HACS; the integration code
-   itself is deferred to a future PRD. The eventual integration will depend
-   on the published `blustream` PyPI library rather than re-embedding the
-   protocol code.
+3. **Home Assistant integration** (`custom_components/blustream/`). A
+   [HACS](https://hacs.xyz) integration (domain `blustream`) built to the HA
+   Integration Quality Scale **Gold** tier. Ships as a **GitHub release** on
+   `hacs-v*` tags, which HACS installs from the repository tree. It depends on
+   the published `blustream` PyPI library rather than re-embedding the protocol
+   code.
 
 The protocol primitives shared between the library and the driver are
 **generated** from `spec/protocol.yaml` via the codegen tooling under
@@ -39,7 +40,7 @@ the wrong release workflow.
 | --------------- | ---------- | --------------------------------------- | ---------------------------------------- |
 | Python library  | `v*`       | `.github/workflows/release-pypi.yml`    | `blustream` on PyPI (sdist + wheel)      |
 | Control4 driver | `c4-v*`    | `.github/workflows/release-c4z.yml`     | GitHub release with attached `.c4z`      |
-| HA integration  | _reserved_ | _deferred_                              | _deferred_ (will use HACS once built)    |
+| HA integration  | `hacs-v*`  | `.github/workflows/release-hacs.yml`    | GitHub release; HACS installs from tree  |
 
 For example, a library bug-fix release tags `v0.2.1`, while a driver-only
 update tags `c4-v0.3.0`. The shared `spec/` directory is the coordination
@@ -72,6 +73,21 @@ uvx --from . blustream --host 192.0.2.100 status
 Download the `.c4z` from the latest [GitHub release](https://github.com/caidurbin/blustream/releases)
 tagged `c4-v*` and install it through Composer Pro. See
 `docs/control4-driver-plan.md` for the dealer-load workflow.
+
+### Home Assistant integration
+
+The integration installs through [HACS](https://hacs.xyz) as a **custom
+repository** (it is not yet in the default HACS store):
+
+1. In HACS, open the overflow menu → **Custom repositories**.
+2. Add `https://github.com/caidurbin/blustream` with category **Integration**.
+3. Install **Blustream Audio Matrix**, then restart Home Assistant.
+4. Add it from **Settings → Devices & Services** (*Add Integration → Blustream*),
+   or accept the DHCP/zeroconf discovery prompt.
+
+Requires Home Assistant ≥ 2026.5.0. HACS installs the integration from the
+repository tree at each `hacs-v*` release tag; it depends on the published
+`blustream` PyPI library, which Home Assistant installs automatically.
 
 ## Library Usage
 
