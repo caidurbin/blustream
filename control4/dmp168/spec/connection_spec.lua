@@ -52,7 +52,7 @@ local function make_harness(opts)
 
     h.cs = connection.new({
         binding_id = BINDING,
-        host = opts.host or "192.168.1.10",
+        host = opts.host or "192.0.2.10",
         port = opts.port or 8000,
         net = h.net,
         timer = h.timer,
@@ -112,13 +112,13 @@ describe("ConnectionStateMachine", function()
 
     describe("start()", function()
         it("creates the network connection and transitions to CONNECTING", function()
-            local h = make_harness({ host = "10.0.0.5", port = 8000 })
+            local h = make_harness({ host = "198.51.100.5", port = 8000 })
             h.cs:start()
 
             assert.are.equal("CONNECTING", h.cs:get_state())
             assert.are.equal("create", h.net_calls[1].op)
             assert.are.equal(BINDING, h.net_calls[1].binding)
-            assert.are.equal("10.0.0.5", h.net_calls[1].host)
+            assert.are.equal("198.51.100.5", h.net_calls[1].host)
             assert.are.equal("connect", h.net_calls[2].op)
             assert.are.equal(BINDING, h.net_calls[2].binding)
             assert.are.equal(8000, h.net_calls[2].port)
@@ -357,12 +357,12 @@ describe("ConnectionStateMachine", function()
 
     describe("set_host() / set_port()", function()
         it("uses the latest host/port on the next start", function()
-            local h = make_harness({ host = "192.168.1.1" })
-            h.cs:set_host("192.168.1.99")
+            local h = make_harness({ host = "192.0.2.1" })
+            h.cs:set_host("192.0.2.99")
             h.cs:set_port(8001)
             h.cs:start()
 
-            assert.are.equal("192.168.1.99", h.net_calls[1].host)
+            assert.are.equal("192.0.2.99", h.net_calls[1].host)
             assert.are.equal(8001, h.net_calls[2].port)
         end)
     end)

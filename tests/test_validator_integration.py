@@ -22,7 +22,7 @@ class TestValidatorIntegration:
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         with pytest.raises(ValidationError) as exc_info:
@@ -50,7 +50,7 @@ class TestValidatorIntegration:
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         with pytest.raises(ValidationError) as exc_info:
@@ -59,9 +59,7 @@ class TestValidatorIntegration:
                 output=1,
                 delay_ms=999,
             )
-        assert "delay_ms" in str(exc_info.value) or "Delay" in str(
-            exc_info.value
-        )
+        assert "delay_ms" in str(exc_info.value) or "Delay" in str(exc_info.value)
 
     @pytest.mark.asyncio
     @patch("blustream.devices.dmp168.device.TCPConnection")
@@ -74,12 +72,10 @@ class TestValidatorIntegration:
         mock_conn.read_until = AsyncMock(return_value="[SUCCESS]ok\r\n")
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
-        result = await device.execute_command(
-            "output_volume", output=1, level=50
-        )
+        result = await device.execute_command("output_volume", output=1, level=50)
         assert result is not None
 
     @pytest.mark.asyncio
@@ -91,7 +87,7 @@ class TestValidatorIntegration:
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         with pytest.raises(ValidationError) as exc_info:

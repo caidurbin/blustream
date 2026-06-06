@@ -1,22 +1,27 @@
-name: HA integration validate
+name: "Lint: HA"
 
-# Runs the canonical Home Assistant integration validators:
-#   * hassfest -- manifest/translations/config-flow lint
-#   * hacs/action -- HACS-side category=integration validation
-# Daily cron is the universal pattern in surveyed HACS integrations;
-# catches HA-side breakage that lands between PRs.
+# Runs the canonical Home Assistant integration validators against the custom
+# component:
+#   * hassfest    -- manifest/translations/config-flow lint (reads local checkout)
+#   * hacs/action -- HACS-side category=integration validation (public repo only)
+# Daily cron is the universal pattern in surveyed HACS integrations; it catches
+# HA-side breakage that lands between PRs.
 
 on:
   pull_request:
     branches:
       - main
-      - master
-      - develop
+    paths:
+      - "custom_components/**"
+      - "hacs.json"
+      - ".github/workflows/lint-ha.yml"
   push:
     branches:
       - main
-      - master
-      - develop
+    paths:
+      - "custom_components/**"
+      - "hacs.json"
+      - ".github/workflows/lint-ha.yml"
   schedule:
     # Daily at 06:13 UTC; offset minute reduces hourly-cron pile-up.
     - cron: "13 6 * * *"
@@ -25,21 +30,19 @@ permissions:
   contents: read
 
 jobs:
-  hassfest:
+  ha:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Run hassfest
         uses: home-assistant/actions/hassfest@868e6cb4607727d764341a158d98872cd63fa658 # master @ 2026-05-31
 
-  hacs:
-    runs-on: ubuntu-latest
-    steps:
       # HACS only supports PUBLIC repositories -- it fetches file contents over
       # public endpoints, so on a private repo manifest.json / hacs.json read as
       # None and the integration_manifest + hacsjson checks fail (the files
       # themselves are valid; hassfest, which reads the local checkout, passes).
-      # Skip validation while the repo is private; this auto-activates on the
+      # Skip HACS validation while the repo is private; it auto-activates on the
       # first run after the repo is made public.
       # https://www.hacs.xyz/docs/faq/private_repositories/
       - name: Check repository visibility
@@ -53,8 +56,7 @@ jobs:
           if [ "$private" = "true" ]; then
             echo "::notice::Repository is private; skipping HACS validation (HACS only supports public repositories)."
           fi
-      - if: steps.visibility.outputs.private == 'false'
-        uses: actions/checkout@v4
+
       - name: Run HACS validation
         if: steps.visibility.outputs.private == 'false'
         uses: hacs/action@dcb30e72781db3f207d5236b861172774ab0b485 # main @ 2026-05-31

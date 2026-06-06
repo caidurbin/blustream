@@ -102,7 +102,9 @@ class TestDMP168Commands:
         cmd = build_output_volume_command(output=1, level=50, channel="LR")
         assert "OUT 1" in cmd
         assert "VOL" in cmd
-        assert "L" not in cmd.split() or "R" not in cmd.split()  # Should not have separate L/R
+        assert (
+            "L" not in cmd.split() or "R" not in cmd.split()
+        )  # Should not have separate L/R
 
     def test_build_route_command_boundary_values(self):
         """Test route command with boundary values."""
@@ -296,7 +298,7 @@ class TestDMP168Device:
         mock_conn = MagicMock()
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         commands = device.get_commands()
 
         assert "status" in commands
@@ -312,7 +314,7 @@ class TestDMP168Device:
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         with pytest.raises(CommandError):
@@ -329,7 +331,7 @@ class TestDMP168Device:
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_conn.connect = AsyncMock()
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         # Test power methods
@@ -354,11 +356,13 @@ class TestDMP168Device:
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         with pytest.raises(ValidationError):
-            await device.execute_command("output_volume")  # Missing 'output' and 'level'
+            await device.execute_command(
+                "output_volume"
+            )  # Missing 'output' and 'level'
 
     @pytest.mark.asyncio
     @patch("blustream.devices.dmp168.device.TCPConnection")
@@ -369,11 +373,13 @@ class TestDMP168Device:
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         with pytest.raises(ValidationError):
-            await device.execute_command("output_volume", output=10, level=75)  # output=10 is invalid
+            await device.execute_command(
+                "output_volume", output=10, level=75
+            )  # output=10 is invalid
 
     @pytest.mark.asyncio
     @patch("blustream.devices.dmp168.device.TCPConnection")
@@ -382,7 +388,7 @@ class TestDMP168Device:
         mock_conn = MagicMock()
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         # Don't connect
 
         from blustream.base.exceptions import ConnectionError
@@ -400,7 +406,7 @@ class TestDMP168Device:
         mock_conn.send = AsyncMock(side_effect=ConnectionError("Connection lost"))
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         with pytest.raises(CommandError):
@@ -414,10 +420,12 @@ class TestDMP168Device:
         mock_conn.connect = AsyncMock()
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_conn.send = AsyncMock()
-        mock_conn.read_until = AsyncMock(return_value="[SUCCESS]The uptime of the system is 0000:08:57:01\r\nDMP168>")
+        mock_conn.read_until = AsyncMock(
+            return_value="[SUCCESS]The uptime of the system is 0000:08:57:01\r\nDMP168>"
+        )
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         result = await device.execute_command("uptime")
@@ -431,10 +439,12 @@ class TestDMP168Device:
         mock_conn.connect = AsyncMock()
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_conn.send = AsyncMock()
-        mock_conn.read_until = AsyncMock(return_value="[SUCCESS]The temperature of the system is 47.4C\r\nDMP168>")
+        mock_conn.read_until = AsyncMock(
+            return_value="[SUCCESS]The temperature of the system is 47.4C\r\nDMP168>"
+        )
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         result = await device.execute_command("temp")
@@ -451,7 +461,7 @@ class TestDMP168Device:
         mock_conn.read_until = AsyncMock(return_value="0000:08:57:01\r\nDMP168>")
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         result = await device.execute_command("uptime")
@@ -468,7 +478,7 @@ class TestDMP168Device:
         mock_conn.read_until = AsyncMock(return_value="47.4C\r\nDMP168>")
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         result = await device.execute_command("temp")
@@ -481,7 +491,7 @@ class TestDMP168Device:
         mock_conn = MagicMock()
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         assert device.command_requires_confirmation("preset_delete") is True
         assert device.command_requires_confirmation("reboot") is True
         assert device.command_requires_confirmation("output_remove") is True
@@ -495,7 +505,7 @@ class TestDMP168Device:
         mock_conn = MagicMock()
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         command = device.get_command("reboot")
         assert command is not None
         assert isinstance(command.confirmation_message, str)
@@ -508,7 +518,7 @@ class TestDMP168Device:
         mock_conn = MagicMock()
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         command = device.get_command("preset_delete")
         assert command is not None
         assert callable(command.confirmation_message)
@@ -518,12 +528,14 @@ class TestDMP168Device:
 
     @pytest.mark.asyncio
     @patch("blustream.devices.dmp168.device.TCPConnection")
-    async def test_confirmation_message_callable_output_remove(self, mock_connection_class):
+    async def test_confirmation_message_callable_output_remove(
+        self, mock_connection_class
+    ):
         """Test that output_remove has a callable confirmation_message with kwarg substitution."""
         mock_conn = MagicMock()
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         command = device.get_command("output_remove")
         assert command is not None
         assert callable(command.confirmation_message)
@@ -538,7 +550,7 @@ class TestDMP168Device:
         mock_conn = MagicMock()
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         command = device.get_command("status")
         assert command is not None
         assert command.confirmation_message is None
@@ -550,7 +562,7 @@ class TestDMP168Device:
         mock_conn = MagicMock()
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         assert device.get_command("nonexistent") is None
 
     @pytest.mark.asyncio
@@ -563,7 +575,7 @@ class TestDMP168Device:
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_connection_class.return_value = mock_conn
 
-        async with DMP168(host="192.168.1.100") as device:
+        async with DMP168(host="192.0.2.100") as device:
             assert device.is_connected
             mock_conn.connect.assert_called_once()
 
@@ -578,10 +590,12 @@ class TestDMP168Device:
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_conn.send = AsyncMock()
         # Return invalid STATUS response
-        mock_conn.read_until = AsyncMock(return_value="Invalid STATUS response\r\nDMP168>")
+        mock_conn.read_until = AsyncMock(
+            return_value="Invalid STATUS response\r\nDMP168>"
+        )
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         from blustream.base.exceptions import ParseError
@@ -602,7 +616,7 @@ class TestDMP168Device:
         mock_conn.read_until = AsyncMock(side_effect=TimeoutError("Timeout"))
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         with pytest.raises(CommandError):
@@ -617,10 +631,12 @@ class TestDMP168Device:
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_conn.send = AsyncMock()
         # Response without [SUCCESS] pattern, but with uptime format
-        mock_conn.read_until = AsyncMock(return_value="Some text 0000:12:34:56 more text\r\nDMP168>")
+        mock_conn.read_until = AsyncMock(
+            return_value="Some text 0000:12:34:56 more text\r\nDMP168>"
+        )
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         result = await device.execute_command("uptime")
@@ -635,10 +651,12 @@ class TestDMP168Device:
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_conn.send = AsyncMock()
         # Response without [SUCCESS] pattern, but with temp format
-        mock_conn.read_until = AsyncMock(return_value="Temperature is 42.5C degrees\r\nDMP168>")
+        mock_conn.read_until = AsyncMock(
+            return_value="Temperature is 42.5C degrees\r\nDMP168>"
+        )
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         result = await device.execute_command("temp")
@@ -646,7 +664,9 @@ class TestDMP168Device:
 
     @pytest.mark.asyncio
     @patch("blustream.devices.dmp168.device.TCPConnection")
-    async def test_execute_command_uptime_stripped_response(self, mock_connection_class):
+    async def test_execute_command_uptime_stripped_response(
+        self, mock_connection_class
+    ):
         """Test executing uptime command with only stripped response fallback."""
         mock_conn = AsyncMock()
         mock_conn.connect = AsyncMock()
@@ -656,7 +676,7 @@ class TestDMP168Device:
         mock_conn.read_until = AsyncMock(return_value="  0000:12:34:56  \r\nDMP168>")
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         result = await device.execute_command("uptime")
@@ -672,7 +692,7 @@ class TestDMP168Device:
         mock_conn.is_connected = MagicMock(return_value=True)
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         # This should fail during parameter validation, not execution
@@ -691,7 +711,7 @@ class TestDMP168Device:
         mock_conn.read_until = AsyncMock(return_value="[SUCCESS]ok\r\n")
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         # Test relative volume increase
@@ -710,7 +730,7 @@ class TestDMP168Device:
         mock_conn.read_until = AsyncMock(return_value="[SUCCESS]ok\r\n")
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         # Test relative gain increase (unit=None is now handled correctly by validation)
@@ -731,7 +751,7 @@ class TestDMP168Device:
         )
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         raw = await device.get_uptime_raw()
@@ -750,7 +770,7 @@ class TestDMP168Device:
         )
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         await device.connect()
 
         uptime = await device.get_uptime()
@@ -763,11 +783,10 @@ class TestDMP168Device:
         mock_conn = MagicMock()
         mock_connection_class.return_value = mock_conn
 
-        device = DMP168(host="192.168.1.100")
+        device = DMP168(host="192.0.2.100")
         device.get_uptime_raw = AsyncMock(return_value="garbage-not-uptime")
 
         from blustream.base.exceptions import ParseError
 
         with pytest.raises(ParseError):
             await device.get_uptime()
-

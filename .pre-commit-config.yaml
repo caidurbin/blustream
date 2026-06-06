@@ -1,0 +1,50 @@
+# Commit-time gate. Install once per clone:
+#
+#   brew install betterleaks pre-commit   # or: see docs/CONTRIBUTING.md
+#   pre-commit install
+#
+# Run against everything on demand:  pre-commit run --all-files
+#
+# CI enforces the same checks server-side via purpose-built workflows:
+# secret-scan.yml (betterleaks), the lint-*.yml workflows (ruff, luacheck), and
+# the test-*.yml workflows. ruff-format and the large-file guard are local-only.
+minimum_pre_commit_version: "3.5.0"
+
+repos:
+  # ── Secret scanning ────────────────────────────────────────────────────────
+  # betterleaks (gitleaks' feature-frozen successor) reads the shared
+  # .gitleaks.toml — the single source of truth also used by the Claude hook
+  # layer and GitHub-native scanning. The `betterleaks-system` hook runs the
+  # locally-installed binary; to fall back to gitleaks, swap repo/rev/id for
+  # `zricethezav/gitleaks` (the same .gitleaks.toml applies unchanged).
+  - repo: https://github.com/betterleaks/betterleaks
+    rev: v1.4.1
+    hooks:
+      - id: betterleaks-system
+        args: ["--config", ".gitleaks.toml"]
+
+  # ── Python lint + format ───────────────────────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.16
+    hooks:
+      - id: ruff-check
+      - id: ruff-format
+
+  # ── Misc guards ────────────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+
+  # ── Lua lint (Control4 driver) ─────────────────────────────────────────────
+  # Uses the locally-installed luacheck against .luacheckrc, matching CI
+  # (.github/workflows/lua.yml runs `luacheck .`).
+  - repo: local
+    hooks:
+      - id: luacheck
+        name: luacheck
+        entry: luacheck
+        language: system
+        types: [lua]
+        require_serial: false

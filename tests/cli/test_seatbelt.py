@@ -11,4 +11,4 @@ class TestSeatbelt:
     async def test_open_connection_raises_with_seatbelt_message(self):
         """Calling telnetlib3.open_connection in a CLI test raises RuntimeError."""
         with pytest.raises(RuntimeError, match="telnetlib3.open_connection"):
-            await telnetlib3.open_connection("192.168.1.1", 23)
+            await telnetlib3.open_connection("192.0.2.1", 23)

@@ -1,4 +1,4 @@
-name: Actionlint
+name: "Lint: actionlint"
 
 # Lints the GitHub Actions workflow files themselves: schema validation,
 # ${{ }} expression type-checks, and shellcheck over `run:` blocks (the
@@ -14,15 +14,11 @@ on:
   pull_request:
     branches:
       - main
-      - master
-      - develop
     paths:
       - ".github/workflows/**"
   push:
     branches:
       - main
-      - master
-      - develop
     paths:
       - ".github/workflows/**"
 

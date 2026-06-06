@@ -21,8 +21,18 @@ class TestBuildParserSubparsers:
 
     def test_subparser_created_for_each_command(self):
         reg = _registry(
-            Command(name="power_on", description="Power on", parameters=[], handler=lambda **kw: ""),
-            Command(name="status", description="Get status", parameters=[], handler=lambda **kw: ""),
+            Command(
+                name="power_on",
+                description="Power on",
+                parameters=[],
+                handler=lambda **kw: "",
+            ),
+            Command(
+                name="status",
+                description="Get status",
+                parameters=[],
+                handler=lambda **kw: "",
+            ),
         )
         parser = build_parser(reg)
         assert parser.parse_args(["power-on"]).command == "power_on"
@@ -30,14 +40,24 @@ class TestBuildParserSubparsers:
 
     def test_snake_case_to_kebab_case(self):
         reg = _registry(
-            Command(name="output_volume", description="Set volume", parameters=[], handler=lambda **kw: ""),
+            Command(
+                name="output_volume",
+                description="Set volume",
+                parameters=[],
+                handler=lambda **kw: "",
+            ),
         )
         parser = build_parser(reg)
         assert parser.parse_args(["output-volume"]).command == "output_volume"
 
     def test_single_word_command_unchanged(self):
         reg = _registry(
-            Command(name="reboot", description="Reboot", parameters=[], handler=lambda **kw: ""),
+            Command(
+                name="reboot",
+                description="Reboot",
+                parameters=[],
+                handler=lambda **kw: "",
+            ),
         )
         parser = build_parser(reg)
         assert parser.parse_args(["reboot"]).command == "reboot"
@@ -52,7 +72,13 @@ class TestBuildParserFlags:
                 name="test_cmd",
                 description="Test",
                 parameters=[
-                    Parameter("output", int, required=True, choices=list(range(9)), help_text="Output channel"),
+                    Parameter(
+                        "output",
+                        int,
+                        required=True,
+                        choices=list(range(9)),
+                        help_text="Output channel",
+                    ),
                 ],
                 handler=lambda **kw: "",
             ),
@@ -67,7 +93,13 @@ class TestBuildParserFlags:
                 name="test_cmd",
                 description="Test",
                 parameters=[
-                    Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"]),
+                    Parameter(
+                        "channel",
+                        str,
+                        required=False,
+                        default="LR",
+                        choices=["L", "R", "LR"],
+                    ),
                 ],
                 handler=lambda **kw: "",
             ),
@@ -82,7 +114,13 @@ class TestBuildParserFlags:
                 name="test_cmd",
                 description="Test",
                 parameters=[
-                    Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"]),
+                    Parameter(
+                        "channel",
+                        str,
+                        required=False,
+                        default="LR",
+                        choices=["L", "R", "LR"],
+                    ),
                 ],
                 handler=lambda **kw: "",
             ),
@@ -112,7 +150,13 @@ class TestBuildParserFlags:
                 name="route",
                 description="Route",
                 parameters=[
-                    Parameter("output_channel", str, required=False, default="LR", choices=["L", "R", "LR"]),
+                    Parameter(
+                        "output_channel",
+                        str,
+                        required=False,
+                        default="LR",
+                        choices=["L", "R", "LR"],
+                    ),
                 ],
                 handler=lambda **kw: "",
             ),
@@ -167,7 +211,13 @@ class TestBuildParserRelative:
                 name="output_volume",
                 description="Set volume",
                 parameters=[
-                    Parameter("level", Any, required=True, supports_relative=True, help_text="Volume level"),
+                    Parameter(
+                        "level",
+                        Any,
+                        required=True,
+                        supports_relative=True,
+                        help_text="Volume level",
+                    ),
                 ],
                 handler=lambda **kw: "",
             ),
@@ -246,11 +296,16 @@ class TestBuildParserParents:
         parent = argparse.ArgumentParser(add_help=False)
         parent.add_argument("--host", default="localhost")
         reg = _registry(
-            Command(name="status", description="Status", parameters=[], handler=lambda **kw: ""),
+            Command(
+                name="status",
+                description="Status",
+                parameters=[],
+                handler=lambda **kw: "",
+            ),
         )
         parser = build_parser(reg, parents=[parent])
-        args = parser.parse_args(["--host", "192.168.1.1", "status"])
-        assert args.host == "192.168.1.1"
+        args = parser.parse_args(["--host", "192.0.2.1", "status"])
+        assert args.host == "192.0.2.1"
         assert args.command == "status"
 
 
@@ -279,7 +334,12 @@ class TestExtractKwargs:
             ],
             handler=lambda **kw: "",
         )
-        ns = argparse.Namespace(command="output_volume", level=None, increase_level=True, decrease_level=False)
+        ns = argparse.Namespace(
+            command="output_volume",
+            level=None,
+            increase_level=True,
+            decrease_level=False,
+        )
         assert extract_kwargs(ns, cmd) == {"level": "+"}
 
     def test_decrease_translates_to_minus(self):
@@ -291,7 +351,12 @@ class TestExtractKwargs:
             ],
             handler=lambda **kw: "",
         )
-        ns = argparse.Namespace(command="output_volume", level=None, increase_level=False, decrease_level=True)
+        ns = argparse.Namespace(
+            command="output_volume",
+            level=None,
+            increase_level=False,
+            decrease_level=True,
+        )
         assert extract_kwargs(ns, cmd) == {"level": "-"}
 
     def test_absolute_value_for_relative_param(self):
@@ -303,7 +368,12 @@ class TestExtractKwargs:
             ],
             handler=lambda **kw: "",
         )
-        ns = argparse.Namespace(command="output_volume", level=75, increase_level=False, decrease_level=False)
+        ns = argparse.Namespace(
+            command="output_volume",
+            level=75,
+            increase_level=False,
+            decrease_level=False,
+        )
         assert extract_kwargs(ns, cmd) == {"level": 75}
 
     def test_omits_none_optional_params(self):
