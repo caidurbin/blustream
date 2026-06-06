@@ -12,8 +12,6 @@ on:
   pull_request:
     branches:
       - main
-      - master
-      - develop
     paths:
       - "custom_components/blustream/**"
       - "blustream/**"
@@ -22,8 +20,6 @@ on:
   push:
     branches:
       - main
-      - master
-      - develop
     paths:
       - "custom_components/blustream/**"
       - "blustream/**"

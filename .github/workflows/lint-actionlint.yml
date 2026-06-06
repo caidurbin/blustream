@@ -14,15 +14,11 @@ on:
   pull_request:
     branches:
       - main
-      - master
-      - develop
     paths:
       - ".github/workflows/**"
   push:
     branches:
       - main
-      - master
-      - develop
     paths:
       - ".github/workflows/**"
 
