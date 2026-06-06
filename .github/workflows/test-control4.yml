@@ -10,11 +10,21 @@ on:
       - main
       - master
       - develop
+    paths:
+      - "control4/**"
+      - "spec/**"
+      - ".tool-versions"
+      - ".github/workflows/test-control4.yml"
   push:
     branches:
       - main
       - master
       - develop
+    paths:
+      - "control4/**"
+      - "spec/**"
+      - ".tool-versions"
+      - ".github/workflows/test-control4.yml"
 
 permissions:
   contents: read

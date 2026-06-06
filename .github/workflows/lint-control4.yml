@@ -10,11 +10,21 @@ on:
       - main
       - master
       - develop
+    paths:
+      - "control4/**"
+      - ".luacheckrc"
+      - ".tool-versions"
+      - ".github/workflows/lint-control4.yml"
   push:
     branches:
       - main
       - master
       - develop
+    paths:
+      - "control4/**"
+      - ".luacheckrc"
+      - ".tool-versions"
+      - ".github/workflows/lint-control4.yml"
 
 permissions:
   contents: read

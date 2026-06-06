@@ -13,11 +13,19 @@ on:
       - main
       - master
       - develop
+    paths:
+      - "custom_components/**"
+      - "hacs.json"
+      - ".github/workflows/lint-ha.yml"
   push:
     branches:
       - main
       - master
       - develop
+    paths:
+      - "custom_components/**"
+      - "hacs.json"
+      - ".github/workflows/lint-ha.yml"
   schedule:
     # Daily at 06:13 UTC; offset minute reduces hourly-cron pile-up.
     - cron: "13 6 * * *"
