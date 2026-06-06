@@ -35,8 +35,28 @@ jobs:
   hacs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # HACS only supports PUBLIC repositories -- it fetches file contents over
+      # public endpoints, so on a private repo manifest.json / hacs.json read as
+      # None and the integration_manifest + hacsjson checks fail (the files
+      # themselves are valid; hassfest, which reads the local checkout, passes).
+      # Skip validation while the repo is private; this auto-activates on the
+      # first run after the repo is made public.
+      # https://www.hacs.xyz/docs/faq/private_repositories/
+      - name: Check repository visibility
+        id: visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          private=$(gh api "repos/$REPO" --jq '.private')
+          echo "private=$private" >> "$GITHUB_OUTPUT"
+          if [ "$private" = "true" ]; then
+            echo "::notice::Repository is private; skipping HACS validation (HACS only supports public repositories)."
+          fi
+      - if: steps.visibility.outputs.private == 'false'
+        uses: actions/checkout@v4
       - name: Run HACS validation
+        if: steps.visibility.outputs.private == 'false'
         uses: hacs/action@dcb30e72781db3f207d5236b861172774ab0b485 # main @ 2026-05-31
         with:
           category: integration
