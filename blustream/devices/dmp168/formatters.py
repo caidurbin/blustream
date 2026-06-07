@@ -4,6 +4,7 @@ import json
 from typing import Any
 
 from blustream.base.commands import RenderContext
+from blustream.devices.dmp168.models import SOURCE_BUS
 
 OUTPUT_MIX_MODE_NAMES = (
     "None",
@@ -46,7 +47,7 @@ def format_status(result: Any, ctx: RenderContext) -> str:
     for r in result.routing:
         if r.source is None:
             lines.append(f"  Out{r.output} {r.channel}: Not routed")
-        elif r.source.kind == "bus":
+        elif r.source.kind == SOURCE_BUS:
             lines.append(f"  Out{r.output} {r.channel}: From Bus{r.source.number}")
         else:
             lines.append(f"  Out{r.output} {r.channel}: From In{r.source.number}")

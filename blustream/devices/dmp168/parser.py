@@ -31,8 +31,10 @@ def _parse_source_token(token: str) -> Optional[OutputSource]:
     match = _SOURCE_TOKEN_RE.match(token)
     if not match:
         return None
-    kind = "input" if match.group(1).lower() == "in" else "bus"
-    return OutputSource(kind=kind, number=int(match.group(2)))
+    number = int(match.group(2))
+    if match.group(1).lower() == "in":
+        return OutputSource.for_input(number)
+    return OutputSource.for_bus(number)
 
 
 class DMP168Parser:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from blustream.devices.dmp168.models import OutputRouting, SystemStatus
+from blustream.devices.dmp168.models import SOURCE_INPUT, OutputRouting, SystemStatus
 
 
 def output_l_input(status: SystemStatus, output: int) -> int | None:
@@ -20,7 +20,7 @@ def output_l_input(status: SystemStatus, output: int) -> int | None:
             and row.output == output
             and row.channel == "L"
         ):
-            if row.source is not None and row.source.kind == "input":
+            if row.source is not None and row.source.kind == SOURCE_INPUT:
                 return row.source.number
             return None
     return None
