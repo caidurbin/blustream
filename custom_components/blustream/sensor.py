@@ -7,13 +7,10 @@ from datetime import datetime
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
+    SensorStateClass,
 )
-from homeassistant.const import CONF_MAC, CONF_NAME
+from homeassistant.const import PERCENTAGE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import (
-    CONNECTION_NETWORK_MAC,
-    DeviceInfo,
-)
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
@@ -21,8 +18,8 @@ from homeassistant.util import dt as dt_util
 from blustream.base.exceptions import ParseError
 from blustream.devices.dmp168.uptime_parser import parse as parse_uptime
 
-from .const import DOMAIN
 from .coordinator import BlustreamConfigEntry, BlustreamCoordinator
+from .device import build_device_info
 
 
 async def async_setup_entry(
@@ -31,7 +28,14 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the Blustream sensor platform."""
-    async_add_entities([BlustreamUptimeSensor(entry.runtime_data, entry)])
+    coordinator = entry.runtime_data
+    async_add_entities(
+        [
+            BlustreamUptimeSensor(coordinator, entry),
+            BlustreamTemperatureSensor(coordinator, entry),
+            BlustreamDspUsageSensor(coordinator, entry),
+        ]
+    )
 
 
 class BlustreamUptimeSensor(CoordinatorEntity[BlustreamCoordinator], SensorEntity):
@@ -56,18 +60,7 @@ class BlustreamUptimeSensor(CoordinatorEntity[BlustreamCoordinator], SensorEntit
     ) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.unique_id}_uptime"
-
-        connections: set[tuple[str, str]] = set()
-        if mac := entry.data.get(CONF_MAC):
-            connections.add((CONNECTION_NETWORK_MAC, mac))
-
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.unique_id or entry.entry_id)},
-            connections=connections,
-            manufacturer="Blustream",
-            model="DMP168",
-            name=entry.data.get(CONF_NAME) or entry.title,
-        )
+        self._attr_device_info = build_device_info(entry, coordinator)
 
     @property
     def native_value(self) -> datetime | None:
@@ -79,3 +72,57 @@ class BlustreamUptimeSensor(CoordinatorEntity[BlustreamCoordinator], SensorEntit
         except ParseError:
             return None
         return dt_util.utcnow() - uptime
+
+
+class BlustreamTemperatureSensor(CoordinatorEntity[BlustreamCoordinator], SensorEntity):
+    """Reports the DMP168's internal temperature in °C (issue #68)."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "temperature"
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+
+    def __init__(
+        self,
+        coordinator: BlustreamCoordinator,
+        entry: BlustreamConfigEntry,
+    ) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.unique_id}_temperature"
+        self._attr_device_info = build_device_info(entry, coordinator)
+
+    @property
+    def native_value(self) -> float | None:
+        status = self.coordinator.data
+        if status is None:
+            return None
+        return status.temperature
+
+
+class BlustreamDspUsageSensor(CoordinatorEntity[BlustreamCoordinator], SensorEntity):
+    """Reports DSP utilization as a percentage (issue #68).
+
+    Useful for diagnosing the documented ~3 h idle "problem state".
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "dsp_usage"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = PERCENTAGE
+
+    def __init__(
+        self,
+        coordinator: BlustreamCoordinator,
+        entry: BlustreamConfigEntry,
+    ) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.unique_id}_dsp_usage"
+        self._attr_device_info = build_device_info(entry, coordinator)
+
+    @property
+    def native_value(self) -> float | None:
+        status = self.coordinator.data
+        if status is None:
+            return None
+        return status.dsp_usage

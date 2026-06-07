@@ -143,8 +143,10 @@ rules:
   entity-device-class:
     status: done
     comment: |
-      The uptime sensor uses SensorDeviceClass.UPTIME and the output
-      entities use MediaPlayerDeviceClass.RECEIVER. The canonical
+      The uptime sensor uses SensorDeviceClass.UPTIME, the temperature
+      sensor SensorDeviceClass.TEMPERATURE, and the output entities
+      MediaPlayerDeviceClass.RECEIVER. The DSP-usage sensor is a plain
+      percentage measurement (no matching device class). The canonical
       ``utcnow() - timedelta`` pattern (also used by wled, fritz,
       brother) is safe per-poll: HA's SensorEntity._normalize_uptime
       applies a 60 s UPTIME_DEFAULT_TOLERANCE_SECONDS so per-poll
@@ -153,22 +155,21 @@ rules:
   entity-disabled-by-default:
     status: exempt
     comment: |
-      The uptime sensor and the 8 output media_players are the
-      integration's reason to exist; hiding any by default would defeat
-      the install.
+      The uptime, temperature, and DSP-usage sensors and the 8 output
+      media_players are the integration's reason to exist; hiding any by
+      default would defeat the install.
   entity-translations: done
   exception-translations:
-    status: exempt
+    status: done
     comment: |
-      The integration raises no user-facing exceptions, so there is no
-      exception message to translate. Config-flow failures surface as
-      form error keys (cannot_connect / invalid_mac / unknown) and abort
-      reasons (already_configured / mac_mismatch) defined in strings.json;
-      the MAC-mismatch repair surfaces through an issue-registry
-      translation_key; and the coordinator's UpdateFailed is logged via
-      the log-when-unavailable path, not shown to the user. No
-      HomeAssistantError subclass is raised across config flow, the
-      reconfigure flow (#34), or the repair flow (#36).
+      The reboot button (#67) raises HomeAssistantError with a
+      translation_key (reboot_failed) keyed to a strings.json exceptions
+      entry when the device is off its control channel. Config-flow
+      failures surface as form error keys (cannot_connect / invalid_mac /
+      unknown) and abort reasons (already_configured / mac_mismatch)
+      defined in strings.json; the MAC-mismatch repair surfaces through an
+      issue-registry translation_key; the coordinator's UpdateFailed is
+      logged via the log-when-unavailable path, not shown to the user.
   icon-translations:
     status: exempt
     comment: |

@@ -24,7 +24,11 @@ from homeassistant.helpers import device_registry as dr  # noqa: E402
 from homeassistant.helpers import entity_registry as er  # noqa: E402
 from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa: E402
 
-from blustream.devices.dmp168.models import OutputRouting, OutputSource  # noqa: E402
+from blustream.devices.dmp168.models import (  # noqa: E402
+    OutputRouting,
+    OutputSettings,
+    OutputSource,
+)
 from custom_components.blustream.const import DOMAIN  # noqa: E402
 from custom_components.blustream.media_player import (  # noqa: E402
     SOURCE_LIST,
@@ -43,13 +47,17 @@ ENTRY_DATA = {
 }
 
 
-def _setup_device(routing=None) -> MagicMock:
+def _setup_device(routing=None, output_settings=None) -> MagicMock:
     device = MagicMock()
     device.connect = AsyncMock()
     device.disconnect = AsyncMock()
     device.is_connected = True
-    device.get_status = AsyncMock(return_value=make_status(routing=routing))
+    device.get_status = AsyncMock(
+        return_value=make_status(routing=routing, output_settings=output_settings)
+    )
     device.set_output_source = AsyncMock()
+    device.set_output_volume = AsyncMock()
+    device.set_output_mute = AsyncMock()
     return device
 
 
@@ -218,6 +226,174 @@ async def test_select_source_targets_many_outputs_in_one_call(
     assert routed_outputs == {1, 2, 3}
     for call in device.set_output_source.await_args_list:
         assert call.args[1] == OutputSource.for_input(5)
+
+
+def _settings(
+    output: int,
+    *,
+    volume_pct_l: int,
+    volume_pct_r: int,
+    mute_l: bool = False,
+    mute_r: bool = False,
+    lock: bool = True,
+) -> list[OutputSettings]:
+    """All 8 outputs at full volume except ``output``, which is customised."""
+    rows = [
+        OutputSettings(
+            output=out,
+            volume_pct_l=100,
+            volume_pct_r=100,
+            mute_l=False,
+            mute_r=False,
+            lock=True,
+        )
+        for out in range(1, 9)
+    ]
+    rows[output - 1] = OutputSettings(
+        output=output,
+        volume_pct_l=volume_pct_l,
+        volume_pct_r=volume_pct_r,
+        mute_l=mute_l,
+        mute_r=mute_r,
+        lock=lock,
+    )
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# Volume + mute
+# ---------------------------------------------------------------------------
+
+
+async def test_volume_features_supported(hass: HomeAssistant) -> None:
+    device = _setup_device()
+    await _install(hass, device)
+    features = hass.states.get(_entity_id(hass, 1)).attributes["supported_features"]
+    assert features & MediaPlayerEntityFeature.VOLUME_SET
+    assert features & MediaPlayerEntityFeature.VOLUME_STEP
+    assert features & MediaPlayerEntityFeature.VOLUME_MUTE
+
+
+async def test_volume_level_reads_left_channel(hass: HomeAssistant) -> None:
+    device = _setup_device(output_settings=_settings(2, volume_pct_l=40, volume_pct_r=40))
+    await _install(hass, device)
+    assert hass.states.get(_entity_id(hass, 2)).attributes["volume_level"] == 0.4
+
+
+async def test_is_volume_muted_requires_both_channels(hass: HomeAssistant) -> None:
+    # Output 1 both muted; output 3 only L muted.
+    settings = _settings(1, volume_pct_l=100, volume_pct_r=100, mute_l=True, mute_r=True)
+    settings[3 - 1] = OutputSettings(
+        output=3,
+        volume_pct_l=100,
+        volume_pct_r=100,
+        mute_l=True,
+        mute_r=False,
+        lock=False,
+    )
+    device = _setup_device(output_settings=settings)
+    await _install(hass, device)
+    assert hass.states.get(_entity_id(hass, 1)).attributes["is_volume_muted"] is True
+    assert hass.states.get(_entity_id(hass, 3)).attributes["is_volume_muted"] is False
+
+
+async def test_set_volume_writes_both_channels(hass: HomeAssistant) -> None:
+    device = _setup_device()
+    await _install(hass, device)
+    await hass.services.async_call(
+        "media_player",
+        "volume_set",
+        {"entity_id": _entity_id(hass, 2), "volume_level": 0.55},
+        blocking=True,
+    )
+    device.set_output_volume.assert_awaited_once_with(2, 55, channel="LR")
+
+
+async def test_mute_writes_both_channels(hass: HomeAssistant) -> None:
+    device = _setup_device()
+    await _install(hass, device)
+    await hass.services.async_call(
+        "media_player",
+        "volume_mute",
+        {"entity_id": _entity_id(hass, 4), "is_volume_muted": True},
+        blocking=True,
+    )
+    device.set_output_mute.assert_awaited_once_with(4, True, channel="LR")
+
+
+async def test_volume_up_uses_native_relative_step(hass: HomeAssistant) -> None:
+    device = _setup_device()
+    await _install(hass, device)
+    await hass.services.async_call(
+        "media_player",
+        "volume_up",
+        {"entity_id": _entity_id(hass, 5)},
+        blocking=True,
+    )
+    device.set_output_volume.assert_awaited_once_with(5, "+", channel="LR")
+
+
+async def test_volume_down_uses_native_relative_step(hass: HomeAssistant) -> None:
+    device = _setup_device()
+    await _install(hass, device)
+    await hass.services.async_call(
+        "media_player",
+        "volume_down",
+        {"entity_id": _entity_id(hass, 6)},
+        blocking=True,
+    )
+    device.set_output_volume.assert_awaited_once_with(6, "-", channel="LR")
+
+
+async def test_volume_step_is_one_percent(hass: HomeAssistant) -> None:
+    device = _setup_device()
+    await _install(hass, device)
+    # HA exposes the configured step so the frontend long-press matches.
+    state = hass.states.get(_entity_id(hass, 1))
+    assert state.attributes["volume_step"] == 0.01
+
+
+async def test_equal_channels_have_no_divergence_attributes(
+    hass: HomeAssistant,
+) -> None:
+    device = _setup_device(output_settings=_settings(1, volume_pct_l=70, volume_pct_r=70))
+    await _install(hass, device)
+    attrs = hass.states.get(_entity_id(hass, 1)).attributes
+    assert "volume_left" not in attrs
+    assert "volume_right" not in attrs
+    assert "channel_locked" not in attrs
+
+
+async def test_divergent_volume_surfaced_in_extra_attributes(
+    hass: HomeAssistant,
+) -> None:
+    device = _setup_device(
+        output_settings=_settings(
+            2, volume_pct_l=80, volume_pct_r=30, lock=False
+        )
+    )
+    await _install(hass, device)
+    attrs = hass.states.get(_entity_id(hass, 2)).attributes
+    # volume_level still follows the canonical L channel.
+    assert attrs["volume_level"] == 0.8
+    assert attrs["volume_left"] == 0.8
+    assert attrs["volume_right"] == 0.3
+    assert attrs["channel_locked"] is False
+
+
+async def test_divergent_mute_surfaced_in_extra_attributes(
+    hass: HomeAssistant,
+) -> None:
+    device = _setup_device(
+        output_settings=_settings(
+            3, volume_pct_l=50, volume_pct_r=50, mute_l=True, mute_r=False, lock=False
+        )
+    )
+    await _install(hass, device)
+    attrs = hass.states.get(_entity_id(hass, 3)).attributes
+    assert attrs["volume_left"] == 0.5
+    assert attrs["volume_right"] == 0.5
+    assert attrs["channel_locked"] is False
 
 
 async def test_media_player_unavailable_when_coordinator_fails(

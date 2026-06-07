@@ -38,6 +38,11 @@
     }
   },
   "entity": {
+    "button": {
+      "reboot": {
+        "name": "Reboot"
+      }
+    },
     "media_player": {
       "output": {
         "name": "Output {number}"
@@ -46,7 +51,23 @@
     "sensor": {
       "uptime": {
         "name": "Last boot"
+      },
+      "temperature": {
+        "name": "Temperature"
+      },
+      "dsp_usage": {
+        "name": "DSP usage"
       }
+    },
+    "switch": {
+      "power": {
+        "name": "Power"
+      }
+    }
+  },
+  "exceptions": {
+    "reboot_failed": {
+      "message": "Failed to reboot the Blustream device: it is unreachable on its control channel."
     }
   },
   "issues": {

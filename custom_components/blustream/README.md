@@ -3,8 +3,8 @@
 The Blustream integration adds the [Blustream DMP168](https://www.blustream.co.uk/) digital
 audio matrix processor as a device in Home Assistant. It ships a
 `SensorDeviceClass.UPTIME` entity reporting when the device last booted (rendered by
-HA as relative time, "3 days ago") and one `media_player` per output for source
-routing. It depends on the
+HA as relative time, "3 days ago"), one `media_player` per output for source
+routing, and a device-wide `switch` for soft power (standby/wake). It depends on the
 [`blustream`](https://pypi.org/project/blustream/) PyPI library for the wire protocol
 (ADR 0011 — the library owns the protocol boundary).
 
@@ -89,7 +89,8 @@ logger namespace so HA's debug toggle reaches the wire layer).
 | Entity         | Class                          | Description                                                   |
 | -------------- | ------------------------------ | ------------------------------------------------------------ |
 | Uptime         | `SensorDeviceClass.UPTIME`     | Boot time of the DMP168 (relative time).                     |
-| Output 1–8     | `MediaPlayerDeviceClass.RECEIVER` | One per output; `select_source` routes a source to the output. |
+| Output 1–8     | `MediaPlayerDeviceClass.RECEIVER` | One per output; `select_source` routes a source, plus volume and mute. |
+| Reboot         | `ButtonDeviceClass.RESTART`    | Reboots the device over its TCP control channel (CONFIG-category). |
 
 Each output is a single-source `media_player` (ADR 0014). Its source list is `None`
 (unrouted) plus `Input 1`–`Input 16` and `Bus 1`–`Bus 8`; `select_source` routes the
@@ -97,6 +98,13 @@ chosen source, and selecting `None` clears the route. Because one input can feed
 outputs, targeting several output entities — or an area or label — in a single
 `media_player.select_source` call routes that source to all of them at once. Bus
 *contents* (what a bus sums) are configured on the device web GUI, not here.
+
+The volume slider sets the output level and mute toggles it; both write the device's
+L and R channels together. `volume_level` follows the L channel and the output reads
+**muted** only when both channels are muted. Volume up/down use the device's native
+1 % relative step. When L and R diverge — settable from the device web GUI — the raw
+`volume_left`, `volume_right`, and `channel_locked` values are surfaced in the
+entity's attributes.
 
 Every entity reports **Unavailable** when the device is unreachable and recovers within
 one polling cycle (~30 s) once the device returns. HA logs "device unavailable" /
@@ -142,6 +150,7 @@ removing the integration itself (ADR 0012).
 | -------------------- | ------------------------------- | ------------------------------- |
 | Manual setup         | ✅                              | —                               |
 | Uptime sensor        | ✅                              | —                               |
+| Temperature / DSP sensors | ✅                         | —                               |
 | DHCP discovery       | ✅                              | —                               |
 | DHCP IP-change update | ✅                             | —                               |
 | Zeroconf discovery   | ✅ (host-only assist)           | —                               |
@@ -149,7 +158,8 @@ removing the integration itself (ADR 0012).
 | Diagnostics          | ✅ (with redaction)             | —                               |
 | MAC-mismatch repair  | ✅                              | —                               |
 | Output routing (`media_player`) | ✅                   | —                               |
-| Volume / mute entities | —                             | v0.2+                           |
+| Output volume / mute (`media_player`) | ✅              | —                               |
+| Reboot button        | ✅                              | —                               |
 
 ## Context
 

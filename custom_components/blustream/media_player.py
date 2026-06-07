@@ -6,9 +6,20 @@ the device-native ``None`` target plus the 16 inputs and 8 buses; selecting a
 source routes it, and selecting ``None`` clears the route. One input feeds
 several outputs by targeting several output entities (or an area/label) in a
 single ``media_player.select_source`` action.
+
+Each output also exposes volume and mute (``VOLUME_SET | VOLUME_STEP |
+VOLUME_MUTE``). The device keeps independent L/R volume and mute; HA's
+single-value model collapses them with the L channel canonical (ADR 0014):
+``volume_level`` follows L, ``is_volume_muted`` is true only when *both*
+channels are muted, and writes always target both channels (``channel=LR``).
+When the channels diverge — settable from the device's own web GUI — the raw
+per-channel values are surfaced in ``extra_state_attributes`` so the
+collapse stays lossless.
 """
 
 from __future__ import annotations
+
+from typing import Any
 
 from homeassistant.components.media_player import (
     MediaPlayerDeviceClass,
@@ -16,19 +27,25 @@ from homeassistant.components.media_player import (
     MediaPlayerEntityFeature,
     MediaPlayerState,
 )
-from homeassistant.const import CONF_MAC, CONF_NAME
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import (
-    CONNECTION_NETWORK_MAC,
-    DeviceInfo,
-)
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from blustream.devices.dmp168.models import SOURCE_BUS, OutputSource
+from blustream.devices.dmp168.models import (
+    SOURCE_BUS,
+    OutputSettings,
+    OutputSource,
+)
 
-from .const import BUS_COUNT, DOMAIN, INPUT_COUNT, OUTPUT_COUNT
+from .const import BUS_COUNT, INPUT_COUNT, OUTPUT_COUNT
 from .coordinator import BlustreamConfigEntry, BlustreamCoordinator
+from .device import build_device_info
+
+# The device steps output volume in 1% increments via its native relative
+# ``+``/``-`` commands; HA expresses the step as a 0-1 fraction.
+_VOLUME_STEP = 0.01
+# The device works in whole-percent volume (0-100); HA works in a 0-1 float.
+_VOLUME_SCALE = 100
 
 # The device-native "no source" routing target, surfaced as a first-class
 # selectable value rather than a turn_off overload (ADR 0014, CONTEXT.md
@@ -89,8 +106,14 @@ class BlustreamOutputMediaPlayer(
     _attr_has_entity_name = True
     _attr_translation_key = "output"
     _attr_device_class = MediaPlayerDeviceClass.RECEIVER
-    _attr_supported_features = MediaPlayerEntityFeature.SELECT_SOURCE
+    _attr_supported_features = (
+        MediaPlayerEntityFeature.SELECT_SOURCE
+        | MediaPlayerEntityFeature.VOLUME_SET
+        | MediaPlayerEntityFeature.VOLUME_STEP
+        | MediaPlayerEntityFeature.VOLUME_MUTE
+    )
     _attr_source_list = SOURCE_LIST
+    _attr_volume_step = _VOLUME_STEP
 
     def __init__(
         self,
@@ -102,18 +125,7 @@ class BlustreamOutputMediaPlayer(
         self._output = output
         self._attr_unique_id = f"{entry.unique_id}_output_{output}"
         self._attr_translation_placeholders = {"number": str(output)}
-
-        connections: set[tuple[str, str]] = set()
-        if mac := entry.data.get(CONF_MAC):
-            connections.add((CONNECTION_NETWORK_MAC, mac))
-
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.unique_id or entry.entry_id)},
-            connections=connections,
-            manufacturer="Blustream",
-            model="DMP168",
-            name=entry.data.get(CONF_NAME) or entry.title,
-        )
+        self._attr_device_info = build_device_info(entry, coordinator)
 
     @property
     def state(self) -> MediaPlayerState:
@@ -144,4 +156,83 @@ class BlustreamOutputMediaPlayer(
         """Route ``source`` to this output, or clear it when ``None``."""
         target = label_to_source(source)
         await self.coordinator.device.set_output_source(self._output, target)
+        await self.coordinator.async_request_refresh()
+
+    @property
+    def _settings(self) -> OutputSettings | None:
+        """This output's settings row from the latest poll, if present."""
+        status = self.coordinator.data
+        if status is None:
+            return None
+        for row in status.output_settings:
+            if row.output == self._output:
+                return row
+        return None
+
+    @property
+    def volume_level(self) -> float | None:
+        """The output level as a 0-1 fraction, from the canonical L channel."""
+        settings = self._settings
+        if settings is None:
+            return None
+        return settings.volume_pct_l / _VOLUME_SCALE
+
+    @property
+    def is_volume_muted(self) -> bool | None:
+        """Muted only when *both* channels are muted (ADR 0014 collapse)."""
+        settings = self._settings
+        if settings is None:
+            return None
+        return settings.mute_l and settings.mute_r
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Surface per-channel state only when L and R diverge.
+
+        ``volume_level``/``is_volume_muted`` collapse to the L channel; when
+        the channels disagree (settable from the device web GUI) the raw
+        ``volume_left``/``volume_right`` fractions and ``channel_locked`` flag
+        keep the collapse lossless. Equal channels add no noise.
+        """
+        settings = self._settings
+        if settings is None:
+            return None
+        diverged = (
+            settings.volume_pct_l != settings.volume_pct_r
+            or settings.mute_l != settings.mute_r
+        )
+        if not diverged:
+            return None
+        return {
+            "volume_left": settings.volume_pct_l / _VOLUME_SCALE,
+            "volume_right": settings.volume_pct_r / _VOLUME_SCALE,
+            "channel_locked": settings.lock,
+        }
+
+    async def async_set_volume_level(self, volume: float) -> None:
+        """Set both channels to the same absolute level (0-1 fraction)."""
+        await self.coordinator.device.set_output_volume(
+            self._output, round(volume * _VOLUME_SCALE), channel="LR"
+        )
+        await self.coordinator.async_request_refresh()
+
+    async def async_volume_up(self) -> None:
+        """Step both channels up via the device's native relative command."""
+        await self.coordinator.device.set_output_volume(
+            self._output, "+", channel="LR"
+        )
+        await self.coordinator.async_request_refresh()
+
+    async def async_volume_down(self) -> None:
+        """Step both channels down via the device's native relative command."""
+        await self.coordinator.device.set_output_volume(
+            self._output, "-", channel="LR"
+        )
+        await self.coordinator.async_request_refresh()
+
+    async def async_mute_volume(self, mute: bool) -> None:
+        """Mute or unmute both channels together."""
+        await self.coordinator.device.set_output_mute(
+            self._output, mute, channel="LR"
+        )
         await self.coordinator.async_request_refresh()
