@@ -17,13 +17,15 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa
 from custom_components.blustream.const import DOMAIN  # noqa: E402
 from custom_components.blustream.coordinator import BlustreamCoordinator  # noqa: E402
 
+from . import make_status  # noqa: E402
+
 
 def _setup_device():
     device = MagicMock()
     device.connect = AsyncMock()
     device.disconnect = AsyncMock()
     device.is_connected = True
-    device.get_uptime = AsyncMock(return_value=timedelta(days=1))
+    device.get_status = AsyncMock(return_value=make_status(uptime=timedelta(days=1)))
     return device
 
 

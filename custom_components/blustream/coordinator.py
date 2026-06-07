@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -22,6 +21,7 @@ from blustream.base.exceptions import (
 from blustream.base.exceptions import (
     TimeoutError as BlustreamTimeoutError,
 )
+from blustream.devices.dmp168.models import SystemStatus
 
 from .const import DOMAIN, SCAN_INTERVAL
 
@@ -35,8 +35,13 @@ _LOGGER = logging.getLogger(__name__)
 BlustreamConfigEntry = ConfigEntry["BlustreamCoordinator"]
 
 
-class BlustreamCoordinator(DataUpdateCoordinator[timedelta]):
-    """Polls a single DMP168 for its uptime duration."""
+class BlustreamCoordinator(DataUpdateCoordinator[SystemStatus]):
+    """Polls a single DMP168 for its full system status.
+
+    A single ``get_status()`` per cycle drives every entity (output routing,
+    uptime, …); the typed :class:`SystemStatus` is exposed on
+    ``coordinator.data`` (issue #64, ADR 0014).
+    """
 
     config_entry: BlustreamConfigEntry
 
@@ -55,11 +60,11 @@ class BlustreamCoordinator(DataUpdateCoordinator[timedelta]):
         )
         self.device = device
 
-    async def _async_update_data(self) -> timedelta:
+    async def _async_update_data(self) -> SystemStatus:
         try:
             if not self.device.is_connected:
                 await self.device.connect()
-            return await self.device.get_uptime()
+            return await self.device.get_status()
         except (
             BlustreamConnectionError,
             BlustreamTimeoutError,

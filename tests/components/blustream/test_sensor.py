@@ -26,6 +26,8 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa
 
 from custom_components.blustream.const import DOMAIN  # noqa: E402
 
+from . import make_status  # noqa: E402
+
 ENTRY_DATA = {
     CONF_HOST: "192.0.2.10",
     CONF_PORT: 23,
@@ -38,7 +40,7 @@ def _setup_device(uptime_value=timedelta(days=3, hours=2, minutes=1)):
     device.connect = AsyncMock()
     device.disconnect = AsyncMock()
     device.is_connected = True
-    device.get_uptime = AsyncMock(return_value=uptime_value)
+    device.get_status = AsyncMock(return_value=make_status(uptime=uptime_value))
     return device
 
 
@@ -82,7 +84,7 @@ async def test_sensor_unavailable_when_coordinator_data_unavailable(
     device = _setup_device()
     entry = await _install(hass, device)
 
-    device.get_uptime.side_effect = Exception("nope, but caught upstream")
+    device.get_status.side_effect = Exception("nope, but caught upstream")
 
     states = [
         state for state in hass.states.async_all() if state.domain == "sensor"
@@ -117,6 +119,7 @@ async def test_sensor_registers_device_and_entity(
     ) in devices[0].connections
 
     entries = er.async_entries_for_config_entry(entity_registry, entry.entry_id)
-    assert len(entries) == 1
-    assert entries[0].unique_id == "34:d0:b8:21:22:33_uptime"
-    assert entries[0].device_class is None
+    sensor_entries = [e for e in entries if e.domain == "sensor"]
+    assert len(sensor_entries) == 1
+    assert sensor_entries[0].unique_id == "34:d0:b8:21:22:33_uptime"
+    assert sensor_entries[0].device_class is None

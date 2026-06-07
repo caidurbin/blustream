@@ -35,6 +35,8 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa
 
 from custom_components.blustream.const import DOMAIN  # noqa: E402
 
+from . import make_status  # noqa: E402
+
 
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations):  # noqa: ARG001
@@ -49,6 +51,10 @@ def mock_device() -> Generator[MagicMock, None, None]:
     device.connect = AsyncMock()
     device.disconnect = AsyncMock()
     device.get_uptime = AsyncMock(return_value=timedelta(days=3, hours=2, minutes=1))
+    device.get_status = AsyncMock(
+        return_value=make_status(uptime=timedelta(days=3, hours=2, minutes=1))
+    )
+    device.set_output_source = AsyncMock()
     device.is_connected = True
     with (
         patch(

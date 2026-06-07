@@ -28,6 +28,8 @@ from blustream.base.exceptions import (  # noqa: E402
 )
 from custom_components.blustream.const import DOMAIN  # noqa: E402
 
+from . import make_status  # noqa: E402
+
 ENTRY_DATA = {
     CONF_HOST: "192.0.2.10",
     CONF_PORT: 23,
@@ -35,14 +37,14 @@ ENTRY_DATA = {
 }
 
 
-def _setup_device(uptime_value=None, uptime_side_effect=None):
+def _setup_device(uptime_value=None, status_side_effect=None):
     device = MagicMock()
     device.connect = AsyncMock()
     device.disconnect = AsyncMock()
     device.is_connected = True
-    device.get_uptime = AsyncMock(
-        return_value=uptime_value or timedelta(days=1, seconds=42),
-        side_effect=uptime_side_effect,
+    device.get_status = AsyncMock(
+        return_value=make_status(uptime=uptime_value or timedelta(days=1, seconds=42)),
+        side_effect=status_side_effect,
     )
     return device
 
@@ -65,14 +67,15 @@ async def test_coordinator_happy_path_loads_entry(hass: HomeAssistant) -> None:
     entry = await _setup_with_device(hass, device)
     assert entry.state is ConfigEntryState.LOADED
     assert entry.runtime_data.last_update_success
-    assert entry.runtime_data.data == timedelta(days=3, hours=4)
+    # coordinator.data is now the full SystemStatus poll (issue #64).
+    assert entry.runtime_data.data == make_status(uptime=timedelta(days=3, hours=4))
 
 
 async def test_coordinator_connection_error_raises_config_entry_not_ready_on_first_refresh(
     hass: HomeAssistant,
 ) -> None:
     device = _setup_device(
-        uptime_side_effect=BlustreamConnectionError("offline")
+        status_side_effect=BlustreamConnectionError("offline")
     )
     entry = await _setup_with_device(hass, device)
     assert entry.state is ConfigEntryState.SETUP_RETRY
@@ -81,7 +84,7 @@ async def test_coordinator_connection_error_raises_config_entry_not_ready_on_fir
 async def test_coordinator_timeout_error_raises_config_entry_not_ready_on_first_refresh(
     hass: HomeAssistant,
 ) -> None:
-    device = _setup_device(uptime_side_effect=BlustreamTimeoutError("slow"))
+    device = _setup_device(status_side_effect=BlustreamTimeoutError("slow"))
     entry = await _setup_with_device(hass, device)
     assert entry.state is ConfigEntryState.SETUP_RETRY
 
@@ -89,7 +92,7 @@ async def test_coordinator_timeout_error_raises_config_entry_not_ready_on_first_
 async def test_coordinator_parse_error_raises_config_entry_not_ready_on_first_refresh(
     hass: HomeAssistant,
 ) -> None:
-    device = _setup_device(uptime_side_effect=BlustreamParseError("bad"))
+    device = _setup_device(status_side_effect=BlustreamParseError("bad"))
     entry = await _setup_with_device(hass, device)
     assert entry.state is ConfigEntryState.SETUP_RETRY
 
@@ -97,7 +100,7 @@ async def test_coordinator_parse_error_raises_config_entry_not_ready_on_first_re
 async def test_coordinator_command_error_raises_config_entry_not_ready_on_first_refresh(
     hass: HomeAssistant,
 ) -> None:
-    device = _setup_device(uptime_side_effect=BlustreamCommandError("err"))
+    device = _setup_device(status_side_effect=BlustreamCommandError("err"))
     entry = await _setup_with_device(hass, device)
     assert entry.state is ConfigEntryState.SETUP_RETRY
 
@@ -112,7 +115,7 @@ async def test_coordinator_unexpected_exception_retries_setup(
     so the entry lands in SETUP_RETRY, same as the expected error paths
     above. (The coordinator does not force a hard SETUP_ERROR; a transient
     bug should still be retried rather than wedging the entry.)"""
-    device = _setup_device(uptime_side_effect=RuntimeError("surprise"))
+    device = _setup_device(status_side_effect=RuntimeError("surprise"))
     entry = MockConfigEntry(
         domain=DOMAIN, data=ENTRY_DATA, unique_id="34:d0:b8:21:22:33"
     )
@@ -132,6 +135,6 @@ async def test_coordinator_recovery_after_transient_failure(
     entry = await _setup_with_device(hass, device)
     assert entry.runtime_data.last_update_success
 
-    device.get_uptime.side_effect = BlustreamConnectionError("flapped")
+    device.get_status.side_effect = BlustreamConnectionError("flapped")
     await entry.runtime_data.async_refresh()
     assert entry.runtime_data.last_update_success is False

@@ -38,6 +38,11 @@
     }
   },
   "entity": {
+    "media_player": {
+      "output": {
+        "name": "Output {number}"
+      }
+    },
     "sensor": {
       "uptime": {
         "name": "Last boot"

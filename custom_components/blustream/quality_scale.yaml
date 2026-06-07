@@ -6,7 +6,9 @@ rules:
   action-setup:
     status: exempt
     comment: |
-      No service actions registered in v0.1 (read-only uptime sensor).
+      No custom service actions registered; control is exposed through
+      built-in entity features (media_player.select_source), not async_setup
+      services.
   appropriate-polling:
     status: done
     comment: |
@@ -17,7 +19,8 @@ rules:
     status: done
     comment: |
       Coordinator in coordinator.py; entity-base inheritance via
-      CoordinatorEntity directly (single platform in v0.1).
+      CoordinatorEntity directly across the sensor and media_player
+      platforms.
   config-flow: done
   config-flow-test-coverage:
     status: done
@@ -140,7 +143,8 @@ rules:
   entity-device-class:
     status: done
     comment: |
-      The single sensor uses SensorDeviceClass.UPTIME. The canonical
+      The uptime sensor uses SensorDeviceClass.UPTIME and the output
+      entities use MediaPlayerDeviceClass.RECEIVER. The canonical
       ``utcnow() - timedelta`` pattern (also used by wled, fritz,
       brother) is safe per-poll: HA's SensorEntity._normalize_uptime
       applies a 60 s UPTIME_DEFAULT_TOLERANCE_SECONDS so per-poll
@@ -149,8 +153,9 @@ rules:
   entity-disabled-by-default:
     status: exempt
     comment: |
-      The single uptime sensor is the integration's reason to exist;
-      hiding it by default would defeat the install.
+      The uptime sensor and the 8 output media_players are the
+      integration's reason to exist; hiding any by default would defeat
+      the install.
   entity-translations: done
   exception-translations:
     status: exempt

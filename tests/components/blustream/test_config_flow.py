@@ -30,6 +30,8 @@ from blustream.base.exceptions import (  # noqa: E402
 )
 from custom_components.blustream.const import DOMAIN  # noqa: E402
 
+from . import make_status  # noqa: E402
+
 USER_INPUT_WITH_MAC = {
     CONF_HOST: "192.0.2.10",
     CONF_PORT: 23,
@@ -73,6 +75,9 @@ def _patched_device(uptime_side_effect=None) -> MagicMock:
         return_value=timedelta(seconds=120),
         side_effect=uptime_side_effect,
     )
+    # The coordinator's first refresh polls get_status(); provide it so an
+    # entry whose setup runs (not stubbed via async_setup_entry) loads.
+    device.get_status = AsyncMock(return_value=make_status())
     return device
 
 
@@ -489,7 +494,7 @@ async def test_handoff_validation_connect_disconnect_is_isolated_from_coordinato
     flow_device = constructed[0]
     coordinator_device = constructed[1]
     flow_device.disconnect.assert_awaited()
-    coordinator_device.get_uptime.assert_awaited()
+    coordinator_device.get_status.assert_awaited()
     coordinator_device.disconnect.assert_not_called()
 
 

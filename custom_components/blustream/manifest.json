@@ -16,7 +16,7 @@
   "issue_tracker": "https://github.com/caidurbin/blustream/issues",
   "loggers": ["blustream"],
   "quality_scale": "gold",
-  "requirements": ["blustream==0.2.0"],
+  "requirements": ["blustream==0.3.0"],
   "version": "0.1.0",
   "zeroconf": [
     {

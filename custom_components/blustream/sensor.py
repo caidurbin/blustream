@@ -18,6 +18,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
+from blustream.base.exceptions import ParseError
+from blustream.devices.dmp168.uptime_parser import parse as parse_uptime
+
 from .const import DOMAIN
 from .coordinator import BlustreamConfigEntry, BlustreamCoordinator
 
@@ -34,10 +37,12 @@ async def async_setup_entry(
 class BlustreamUptimeSensor(CoordinatorEntity[BlustreamCoordinator], SensorEntity):
     """Reports the device's last-boot time as a UPTIME-class sensor.
 
-    Per-poll clock drift is absorbed by HA's
-    ``SensorEntity._normalize_uptime`` (default tolerance 60 s for
-    ``SensorDeviceClass.UPTIME``), so we emit a fresh
-    ``utcnow() - timedelta`` every poll and let HA quantize.
+    The uptime duration is read from the coordinator's
+    :class:`~blustream.devices.dmp168.models.SystemStatus` (issue #64) and
+    converted to a boot-time instant. Per-poll clock drift is absorbed by
+    HA's ``SensorEntity._normalize_uptime`` (default tolerance 60 s for
+    ``SensorDeviceClass.UPTIME``), so we emit a fresh ``utcnow() - timedelta``
+    every poll and let HA quantize.
     """
 
     _attr_has_entity_name = True
@@ -66,6 +71,11 @@ class BlustreamUptimeSensor(CoordinatorEntity[BlustreamCoordinator], SensorEntit
 
     @property
     def native_value(self) -> datetime | None:
-        if self.coordinator.data is None:
+        status = self.coordinator.data
+        if status is None:
             return None
-        return dt_util.utcnow() - self.coordinator.data
+        try:
+            uptime = parse_uptime(status.uptime)
+        except ParseError:
+            return None
+        return dt_util.utcnow() - uptime

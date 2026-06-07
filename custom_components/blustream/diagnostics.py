@@ -24,6 +24,8 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.loader import async_get_integration
 
 from blustream import __version__ as BLUSTREAM_LIBRARY_VERSION  # noqa: N812
+from blustream.base.exceptions import ParseError
+from blustream.devices.dmp168.uptime_parser import parse as parse_uptime
 
 from .const import DOMAIN
 from .coordinator import BlustreamConfigEntry
@@ -49,7 +51,15 @@ async def async_get_config_entry_diagnostics(
     )
 
     update_interval = coordinator.update_interval
-    last_uptime = coordinator.data
+    # coordinator.data is now the full SystemStatus (issue #64); derive the
+    # last-polled uptime duration from its uptime string for the triage view.
+    last_status = coordinator.data
+    last_uptime = None
+    if last_status is not None:
+        try:
+            last_uptime = parse_uptime(last_status.uptime)
+        except ParseError:
+            last_uptime = None
 
     return {
         "config_entry": async_redact_data(entry.as_dict(), TO_REDACT_ENTRY),

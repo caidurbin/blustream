@@ -1,9 +1,10 @@
 # Blustream Home Assistant integration
 
 The Blustream integration adds the [Blustream DMP168](https://www.blustream.co.uk/) digital
-audio matrix processor as a device in Home Assistant. The v0.1 release ships a single
-`SensorDeviceClass.UPTIME` entity that reports when the device last booted, rendered
-by HA as relative time ("3 days ago"). It depends on the
+audio matrix processor as a device in Home Assistant. It ships a
+`SensorDeviceClass.UPTIME` entity reporting when the device last booted (rendered by
+HA as relative time, "3 days ago") and one `media_player` per output for source
+routing. It depends on the
 [`blustream`](https://pypi.org/project/blustream/) PyPI library for the wire protocol
 (ADR 0011 — the library owns the protocol boundary).
 
@@ -85,11 +86,19 @@ logger namespace so HA's debug toggle reaches the wire layer).
 
 ## Entities
 
-| Entity   | Class                       | Description                              |
-| -------- | --------------------------- | ---------------------------------------- |
-| Uptime   | `SensorDeviceClass.UPTIME`  | Boot time of the DMP168 (relative time). |
+| Entity         | Class                          | Description                                                   |
+| -------------- | ------------------------------ | ------------------------------------------------------------ |
+| Uptime         | `SensorDeviceClass.UPTIME`     | Boot time of the DMP168 (relative time).                     |
+| Output 1–8     | `MediaPlayerDeviceClass.RECEIVER` | One per output; `select_source` routes a source to the output. |
 
-The sensor reports **Unavailable** when the device is unreachable and recovers within
+Each output is a single-source `media_player` (ADR 0014). Its source list is `None`
+(unrouted) plus `Input 1`–`Input 16` and `Bus 1`–`Bus 8`; `select_source` routes the
+chosen source, and selecting `None` clears the route. Because one input can feed many
+outputs, targeting several output entities — or an area or label — in a single
+`media_player.select_source` call routes that source to all of them at once. Bus
+*contents* (what a bus sums) are configured on the device web GUI, not here.
+
+Every entity reports **Unavailable** when the device is unreachable and recovers within
 one polling cycle (~30 s) once the device returns. HA logs "device unavailable" /
 "device recovered" once per transition.
 
@@ -139,7 +148,8 @@ removing the integration itself (ADR 0012).
 | Reconfigure flow     | ✅                              | —                               |
 | Diagnostics          | ✅ (with redaction)             | —                               |
 | MAC-mismatch repair  | ✅                              | —                               |
-| Volume / mute / routing entities | —                   | v0.2+                           |
+| Output routing (`media_player`) | ✅                   | —                               |
+| Volume / mute entities | —                             | v0.2+                           |
 
 ## Context
 
