@@ -27,6 +27,7 @@ from blustream import __version__ as LIBRARY_VERSION  # noqa: E402, N812
 from blustream.devices.dmp168.models import (  # noqa: E402
     InputSettings,
     OutputRouting,
+    OutputSource,
     SystemStatus,
 )
 from custom_components.blustream.const import DOMAIN  # noqa: E402
@@ -55,7 +56,9 @@ def _make_status() -> SystemStatus:
                 port=1, lock=True, gain_l=50, gain_r=50, mute_l=False, mute_r=False
             )
         ],
-        routing=[OutputRouting(output=1, channel="L", from_input=1)],
+        routing=[
+            OutputRouting(output=1, channel="L", source=OutputSource.for_input(1))
+        ],
     )
 
 

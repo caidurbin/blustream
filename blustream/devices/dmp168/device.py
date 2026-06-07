@@ -13,7 +13,7 @@ from blustream.base.validator import validate
 from blustream.connection.tcp import TCPConnection
 from blustream.devices.dmp168 import commands as cmd_module
 from blustream.devices.dmp168.commands import _is_relative_adjustment
-from blustream.devices.dmp168.models import PresetStatus, SystemStatus
+from blustream.devices.dmp168.models import OutputSource, PresetStatus, SystemStatus
 from blustream.devices.dmp168.parser import DMP168Parser
 from blustream.devices.dmp168.uptime_parser import parse as parse_uptime
 
@@ -273,6 +273,44 @@ class DMP168(BlustreamDevice):
             output_channel=output_channel,
             input_channel=input_channel,
         )
+
+    async def set_output_source(
+        self, output: int, source: Optional[OutputSource]
+    ) -> None:
+        """Set the single source feeding an output, or clear it.
+
+        Per ADR 0014 each output is fed by exactly one source. Routing an input
+        or bus maps to the ``route`` wire command (the source's unified 1-24
+        column address stays inside the library); ``source=None`` clears the
+        route via ``output_remove`` — the device's "None" routing target.
+
+        Because the device's REM command removes a *specific* source, clearing
+        first reads status to find the source presently feeding ``output``
+        (the L channel is canonical), then removes it. It is a no-op when the
+        output is already unrouted.
+
+        Args:
+            output: Output channel (1-8).
+            source: The input or bus to route, or None to clear the route.
+        """
+        if source is not None:
+            await self.execute_command("route", output=output, input=source.column)
+            return
+
+        current = await self._current_output_source(output)
+        if current is None:
+            return
+        await self.execute_command(
+            "output_remove", output=output, input=current.column
+        )
+
+    async def _current_output_source(self, output: int) -> Optional[OutputSource]:
+        """Return the source currently routed to ``output`` (L channel), or None."""
+        status = await self.get_status()
+        for row in status.routing:
+            if row.output == output and row.channel == "L":
+                return row.source
+        return None
 
     async def save_preset(self, preset: int) -> None:
         """Save current configuration to preset.

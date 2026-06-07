@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from blustream.base.exceptions import ParseError
+from blustream.devices.dmp168.models import OutputSource
 from blustream.devices.dmp168.parser import DMP168Parser
 
 
@@ -66,7 +67,7 @@ class TestDMP168Parser:
         # The first Matrix Config row in the fixture is "Out1 L  None"
         assert status.routing[0].output == 1
         assert status.routing[0].channel == "L"
-        assert status.routing[0].from_input is None
+        assert status.routing[0].source is None
 
     def test_parse_status(self):
         """Test parsing STATUS response."""
@@ -94,7 +95,7 @@ class TestDMP168Parser:
         assert len(status.routing) >= 16
         assert status.routing[0].output == 1
         assert status.routing[0].channel == "L"
-        assert status.routing[0].from_input == 1
+        assert status.routing[0].source == OutputSource.for_input(1)
 
     def test_parse_status_invalid(self):
         """Test parsing invalid STATUS response."""
@@ -280,7 +281,7 @@ Out1 L
         assert len(status.routing) == 1
         assert status.routing[0].output == 1
         assert status.routing[0].channel == "L"
-        assert status.routing[0].from_input is None  # No input routed
+        assert status.routing[0].source is None  # No source routed
 
     def test_parse_status_dsp_with_percent(self):
         """Test parsing STATUS with DSP usage that includes %."""
@@ -344,4 +345,95 @@ On           57600   %             0                         10        Off     4
         assert preset.preset_number == 1
         # Empty response means exists=False (parser logic: if not exists and response is empty, stays False)
         assert preset.exists is False
+
+
+class TestParseOutputSources:
+    """Matrix Config sources: input, bus, and None per output channel."""
+
+    HEADER = (
+        "Power         Baud    Level Unit    Auto Standby Time(mins)    "
+        "DSP(%)    Fade    Temp(C)   Uptime(Day:Hour:Min:Sec)\n"
+        "On           57600   %             0                         "
+        "10        Off     25.0C     0000:01:00:00\n"
+    )
+
+    def _routing(self, body: str):
+        response = f"{self.HEADER}\nMatrix Config Status\nOutput        FromIn\n{body}"
+        return DMP168Parser().parse_status(response).routing
+
+    def test_input_source(self):
+        routing = self._routing("Out1 L        In5 L\n")
+        assert routing[0].source == OutputSource.for_input(5)
+
+    def test_bus_source(self):
+        routing = self._routing("Out2 R        Bus3 R\n")
+        assert routing[0].source == OutputSource(kind="bus", number=3)
+
+    def test_bus_source_uppercase_token(self):
+        # The device's BUS sections print "BUS<n>"; matching is case-insensitive.
+        routing = self._routing("Out2 R        BUS7 R\n")
+        assert routing[0].source == OutputSource.for_bus(7)
+
+    def test_none_source(self):
+        routing = self._routing("Out3 L        None\n")
+        assert routing[0].source is None
+
+    def test_mixed_input_bus_none(self):
+        routing = self._routing(
+            "Out1 L        In1 L\n"
+            "Out1 R        Bus2 R\n"
+            "Out2 L        None\n"
+        )
+        assert routing[0].source == OutputSource.for_input(1)
+        assert routing[1].source == OutputSource.for_bus(2)
+        assert routing[2].source is None
+
+
+class TestParseOutputSettings:
+    """Output Settings Status section -> per-output volume / mute / lock."""
+
+    def test_live_full_output_settings(self):
+        response = load_fixture_preserving_crlf("status_live_full.txt")
+        status = DMP168Parser().parse_status(response)
+
+        assert len(status.output_settings) == 8
+        assert {o.output for o in status.output_settings} == set(range(1, 9))
+        first = status.output_settings[0]
+        assert first.output == 1
+        assert first.volume_pct_l == 100
+        assert first.volume_pct_r == 100
+        assert first.mute_l is False
+        assert first.mute_r is False
+        assert first.lock is True
+
+    def test_output_settings_values(self):
+        response = (
+            "Power         Baud    Level Unit    Auto Standby Time(mins)    "
+            "DSP(%)    Fade    Temp(C)   Uptime(Day:Hour:Min:Sec)\n"
+            "On           57600   %             0                         "
+            "10        Off     25.0C     0000:01:00:00\n"
+            "\nOutput Settings Status\n"
+            "Port    Lock   %      Mute     Delay    Mix  Group  Maximum(dB)\n"
+            "        LR   L   R    L   R    L   R    LR    LR    L   R\n"
+            "Out1    Off  80  90   On  Off  0   0    0     0     0   0\n"
+        )
+        status = DMP168Parser().parse_status(response)
+        assert len(status.output_settings) == 1
+        o = status.output_settings[0]
+        assert o.output == 1
+        assert o.volume_pct_l == 80
+        assert o.volume_pct_r == 90
+        assert o.mute_l is True
+        assert o.mute_r is False
+        assert o.lock is False
+
+    def test_output_settings_absent_yields_empty(self):
+        response = (
+            "Power         Baud    Level Unit    Auto Standby Time(mins)    "
+            "DSP(%)    Fade    Temp(C)   Uptime(Day:Hour:Min:Sec)\n"
+            "On           57600   %             0                         "
+            "10        Off     25.0C     0000:01:00:00\n"
+        )
+        status = DMP168Parser().parse_status(response)
+        assert status.output_settings == []
 

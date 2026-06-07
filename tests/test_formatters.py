@@ -13,6 +13,8 @@ from blustream.devices.dmp168.formatters import (
 from blustream.devices.dmp168.models import (
     InputSettings,
     OutputRouting,
+    OutputSettings,
+    OutputSource,
     PresetStatus,
     SystemStatus,
 )
@@ -35,9 +37,14 @@ def sample_status():
             InputSettings(port=2, lock=True, gain_l=50, gain_r=60, mute_l=True, mute_r=False),
         ],
         routing=[
-            OutputRouting(output=1, channel="L", from_input=1),
-            OutputRouting(output=1, channel="R", from_input=2),
-            OutputRouting(output=2, channel="L", from_input=None),
+            OutputRouting(output=1, channel="L", source=OutputSource.for_input(1)),
+            OutputRouting(output=1, channel="R", source=OutputSource.for_input(2)),
+            OutputRouting(output=2, channel="L", source=None),
+            OutputRouting(output=2, channel="R", source=OutputSource.for_bus(3)),
+        ],
+        output_settings=[
+            OutputSettings(output=1, volume_pct_l=100, volume_pct_r=100, mute_l=False, mute_r=False, lock=True),
+            OutputSettings(output=2, volume_pct_l=80, volume_pct_r=80, mute_l=True, mute_r=False, lock=False),
         ],
     )
 
@@ -108,6 +115,10 @@ class TestFormatStatus:
         assert "Out1 L: From In1" in result
         assert "Out1 R: From In2" in result
         assert "Out2 L: Not routed" in result
+        assert "Out2 R: From Bus3" in result
+        assert "Output Settings:" in result
+        assert "Out1: Vol L=100 R=100, Mute L=Off R=Off, Lock=On" in result
+        assert "Out2: Vol L=80 R=80, Mute L=On R=Off, Lock=Off" in result
 
     def test_json_mode(self, sample_status):
         ctx = RenderContext(json=True)
@@ -127,9 +138,13 @@ class TestFormatStatus:
         assert data["inputs"][0]["port"] == 1
         assert data["inputs"][0]["lock"] is False
         assert data["inputs"][1]["mute_l"] is True
-        assert len(data["routing"]) == 3
-        assert data["routing"][0]["from_input"] == 1
-        assert data["routing"][2]["from_input"] is None
+        assert len(data["routing"]) == 4
+        assert data["routing"][0]["source"] == {"kind": "input", "number": 1}
+        assert data["routing"][2]["source"] is None
+        assert data["routing"][3]["source"] == {"kind": "bus", "number": 3}
+        assert len(data["output_settings"]) == 2
+        assert data["output_settings"][0]["volume_pct_l"] == 100
+        assert data["output_settings"][1]["mute_l"] is True
 
     def test_human_mode_fade_off(self):
         status = SystemStatus(
@@ -174,6 +189,11 @@ class TestFormatStatus:
             "  Out1 L: From In1",
             "  Out1 R: From In2",
             "  Out2 L: Not routed",
+            "  Out2 R: From Bus3",
+            "",
+            "Output Settings:",
+            "  Out1: Vol L=100 R=100, Mute L=Off R=Off, Lock=On",
+            "  Out2: Vol L=80 R=80, Mute L=On R=Off, Lock=Off",
         ]
         expected = "\n".join(lines)
         assert result == expected
@@ -199,9 +219,14 @@ class TestFormatStatus:
                     {"port": 2, "lock": True, "gain_l": 50, "gain_r": 60, "mute_l": True, "mute_r": False},
                 ],
                 "routing": [
-                    {"output": 1, "channel": "L", "from_input": 1},
-                    {"output": 1, "channel": "R", "from_input": 2},
-                    {"output": 2, "channel": "L", "from_input": None},
+                    {"output": 1, "channel": "L", "source": {"kind": "input", "number": 1}},
+                    {"output": 1, "channel": "R", "source": {"kind": "input", "number": 2}},
+                    {"output": 2, "channel": "L", "source": None},
+                    {"output": 2, "channel": "R", "source": {"kind": "bus", "number": 3}},
+                ],
+                "output_settings": [
+                    {"output": 1, "volume_pct_l": 100, "volume_pct_r": 100, "mute_l": False, "mute_r": False, "lock": True},
+                    {"output": 2, "volume_pct_l": 80, "volume_pct_r": 80, "mute_l": True, "mute_r": False, "lock": False},
                 ],
             },
             indent=2,
@@ -228,9 +253,14 @@ class TestSystemStatusToDict:
                 {"port": 2, "lock": True, "gain_l": 50, "gain_r": 60, "mute_l": True, "mute_r": False},
             ],
             "routing": [
-                {"output": 1, "channel": "L", "from_input": 1},
-                {"output": 1, "channel": "R", "from_input": 2},
-                {"output": 2, "channel": "L", "from_input": None},
+                {"output": 1, "channel": "L", "source": {"kind": "input", "number": 1}},
+                {"output": 1, "channel": "R", "source": {"kind": "input", "number": 2}},
+                {"output": 2, "channel": "L", "source": None},
+                {"output": 2, "channel": "R", "source": {"kind": "bus", "number": 3}},
+            ],
+            "output_settings": [
+                {"output": 1, "volume_pct_l": 100, "volume_pct_r": 100, "mute_l": False, "mute_r": False, "lock": True},
+                {"output": 2, "volume_pct_l": 80, "volume_pct_r": 80, "mute_l": True, "mute_r": False, "lock": False},
             ],
         }
 
@@ -261,6 +291,7 @@ class TestSystemStatusToDict:
         result = status.to_dict()
         assert result["inputs"] == []
         assert result["routing"] == []
+        assert result["output_settings"] == []
 
 
 class TestFormatPresetStatus:

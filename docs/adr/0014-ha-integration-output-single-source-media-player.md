@@ -8,8 +8,8 @@ The DMP168 is a 16×8 *matrix*, but each output is fed by **exactly one** source
 time: the hardware permits one input (or bus) to feed many outputs, but routing
 *multiple* inputs into a single output is impossible at the matrix stage and requires
 summing them through an internal **bus** first (User Manual p.7; the library's
-`OutputRouting.from_input` is correspondingly a single `Optional[int]`, and STATUS
-reports one `FromIn` per output channel). We therefore model each of the 8 outputs as a
+`OutputRouting.source` is correspondingly a single `Optional[OutputSource]`, and
+STATUS reports one `FromIn` per output channel). We therefore model each of the 8 outputs as a
 `media_player` exposing `SELECT_SOURCE`, where `source_list` is `None` + the 16 inputs +
 the 8 buses and routing is the standard `media_player.select_source` action — the
 universal HA convention for A/V matrices (monoprice, blackbird, et al.). We explicitly

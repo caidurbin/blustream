@@ -10,7 +10,9 @@ def output_l_input(status: SystemStatus, output: int) -> int | None:
 
     The driver treats the L row as canonical for the channel-locked proxy
     (see ``polling_coordinator.lua``); test assertions follow the same
-    convention so they stay comparable across Python and Lua surfaces.
+    convention so they stay comparable across Python and Lua surfaces. Only
+    input sources resolve to a number; a bus-routed or unrouted output is
+    reported as ``None`` (these routing round-trips only exercise inputs).
     """
     for row in status.routing:
         if (
@@ -18,5 +20,7 @@ def output_l_input(status: SystemStatus, output: int) -> int | None:
             and row.output == output
             and row.channel == "L"
         ):
-            return row.from_input
+            if row.source is not None and row.source.kind == "input":
+                return row.source.number
+            return None
     return None

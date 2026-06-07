@@ -12,6 +12,97 @@ from blustream.devices.dmp168.commands import (
     build_status_command,
 )
 from blustream.devices.dmp168.device import DMP168
+from blustream.devices.dmp168.models import (
+    OutputRouting,
+    OutputSource,
+    SystemStatus,
+)
+
+
+def _status_with_routing(*routing: OutputRouting) -> SystemStatus:
+    return SystemStatus(
+        power="On",
+        baud=57600,
+        level_unit="%",
+        auto_standby_time=0,
+        dsp_usage=10.0,
+        fade=False,
+        temperature=25.0,
+        uptime="0000:01:00:00",
+        firmware_version="1.2.3",
+        inputs=[],
+        routing=list(routing),
+    )
+
+
+class TestSetOutputSource:
+    """High-level set_output_source maps to route / output_remove wire ops."""
+
+    @pytest.mark.asyncio
+    async def test_route_input_source(self):
+        device = DMP168(host="192.0.2.100")
+        device.execute_command = AsyncMock()
+
+        await device.set_output_source(1, OutputSource.for_input(5))
+
+        device.execute_command.assert_awaited_once_with("route", output=1, input=5)
+
+    @pytest.mark.asyncio
+    async def test_route_bus_source_uses_unified_column(self):
+        device = DMP168(host="192.0.2.100")
+        device.execute_command = AsyncMock()
+
+        # Bus 3 addresses unified column 19 (16 + 3) on the wire.
+        await device.set_output_source(2, OutputSource.for_bus(3))
+
+        device.execute_command.assert_awaited_once_with("route", output=2, input=19)
+
+    @pytest.mark.asyncio
+    async def test_clear_removes_current_source(self):
+        device = DMP168(host="192.0.2.100")
+        device.get_status = AsyncMock(
+            return_value=_status_with_routing(
+                OutputRouting(output=1, channel="L", source=OutputSource.for_input(7)),
+                OutputRouting(output=1, channel="R", source=OutputSource.for_input(7)),
+            )
+        )
+        device.execute_command = AsyncMock()
+
+        await device.set_output_source(1, None)
+
+        device.execute_command.assert_awaited_once_with(
+            "output_remove", output=1, input=7
+        )
+
+    @pytest.mark.asyncio
+    async def test_clear_bus_source_uses_unified_column(self):
+        device = DMP168(host="192.0.2.100")
+        device.get_status = AsyncMock(
+            return_value=_status_with_routing(
+                OutputRouting(output=4, channel="L", source=OutputSource.for_bus(2)),
+            )
+        )
+        device.execute_command = AsyncMock()
+
+        await device.set_output_source(4, None)
+
+        device.execute_command.assert_awaited_once_with(
+            "output_remove", output=4, input=18
+        )
+
+    @pytest.mark.asyncio
+    async def test_clear_already_unrouted_is_noop(self):
+        device = DMP168(host="192.0.2.100")
+        device.get_status = AsyncMock(
+            return_value=_status_with_routing(
+                OutputRouting(output=1, channel="L", source=None),
+            )
+        )
+        device.execute_command = AsyncMock()
+
+        await device.set_output_source(1, None)
+
+        device.execute_command.assert_not_awaited()
 
 
 class TestDMP168Commands:

@@ -44,10 +44,21 @@ def format_status(result: Any, ctx: RenderContext) -> str:
     lines.append("")
     lines.append("Output Routing:")
     for r in result.routing:
-        if r.from_input:
-            lines.append(f"  Out{r.output} {r.channel}: From In{r.from_input}")
-        else:
+        if r.source is None:
             lines.append(f"  Out{r.output} {r.channel}: Not routed")
+        elif r.source.kind == "bus":
+            lines.append(f"  Out{r.output} {r.channel}: From Bus{r.source.number}")
+        else:
+            lines.append(f"  Out{r.output} {r.channel}: From In{r.source.number}")
+    if result.output_settings:
+        lines.append("")
+        lines.append("Output Settings:")
+        for o in result.output_settings:
+            lines.append(
+                f"  Out{o.output}: Vol L={o.volume_pct_l} R={o.volume_pct_r}, "
+                f"Mute L={'On' if o.mute_l else 'Off'} R={'On' if o.mute_r else 'Off'}, "
+                f"Lock={'On' if o.lock else 'Off'}"
+            )
     return "\n".join(lines)
 
 

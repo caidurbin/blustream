@@ -1,7 +1,55 @@
 """Data models for DMP168 device."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Optional
+
+# Source kind discriminants. The DMP168 addresses inputs and buses through a
+# single 1-24 column space on the wire (1-16 = inputs, 17-24 = buses); that
+# encoding stays inside the library (ADR 0011), so callers see a typed
+# (kind, number) pair instead.
+SOURCE_INPUT = "input"
+SOURCE_BUS = "bus"
+
+# Buses occupy columns 17-24 in the device's unified routing addressing.
+_BUS_COLUMN_OFFSET = 16
+
+
+@dataclass(frozen=True)
+class OutputSource:
+    """A signal source that can feed an output: one input or one bus.
+
+    ``kind`` is :data:`SOURCE_INPUT` (number 1-16) or :data:`SOURCE_BUS`
+    (number 1-8). ``None`` is *not* an ``OutputSource`` — an unrouted output
+    is modelled as ``OutputRouting.source is None`` (the device's own "None"
+    routing target; see CONTEXT.md "Source").
+    """
+
+    kind: str
+    number: int
+
+    def __post_init__(self) -> None:
+        if self.kind not in (SOURCE_INPUT, SOURCE_BUS):
+            raise ValueError(
+                f"Invalid source kind '{self.kind}'. "
+                f"Expected '{SOURCE_INPUT}' or '{SOURCE_BUS}'."
+            )
+
+    @classmethod
+    def for_input(cls, number: int) -> "OutputSource":
+        """Build an input source (input ``number``, 1-16)."""
+        return cls(kind=SOURCE_INPUT, number=number)
+
+    @classmethod
+    def for_bus(cls, number: int) -> "OutputSource":
+        """Build a bus source (bus ``number``, 1-8)."""
+        return cls(kind=SOURCE_BUS, number=number)
+
+    @property
+    def column(self) -> int:
+        """The unified 1-24 column address used by the wire route command."""
+        if self.kind == SOURCE_BUS:
+            return _BUS_COLUMN_OFFSET + self.number
+        return self.number
 
 
 @dataclass
@@ -18,11 +66,28 @@ class InputSettings:
 
 @dataclass
 class OutputRouting:
-    """Output routing configuration."""
+    """Output routing configuration for one output channel.
+
+    ``source`` is the single source feeding this output channel, or ``None``
+    when the output is unrouted (the device reports ``Out1 L  None``). Per
+    ADR 0014 each output is single-source.
+    """
 
     output: int
     channel: str  # "L" or "R"
-    from_input: Optional[int] = None  # Input number, None if not routed
+    source: Optional[OutputSource] = None
+
+
+@dataclass
+class OutputSettings:
+    """Per-output settings parsed from the ``Output Settings Status`` section."""
+
+    output: int
+    volume_pct_l: int  # Output volume left channel (%)
+    volume_pct_r: int  # Output volume right channel (%)
+    mute_l: bool  # Mute left channel
+    mute_r: bool  # Mute right channel
+    lock: bool  # True if L/R channels locked
 
 
 @dataclass
@@ -40,6 +105,7 @@ class SystemStatus:
     firmware_version: str  # Firmware version
     inputs: list[InputSettings]  # Input settings
     routing: list[OutputRouting]  # Output routing
+    output_settings: list[OutputSettings] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to the primitives dict used by the CLI ``--json`` surface.
@@ -75,9 +141,24 @@ class SystemStatus:
                 {
                     "output": r.output,
                     "channel": r.channel,
-                    "from_input": r.from_input,
+                    "source": (
+                        {"kind": r.source.kind, "number": r.source.number}
+                        if r.source is not None
+                        else None
+                    ),
                 }
                 for r in self.routing
+            ],
+            "output_settings": [
+                {
+                    "output": o.output,
+                    "volume_pct_l": o.volume_pct_l,
+                    "volume_pct_r": o.volume_pct_r,
+                    "mute_l": o.mute_l,
+                    "mute_r": o.mute_r,
+                    "lock": o.lock,
+                }
+                for o in self.output_settings
             ],
         }
 

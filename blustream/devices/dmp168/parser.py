@@ -8,11 +8,31 @@ from blustream.base.exceptions import ParseError
 from blustream.devices.dmp168.models import (
     InputSettings,
     OutputRouting,
+    OutputSettings,
+    OutputSource,
     PresetStatus,
     SystemStatus,
 )
 
 logger = logging.getLogger(__name__)
+
+# Matrix Config "FromIn" tokens: "In<n>", "Bus<n>" (case-insensitive), or
+# "None". The device addresses inputs and buses through one column space, but
+# STATUS prints them with distinct In/Bus prefixes.
+_SOURCE_TOKEN_RE = re.compile(r"^(In|Bus)(\d+)$", re.IGNORECASE)
+
+
+def _parse_source_token(token: str) -> Optional[OutputSource]:
+    """Map a Matrix Config source token to an OutputSource, or None.
+
+    "None" (and any unrecognised token) yields ``None``; "In<n>" yields an
+    input source; "Bus<n>" yields a bus source.
+    """
+    match = _SOURCE_TOKEN_RE.match(token)
+    if not match:
+        return None
+    kind = "input" if match.group(1).lower() == "in" else "bus"
+    return OutputSource(kind=kind, number=int(match.group(2)))
 
 
 class DMP168Parser:
@@ -164,21 +184,24 @@ class DMP168Parser:
                         if out_match:
                             output = int(out_match.group(1))
                             channel = parts[1]
-                            from_input = None
-                            # Look for input in remaining parts
+                            # The source token ("In<n>", "Bus<n>", or "None")
+                            # is the first token after the channel; "None"
+                            # leaves the output unrouted.
+                            source = None
                             for part in parts[2:]:
-                                if part.startswith("In"):
-                                    in_match = re.match(r"In(\d+)", part)
-                                    if in_match:
-                                        from_input = int(in_match.group(1))
-                                        break
+                                source = _parse_source_token(part)
+                                if source is not None:
+                                    break
                             routing.append(
                                 OutputRouting(
                                     output=output,
                                     channel=channel,
-                                    from_input=from_input,
+                                    source=source,
                                 )
                             )
+
+            # Parse output settings
+            output_settings = DMP168Parser._parse_output_settings(lines)
 
             return SystemStatus(
                 power=power,
@@ -192,6 +215,7 @@ class DMP168Parser:
                 firmware_version=firmware_version,
                 inputs=inputs,
                 routing=routing,
+                output_settings=output_settings,
             )
         except ParseError:
             # Re-raise ParseError as-is
@@ -208,6 +232,44 @@ class DMP168Parser:
                 f"An unexpected error occurred while parsing the device status response: {str(e)}. "
                 "Please check the device connection and try again."
             ) from e
+
+    @staticmethod
+    def _parse_output_settings(lines: list[str]) -> list[OutputSettings]:
+        """Parse the ``Output Settings Status`` section into OutputSettings.
+
+        Each data row is ``Out<n>  <Lock>  <volL> <volR>  <muteL> <muteR> ...``
+        (followed by delay / mix / group / max columns this round ignores).
+        The section is bounded by requiring ``parts[1]`` to be the Lock value
+        ("On"/"Off") — the Output EQ rows that follow also begin with "Out<n>"
+        but carry "L[20"/"R[20" there, and the Matrix Config rows carry "L"/"R".
+        """
+        settings: list[OutputSettings] = []
+        in_section = False
+        for line in lines:
+            if "Output Settings Status" in line:
+                in_section = True
+                continue
+            if not in_section:
+                continue
+            parts = line.split()
+            if len(parts) < 6 or not line.strip().startswith("Out"):
+                continue
+            out_match = re.match(r"Out(\d+)", parts[0])
+            if not out_match or parts[1] not in ("On", "Off"):
+                continue
+            if not (parts[2].isdigit() and parts[3].isdigit()):
+                continue
+            settings.append(
+                OutputSettings(
+                    output=int(out_match.group(1)),
+                    volume_pct_l=int(parts[2]),
+                    volume_pct_r=int(parts[3]),
+                    mute_l=parts[4] == "On",
+                    mute_r=parts[5] == "On",
+                    lock=parts[1] == "On",
+                )
+            )
+        return settings
 
     @staticmethod
     def parse_preset_status(response: str, preset_number: Optional[int] = None) -> PresetStatus:
