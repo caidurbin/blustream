@@ -25,7 +25,7 @@ from homeassistant.helpers.device_registry import (
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from blustream.devices.dmp168.models import SOURCE_BUS, SOURCE_INPUT, OutputSource
+from blustream.devices.dmp168.models import SOURCE_BUS, OutputSource
 
 from .const import BUS_COUNT, DOMAIN, INPUT_COUNT, OUTPUT_COUNT
 from .coordinator import BlustreamConfigEntry, BlustreamCoordinator
@@ -62,9 +62,9 @@ def label_to_source(label: str) -> OutputSource | None:
     if label == SOURCE_NONE:
         return None
     if label.startswith(_INPUT_PREFIX):
-        return OutputSource(kind=SOURCE_INPUT, number=int(label[len(_INPUT_PREFIX) :]))
+        return OutputSource.for_input(int(label[len(_INPUT_PREFIX) :]))
     if label.startswith(_BUS_PREFIX):
-        return OutputSource(kind=SOURCE_BUS, number=int(label[len(_BUS_PREFIX) :]))
+        return OutputSource.for_bus(int(label[len(_BUS_PREFIX) :]))
     raise ValueError(f"Unknown source '{label}'")
 
 
