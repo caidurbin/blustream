@@ -34,9 +34,14 @@ const MAX_ITERATIONS = 10;
 
 // Hooks run inside the sandbox before the agent starts each iteration.
 // The Dockerfile pre-bakes a venv at /home/agent/.venv (first on PATH);
-// this hook installs the bind-mounted project into it in editable mode.
+// this hook installs the bind-mounted project into it in editable mode with
+// every test extra (dev = pytest/ruff, codegen = Jinja2/PyYAML for the codegen
+// + vector tests, c4z = lxml for the .c4z end-to-end test) so the agent's
+// `pytest` exercises the same lanes CI does instead of silently skipping them.
 const hooks = {
-  sandbox: { onSandboxReady: [{ command: "pip install -e '.[dev]'" }] },
+  sandbox: {
+    onSandboxReady: [{ command: "pip install -e '.[dev,codegen,c4z]'" }],
+  },
 };
 
 // Nothing to pre-seed into the worktree — the venv lives in the image,
