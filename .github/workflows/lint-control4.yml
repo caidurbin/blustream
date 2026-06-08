@@ -29,10 +29,10 @@ jobs:
   control4:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Set up Lua 5.1
-        uses: leafo/gh-actions-lua@35bcb06abec04ec87df82e08caa84d545348536e # v10
+        uses: leafo/gh-actions-lua@6919171ccf181b826f44b9bca76307b577217377 # v13.0.0
         with:
           luaVersion: "5.1.5"
 
