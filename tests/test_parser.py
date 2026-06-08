@@ -228,6 +228,7 @@ On
         parser = DMP168Parser()
         # Parser correctly raises ParseError for incomplete data
         from blustream.base.exceptions import ParseError
+
         with pytest.raises(ParseError):
             parser.parse_status(response)
 
@@ -380,9 +381,7 @@ class TestParseOutputSources:
 
     def test_mixed_input_bus_none(self):
         routing = self._routing(
-            "Out1 L        In1 L\n"
-            "Out1 R        Bus2 R\n"
-            "Out2 L        None\n"
+            "Out1 L        In1 L\nOut1 R        Bus2 R\nOut2 L        None\n"
         )
         assert routing[0].source == OutputSource.for_input(1)
         assert routing[1].source == OutputSource.for_bus(2)
@@ -436,4 +435,3 @@ class TestParseOutputSettings:
         )
         status = DMP168Parser().parse_status(response)
         assert status.output_settings == []
-

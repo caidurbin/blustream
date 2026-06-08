@@ -21,9 +21,7 @@ PLATFORMS: list[Platform] = [
 ]
 
 
-async def async_setup_entry(
-    hass: HomeAssistant, entry: BlustreamConfigEntry
-) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: BlustreamConfigEntry) -> bool:
     """Set up Blustream from a config entry."""
     if entry.unique_id is None:
         hass.config_entries.async_update_entry(entry, unique_id=entry.entry_id)
@@ -35,9 +33,7 @@ async def async_setup_entry(
     return True
 
 
-async def async_unload_entry(
-    hass: HomeAssistant, entry: BlustreamConfigEntry
-) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: BlustreamConfigEntry) -> bool:
     """Unload a config entry."""
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:

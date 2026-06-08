@@ -46,7 +46,10 @@ class TestParseBoundaries:
         # 9999d 23h 59m 59s — the widest the DDDD:HH:MM:SS field can express.
         expected = timedelta(days=9999, hours=23, minutes=59, seconds=59)
         assert parse("9999:23:59:59") == expected
-        assert parse("9999:23:59:59").total_seconds() == 9999 * 86400 + 23 * 3600 + 59 * 60 + 59
+        assert (
+            parse("9999:23:59:59").total_seconds()
+            == 9999 * 86400 + 23 * 3600 + 59 * 60 + 59
+        )
 
 
 class TestParseFailures:

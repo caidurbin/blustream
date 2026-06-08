@@ -68,9 +68,7 @@ async def test_dhcp_different_mac_for_existing_host_raises_repair_issue(
     assert existing.data[CONF_HOST] == "192.0.2.10"
 
     issue_reg = ir.async_get(hass)
-    issue = issue_reg.async_get_issue(
-        DOMAIN, _mac_mismatch_issue_id(existing.entry_id)
-    )
+    issue = issue_reg.async_get_issue(DOMAIN, _mac_mismatch_issue_id(existing.entry_id))
     assert issue is not None
     assert issue.is_fixable is True
     assert issue.translation_key == "mac_mismatch"
@@ -112,9 +110,7 @@ async def test_dhcp_for_tier3_entry_at_same_host_raises_repair_issue(
     assert CONF_MAC not in existing.data
 
     issue_reg = ir.async_get(hass)
-    issue = issue_reg.async_get_issue(
-        DOMAIN, _mac_mismatch_issue_id(existing.entry_id)
-    )
+    issue = issue_reg.async_get_issue(DOMAIN, _mac_mismatch_issue_id(existing.entry_id))
     assert issue is not None
     assert issue.translation_placeholders == {
         "stored_mac": "—",
@@ -155,9 +151,7 @@ async def test_dhcp_same_mac_does_not_raise_issue(
 
     issue_reg = ir.async_get(hass)
     assert (
-        issue_reg.async_get_issue(
-            DOMAIN, _mac_mismatch_issue_id(existing.entry_id)
-        )
+        issue_reg.async_get_issue(DOMAIN, _mac_mismatch_issue_id(existing.entry_id))
         is None
     )
 
@@ -211,9 +205,7 @@ async def test_reconfigure_to_conflicting_mac_raises_repair_issue(
     assert entry_a.data[CONF_MAC] == "34:d0:b8:21:22:33"
 
     issue_reg = ir.async_get(hass)
-    issue = issue_reg.async_get_issue(
-        DOMAIN, _mac_mismatch_issue_id(entry_a.entry_id)
-    )
+    issue = issue_reg.async_get_issue(DOMAIN, _mac_mismatch_issue_id(entry_a.entry_id))
     assert issue is not None
     assert issue.is_fixable is True
     assert issue.translation_placeholders["discovered_mac"] == "34:d0:b8:aa:bb:cc"
@@ -237,9 +229,7 @@ async def _start_fix_flow(hass: HomeAssistant, issue_id: str):
         mock_component(hass, DOMAIN)
     assert await async_setup_component(hass, REPAIRS_DOMAIN, {})
     flow_manager = hass.data[REPAIRS_DOMAIN]["flow_manager"]
-    return await flow_manager.async_init(
-        DOMAIN, data={"issue_id": issue_id}
-    )
+    return await flow_manager.async_init(DOMAIN, data={"issue_id": issue_id})
 
 
 async def test_fix_flow_confirm_replacement_updates_identity_and_clears_issue(

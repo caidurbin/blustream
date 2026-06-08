@@ -74,7 +74,9 @@ def format_preset_status(result: Any, ctx: RenderContext) -> str:
             indent=2,
         )
 
-    lines = [f"Preset {result.preset_number}: {'Exists' if result.exists else 'Not found'}"]
+    lines = [
+        f"Preset {result.preset_number}: {'Exists' if result.exists else 'Not found'}"
+    ]
     if result.description:
         lines.append(f"Description: {result.description}")
     return "\n".join(lines)

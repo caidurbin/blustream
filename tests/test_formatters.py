@@ -33,8 +33,12 @@ def sample_status():
         uptime="0000:08:57:01",
         firmware_version="1.2.3",
         inputs=[
-            InputSettings(port=1, lock=False, gain_l=80, gain_r=80, mute_l=False, mute_r=False),
-            InputSettings(port=2, lock=True, gain_l=50, gain_r=60, mute_l=True, mute_r=False),
+            InputSettings(
+                port=1, lock=False, gain_l=80, gain_r=80, mute_l=False, mute_r=False
+            ),
+            InputSettings(
+                port=2, lock=True, gain_l=50, gain_r=60, mute_l=True, mute_r=False
+            ),
         ],
         routing=[
             OutputRouting(output=1, channel="L", source=OutputSource.for_input(1)),
@@ -43,8 +47,22 @@ def sample_status():
             OutputRouting(output=2, channel="R", source=OutputSource.for_bus(3)),
         ],
         output_settings=[
-            OutputSettings(output=1, volume_pct_l=100, volume_pct_r=100, mute_l=False, mute_r=False, lock=True),
-            OutputSettings(output=2, volume_pct_l=80, volume_pct_r=80, mute_l=True, mute_r=False, lock=False),
+            OutputSettings(
+                output=1,
+                volume_pct_l=100,
+                volume_pct_r=100,
+                mute_l=False,
+                mute_r=False,
+                lock=True,
+            ),
+            OutputSettings(
+                output=2,
+                volume_pct_l=80,
+                volume_pct_r=80,
+                mute_l=True,
+                mute_r=False,
+                lock=False,
+            ),
         ],
     )
 
@@ -215,18 +233,58 @@ class TestFormatStatus:
                 "uptime": "0000:08:57:01",
                 "firmware_version": "1.2.3",
                 "inputs": [
-                    {"port": 1, "lock": False, "gain_l": 80, "gain_r": 80, "mute_l": False, "mute_r": False},
-                    {"port": 2, "lock": True, "gain_l": 50, "gain_r": 60, "mute_l": True, "mute_r": False},
+                    {
+                        "port": 1,
+                        "lock": False,
+                        "gain_l": 80,
+                        "gain_r": 80,
+                        "mute_l": False,
+                        "mute_r": False,
+                    },
+                    {
+                        "port": 2,
+                        "lock": True,
+                        "gain_l": 50,
+                        "gain_r": 60,
+                        "mute_l": True,
+                        "mute_r": False,
+                    },
                 ],
                 "routing": [
-                    {"output": 1, "channel": "L", "source": {"kind": "input", "number": 1}},
-                    {"output": 1, "channel": "R", "source": {"kind": "input", "number": 2}},
+                    {
+                        "output": 1,
+                        "channel": "L",
+                        "source": {"kind": "input", "number": 1},
+                    },
+                    {
+                        "output": 1,
+                        "channel": "R",
+                        "source": {"kind": "input", "number": 2},
+                    },
                     {"output": 2, "channel": "L", "source": None},
-                    {"output": 2, "channel": "R", "source": {"kind": "bus", "number": 3}},
+                    {
+                        "output": 2,
+                        "channel": "R",
+                        "source": {"kind": "bus", "number": 3},
+                    },
                 ],
                 "output_settings": [
-                    {"output": 1, "volume_pct_l": 100, "volume_pct_r": 100, "mute_l": False, "mute_r": False, "lock": True},
-                    {"output": 2, "volume_pct_l": 80, "volume_pct_r": 80, "mute_l": True, "mute_r": False, "lock": False},
+                    {
+                        "output": 1,
+                        "volume_pct_l": 100,
+                        "volume_pct_r": 100,
+                        "mute_l": False,
+                        "mute_r": False,
+                        "lock": True,
+                    },
+                    {
+                        "output": 2,
+                        "volume_pct_l": 80,
+                        "volume_pct_r": 80,
+                        "mute_l": True,
+                        "mute_r": False,
+                        "lock": False,
+                    },
                 ],
             },
             indent=2,
@@ -249,8 +307,22 @@ class TestSystemStatusToDict:
             "uptime": "0000:08:57:01",
             "firmware_version": "1.2.3",
             "inputs": [
-                {"port": 1, "lock": False, "gain_l": 80, "gain_r": 80, "mute_l": False, "mute_r": False},
-                {"port": 2, "lock": True, "gain_l": 50, "gain_r": 60, "mute_l": True, "mute_r": False},
+                {
+                    "port": 1,
+                    "lock": False,
+                    "gain_l": 80,
+                    "gain_r": 80,
+                    "mute_l": False,
+                    "mute_r": False,
+                },
+                {
+                    "port": 2,
+                    "lock": True,
+                    "gain_l": 50,
+                    "gain_r": 60,
+                    "mute_l": True,
+                    "mute_r": False,
+                },
             ],
             "routing": [
                 {"output": 1, "channel": "L", "source": {"kind": "input", "number": 1}},
@@ -259,8 +331,22 @@ class TestSystemStatusToDict:
                 {"output": 2, "channel": "R", "source": {"kind": "bus", "number": 3}},
             ],
             "output_settings": [
-                {"output": 1, "volume_pct_l": 100, "volume_pct_r": 100, "mute_l": False, "mute_r": False, "lock": True},
-                {"output": 2, "volume_pct_l": 80, "volume_pct_r": 80, "mute_l": True, "mute_r": False, "lock": False},
+                {
+                    "output": 1,
+                    "volume_pct_l": 100,
+                    "volume_pct_r": 100,
+                    "mute_l": False,
+                    "mute_r": False,
+                    "lock": True,
+                },
+                {
+                    "output": 2,
+                    "volume_pct_l": 80,
+                    "volume_pct_r": 80,
+                    "mute_l": True,
+                    "mute_r": False,
+                    "lock": False,
+                },
             ],
         }
 
@@ -272,7 +358,9 @@ class TestSystemStatusToDict:
     def test_to_dict_returns_only_primitives(self, sample_status):
         """The dict must be JSON-serializable (no dataclass instances leak)."""
         # Round-trips cleanly iff every value is a JSON primitive/container.
-        assert json.loads(json.dumps(sample_status.to_dict())) == sample_status.to_dict()
+        assert (
+            json.loads(json.dumps(sample_status.to_dict())) == sample_status.to_dict()
+        )
 
     def test_to_dict_empty_collections(self):
         status = SystemStatus(

@@ -119,9 +119,10 @@ async def test_diagnostics_returns_expected_shape(hass: HomeAssistant) -> None:
     data = result["data"]
     assert data["coordinator"]["last_update_success"] is True
     assert data["coordinator"]["update_interval_seconds"] == 30.0
-    assert data["coordinator"]["last_uptime_seconds"] == timedelta(
-        days=3, hours=2, minutes=1
-    ).total_seconds()
+    assert (
+        data["coordinator"]["last_uptime_seconds"]
+        == timedelta(days=3, hours=2, minutes=1).total_seconds()
+    )
 
     assert data["status"] == _make_status().to_dict()
     assert data["uptime_raw"] == UPTIME_RAW

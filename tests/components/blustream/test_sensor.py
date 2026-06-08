@@ -98,9 +98,7 @@ async def test_temperature_sensor_reports_celsius(hass: HomeAssistant) -> None:
     state = hass.states.get(_entity_id(hass, "temperature"))
     assert float(state.state) == 42.0
     assert state.attributes["device_class"] == SensorDeviceClass.TEMPERATURE
-    assert (
-        state.attributes["unit_of_measurement"] == UnitOfTemperature.CELSIUS
-    )
+    assert state.attributes["unit_of_measurement"] == UnitOfTemperature.CELSIUS
     assert state.attributes["state_class"] == SensorStateClass.MEASUREMENT
 
 
@@ -131,11 +129,7 @@ async def test_sensors_unavailable_when_coordinator_data_unavailable(
     device = _setup_device()
     entry = await _install(hass, device)
 
-    sensor_ids = [
-        s.entity_id
-        for s in hass.states.async_all()
-        if s.domain == "sensor"
-    ]
+    sensor_ids = [s.entity_id for s in hass.states.async_all() if s.domain == "sensor"]
     assert len(sensor_ids) == 3
 
     coordinator = entry.runtime_data

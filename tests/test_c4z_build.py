@@ -258,11 +258,17 @@ class TestBuildOne:
             (target_dir / "blustream-dmp168.c4z").write_bytes(b"PK\x03\x04")
 
         dev = build_one(
-            flavor="dev", src_dir=src, out_dir=out, driverpackager=dp,
+            flavor="dev",
+            src_dir=src,
+            out_dir=out,
+            driverpackager=dp,
             runner=fake_runner,
         )
         release = build_one(
-            flavor="release", src_dir=src, out_dir=out, driverpackager=dp,
+            flavor="release",
+            src_dir=src,
+            out_dir=out,
+            driverpackager=dp,
             runner=fake_runner,
         )
         assert dev.parent.name == "dev"
@@ -320,8 +326,7 @@ class TestDriverShell:
         consumers = [
             c
             for c in connections
-            if (c.findtext("consumer") or "").strip().lower() == "true"
-            and is_stereo(c)
+            if (c.findtext("consumer") or "").strip().lower() == "true" and is_stereo(c)
         ]
         providers = [
             c
@@ -363,7 +368,8 @@ class TestDriverShell:
         # dev flavor; release builds must stay clean. If this call landed
         # in source we'd be shipping debug affordances in every release.
         non_comment = "\n".join(
-            line for line in (DRIVER_SRC_DIR / "driver.lua").read_text().splitlines()
+            line
+            for line in (DRIVER_SRC_DIR / "driver.lua").read_text().splitlines()
             if not line.lstrip().startswith("--")
         )
         assert "C4:AllowExecute" not in non_comment
@@ -465,8 +471,7 @@ class TestC4zBuildEndToEnd:
         with zipfile.ZipFile(out) as z:
             lua = z.read("driver.lua").decode()
         non_comment = "\n".join(
-            line for line in lua.splitlines()
-            if not line.lstrip().startswith("--")
+            line for line in lua.splitlines() if not line.lstrip().startswith("--")
         )
         assert "C4:AllowExecute" not in non_comment
         assert "gIsDevelopmentVersionOfDriver" not in non_comment

@@ -210,9 +210,7 @@ class TestTwoPassOrdering:
         # extra="x" would trigger the dependency (when level==99),
         # but pass two should be suppressed entirely.
         with pytest.raises(ValidationError) as exc_info:
-            validate(
-                registry, "two_pass", {"level": 99, "extra": "x"}
-            )
+            validate(registry, "two_pass", {"level": 99, "extra": "x"})
         error = exc_info.value
         # Only pass-one error should appear
         assert len(error.errors) == 1
@@ -237,9 +235,7 @@ class TestDMP168UnitDependency:
         _register_commands(reg)
         return reg
 
-    def test_output_volume_unit_rejected_with_relative_level(
-        self, dmp168_registry
-    ):
+    def test_output_volume_unit_rejected_with_relative_level(self, dmp168_registry):
         """unit=dB should be rejected when level is '+' (relative)."""
         with pytest.raises(ValidationError) as exc_info:
             validate(
@@ -250,9 +246,7 @@ class TestDMP168UnitDependency:
         error = exc_info.value
         assert any("unit" == name for name, _ in error.errors)
 
-    def test_output_volume_unit_allowed_with_absolute_level(
-        self, dmp168_registry
-    ):
+    def test_output_volume_unit_allowed_with_absolute_level(self, dmp168_registry):
         """unit=dB should be allowed when level is an absolute value."""
         validate(
             dmp168_registry,
@@ -260,9 +254,7 @@ class TestDMP168UnitDependency:
             {"output": 1, "level": -10, "unit": "dB"},
         )
 
-    def test_input_gain_unit_rejected_with_relative_gain(
-        self, dmp168_registry
-    ):
+    def test_input_gain_unit_rejected_with_relative_gain(self, dmp168_registry):
         """unit=dB should be rejected when gain is '-' (relative)."""
         with pytest.raises(ValidationError) as exc_info:
             validate(
@@ -273,9 +265,7 @@ class TestDMP168UnitDependency:
         error = exc_info.value
         assert any("unit" == name for name, _ in error.errors)
 
-    def test_input_gain_unit_allowed_with_absolute_gain(
-        self, dmp168_registry
-    ):
+    def test_input_gain_unit_allowed_with_absolute_gain(self, dmp168_registry):
         """unit=dB should be allowed when gain is an absolute value."""
         validate(
             dmp168_registry,
@@ -283,9 +273,7 @@ class TestDMP168UnitDependency:
             {"input": 1, "gain": 5, "unit": "dB"},
         )
 
-    def test_output_master_volume_unit_rejected_relative(
-        self, dmp168_registry
-    ):
+    def test_output_master_volume_unit_rejected_relative(self, dmp168_registry):
         """unit=dB rejected when level is relative on master volume."""
         with pytest.raises(ValidationError) as exc_info:
             validate(

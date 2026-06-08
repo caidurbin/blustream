@@ -170,4 +170,3 @@ class PresetStatus:
     preset_number: int
     exists: bool
     description: Optional[str] = None
-

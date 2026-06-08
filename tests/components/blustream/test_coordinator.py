@@ -74,9 +74,7 @@ async def test_coordinator_happy_path_loads_entry(hass: HomeAssistant) -> None:
 async def test_coordinator_connection_error_raises_config_entry_not_ready_on_first_refresh(
     hass: HomeAssistant,
 ) -> None:
-    device = _setup_device(
-        status_side_effect=BlustreamConnectionError("offline")
-    )
+    device = _setup_device(status_side_effect=BlustreamConnectionError("offline"))
     entry = await _setup_with_device(hass, device)
     assert entry.state is ConfigEntryState.SETUP_RETRY
 

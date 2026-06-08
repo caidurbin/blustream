@@ -54,7 +54,9 @@ class DMP168Parser:
             ParseError: If parsing fails
         """
         try:
-            logger.debug(f"Parsing STATUS response ({len(response)} chars):\n{response[:500]}")
+            logger.debug(
+                f"Parsing STATUS response ({len(response)} chars):\n{response[:500]}"
+            )
             lines = response.split("\n")
 
             # Find system status line (header)
@@ -66,7 +68,9 @@ class DMP168Parser:
                     break
 
             if not system_line:
-                logger.error(f"Could not find system status line. Response lines: {lines[:10]}")
+                logger.error(
+                    f"Could not find system status line. Response lines: {lines[:10]}"
+                )
                 raise ParseError(
                     "Unable to parse device status response. The device response appears to be in an unexpected format. "
                     "Please check the device connection and try again."
@@ -77,7 +81,7 @@ class DMP168Parser:
             # The line after the header contains the values
             status_line_idx = None
             for i, line in enumerate(lines):
-                if i > 0 and "Power" in lines[i-1] and "Baud" in lines[i-1]:
+                if i > 0 and "Power" in lines[i - 1] and "Baud" in lines[i - 1]:
                     status_line_idx = i
                     break
 
@@ -170,7 +174,11 @@ class DMP168Parser:
             routing = []
             in_routing_section = False
             for line in lines:
-                if "Matrix Config Status" in line or "Output" in line and "FromIn" in line:
+                if (
+                    "Matrix Config Status" in line
+                    or "Output" in line
+                    and "FromIn" in line
+                ):
                     in_routing_section = True
                     continue
                 if in_routing_section and line.strip().startswith("Out"):
@@ -274,7 +282,9 @@ class DMP168Parser:
         return settings
 
     @staticmethod
-    def parse_preset_status(response: str, preset_number: Optional[int] = None) -> PresetStatus:
+    def parse_preset_status(
+        response: str, preset_number: Optional[int] = None
+    ) -> PresetStatus:
         """Parse PRESET xx STATUS command response.
 
         Args:
@@ -288,7 +298,9 @@ class DMP168Parser:
             ParseError: If parsing fails
         """
         try:
-            logger.debug(f"Parsing PRESET STATUS response ({len(response)} chars):\n{response[:500]}")
+            logger.debug(
+                f"Parsing PRESET STATUS response ({len(response)} chars):\n{response[:500]}"
+            )
             lines = response.split("\n")
 
             # Look for preset information in the response
@@ -323,14 +335,22 @@ class DMP168Parser:
                 line_lower = line.lower()
 
                 # Check if preset exists (common indicators)
-                if any(indicator in line_lower for indicator in ["exists", "saved", "configured", "active"]):
+                if any(
+                    indicator in line_lower
+                    for indicator in ["exists", "saved", "configured", "active"]
+                ):
                     exists = True
-                elif any(indicator in line_lower for indicator in ["not found", "empty", "deleted", "none"]):
+                elif any(
+                    indicator in line_lower
+                    for indicator in ["not found", "empty", "deleted", "none"]
+                ):
                     exists = False
 
                 # Try to extract description if present
                 if "description" in line_lower or "name" in line_lower:
-                    desc_match = re.search(r"(?:description|name)[:\s]+(.+)", line_lower)
+                    desc_match = re.search(
+                        r"(?:description|name)[:\s]+(.+)", line_lower
+                    )
                     if desc_match:
                         description = desc_match.group(1).strip()
 
@@ -390,11 +410,12 @@ class DMP168Parser:
             if not skip_until_separator:
                 # Skip welcome/banner lines even after separator
                 line_stripped = line.strip().lower()
-                if (line_stripped and
-                    ("welcome" in line_stripped or
-                     "dmp168 terminal control system" in line_stripped or
-                     "type \"help\" for more information" in line_stripped or
-                     "fw version:" in line_stripped)):
+                if line_stripped and (
+                    "welcome" in line_stripped
+                    or "dmp168 terminal control system" in line_stripped
+                    or 'type "help" for more information' in line_stripped
+                    or "fw version:" in line_stripped
+                ):
                     continue
                 cleaned_lines.append(line)
 
@@ -407,13 +428,15 @@ class DMP168Parser:
             for line in lines:
                 line_stripped = line.strip()
                 # Skip empty lines, welcome messages, and command echoes
-                if (line_stripped and
-                    "welcome" not in line_stripped.lower() and
-                    "help" not in line_stripped.lower() and
-                    "dmp168" not in line_stripped.lower() and
-                    "fw version" not in line_stripped.lower() and
-                    not line_stripped.startswith(">") and
-                    len(line_stripped) < 100):  # Skip long banner text
+                if (
+                    line_stripped
+                    and "welcome" not in line_stripped.lower()
+                    and "help" not in line_stripped.lower()
+                    and "dmp168" not in line_stripped.lower()
+                    and "fw version" not in line_stripped.lower()
+                    and not line_stripped.startswith(">")
+                    and len(line_stripped) < 100
+                ):  # Skip long banner text
                     cleaned_lines.append(line_stripped)
             result = "\n".join(cleaned_lines).strip()
 
@@ -422,4 +445,3 @@ class DMP168Parser:
             result = response.strip()
 
         return result
-

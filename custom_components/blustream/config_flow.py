@@ -43,6 +43,7 @@ def _user_data_schema(default_host: str | None = None) -> vol.Schema:
         }
     )
 
+
 STEP_RECONFIGURE_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): str,

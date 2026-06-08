@@ -133,7 +133,12 @@ class TestDispatchOrchestration:
         device.execute_command = AsyncMock(return_value="ok")
 
         reg = _registry(
-            Command(name="status", description="Status", parameters=[], handler=lambda **kw: "")
+            Command(
+                name="status",
+                description="Status",
+                parameters=[],
+                handler=lambda **kw: "",
+            )
         )
 
         args = argparse.Namespace(command="status", yes=False, json=False)
@@ -151,7 +156,9 @@ class TestDispatchOrchestration:
                 handler=lambda **kw: "",
             )
         )
-        args = argparse.Namespace(command="test_cmd", output=None, yes=False, json=False)
+        args = argparse.Namespace(
+            command="test_cmd", output=None, yes=False, json=False
+        )
         exit_code = await dispatch(args, reg, lambda: None)
         assert exit_code == 1
 
@@ -230,7 +237,12 @@ class TestDispatchOrchestration:
         device.execute_command = AsyncMock(return_value="raw result")
 
         reg = _registry(
-            Command(name="test_cmd", description="Test", parameters=[], handler=lambda **kw: "")
+            Command(
+                name="test_cmd",
+                description="Test",
+                parameters=[],
+                handler=lambda **kw: "",
+            )
         )
 
         args = argparse.Namespace(command="test_cmd", yes=False, json=False)
@@ -247,7 +259,12 @@ class TestDispatchOrchestration:
         device.execute_command = AsyncMock(return_value="ok")
 
         reg = _registry(
-            Command(name="test_cmd", description="Test", parameters=[], handler=lambda **kw: "")
+            Command(
+                name="test_cmd",
+                description="Test",
+                parameters=[],
+                handler=lambda **kw: "",
+            )
         )
 
         args = argparse.Namespace(command="test_cmd", yes=False, json=False)
@@ -259,12 +276,15 @@ class TestDispatchOrchestration:
         device = MagicMock()
         device.connect = AsyncMock()
         device.disconnect = AsyncMock()
-        device.execute_command = AsyncMock(
-            side_effect=Exception("boom")
-        )
+        device.execute_command = AsyncMock(side_effect=Exception("boom"))
 
         reg = _registry(
-            Command(name="test_cmd", description="Test", parameters=[], handler=lambda **kw: "")
+            Command(
+                name="test_cmd",
+                description="Test",
+                parameters=[],
+                handler=lambda **kw: "",
+            )
         )
 
         args = argparse.Namespace(command="test_cmd", yes=False, json=False)

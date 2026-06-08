@@ -76,9 +76,9 @@ def _stale_msg(rel_path: str, command: str) -> str:
 
 
 def test_committed_python_generated_is_fresh():
-    on_disk = (REPO_ROOT / "blustream" / "devices" / "dmp168" / "_generated.py").read_text(
-        encoding="utf-8"
-    )
+    on_disk = (
+        REPO_ROOT / "blustream" / "devices" / "dmp168" / "_generated.py"
+    ).read_text(encoding="utf-8")
     assert on_disk == emit_python.render(), _stale_msg(
         "blustream/devices/dmp168/_generated.py",
         "python -m spec.codegen.emit_python",

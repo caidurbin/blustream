@@ -218,21 +218,15 @@ class BlustreamOutputMediaPlayer(
 
     async def async_volume_up(self) -> None:
         """Step both channels up via the device's native relative command."""
-        await self.coordinator.device.set_output_volume(
-            self._output, "+", channel="LR"
-        )
+        await self.coordinator.device.set_output_volume(self._output, "+", channel="LR")
         await self.coordinator.async_request_refresh()
 
     async def async_volume_down(self) -> None:
         """Step both channels down via the device's native relative command."""
-        await self.coordinator.device.set_output_volume(
-            self._output, "-", channel="LR"
-        )
+        await self.coordinator.device.set_output_volume(self._output, "-", channel="LR")
         await self.coordinator.async_request_refresh()
 
     async def async_mute_volume(self, mute: bool) -> None:
         """Mute or unmute both channels together."""
-        await self.coordinator.device.set_output_mute(
-            self._output, mute, channel="LR"
-        )
+        await self.coordinator.device.set_output_mute(self._output, mute, channel="LR")
         await self.coordinator.async_request_refresh()

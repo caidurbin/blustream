@@ -117,9 +117,7 @@ async def test_eight_media_players_under_one_device(hass: HomeAssistant) -> None
     device = _setup_device()
     entry = await _install(hass, device)
 
-    states = [
-        s for s in hass.states.async_all() if s.domain == "media_player"
-    ]
+    states = [s for s in hass.states.async_all() if s.domain == "media_player"]
     assert len(states) == 8
 
     device_registry = dr.async_get(hass)
@@ -129,9 +127,7 @@ async def test_eight_media_players_under_one_device(hass: HomeAssistant) -> None
     for output in range(1, 9):
         state = hass.states.get(_entity_id(hass, output))
         assert state.state == "on"
-        assert (
-            state.attributes["device_class"] == MediaPlayerDeviceClass.RECEIVER
-        )
+        assert state.attributes["device_class"] == MediaPlayerDeviceClass.RECEIVER
         assert (
             state.attributes["supported_features"]
             & MediaPlayerEntityFeature.SELECT_SOURCE
@@ -220,9 +216,7 @@ async def test_select_source_targets_many_outputs_in_one_call(
     )
 
     assert device.set_output_source.await_count == 3
-    routed_outputs = {
-        call.args[0] for call in device.set_output_source.await_args_list
-    }
+    routed_outputs = {call.args[0] for call in device.set_output_source.await_args_list}
     assert routed_outputs == {1, 2, 3}
     for call in device.set_output_source.await_args_list:
         assert call.args[1] == OutputSource.for_input(5)
@@ -275,14 +269,18 @@ async def test_volume_features_supported(hass: HomeAssistant) -> None:
 
 
 async def test_volume_level_reads_left_channel(hass: HomeAssistant) -> None:
-    device = _setup_device(output_settings=_settings(2, volume_pct_l=40, volume_pct_r=40))
+    device = _setup_device(
+        output_settings=_settings(2, volume_pct_l=40, volume_pct_r=40)
+    )
     await _install(hass, device)
     assert hass.states.get(_entity_id(hass, 2)).attributes["volume_level"] == 0.4
 
 
 async def test_is_volume_muted_requires_both_channels(hass: HomeAssistant) -> None:
     # Output 1 both muted; output 3 only L muted.
-    settings = _settings(1, volume_pct_l=100, volume_pct_r=100, mute_l=True, mute_r=True)
+    settings = _settings(
+        1, volume_pct_l=100, volume_pct_r=100, mute_l=True, mute_r=True
+    )
     settings[3 - 1] = OutputSettings(
         output=3,
         volume_pct_l=100,
@@ -348,7 +346,9 @@ async def test_volume_down_uses_native_relative_step(hass: HomeAssistant) -> Non
 async def test_equal_channels_have_no_divergence_attributes(
     hass: HomeAssistant,
 ) -> None:
-    device = _setup_device(output_settings=_settings(1, volume_pct_l=70, volume_pct_r=70))
+    device = _setup_device(
+        output_settings=_settings(1, volume_pct_l=70, volume_pct_r=70)
+    )
     await _install(hass, device)
     attrs = hass.states.get(_entity_id(hass, 1)).attributes
     assert "volume_left" not in attrs
@@ -360,9 +360,7 @@ async def test_divergent_volume_surfaced_in_extra_attributes(
     hass: HomeAssistant,
 ) -> None:
     device = _setup_device(
-        output_settings=_settings(
-            2, volume_pct_l=80, volume_pct_r=30, lock=False
-        )
+        output_settings=_settings(2, volume_pct_l=80, volume_pct_r=30, lock=False)
     )
     await _install(hass, device)
     attrs = hass.states.get(_entity_id(hass, 2)).attributes

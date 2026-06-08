@@ -41,7 +41,9 @@ DEFAULT_CACHE_DIR = REPO_ROOT / ".cache" / "drivers-driverpackager"
 DRIVERPACKAGER_GIT_URL = "https://github.com/snap-one/drivers-driverpackager.git"
 # Pin the upstream packager to an immutable commit so a compromised or
 # force-pushed upstream cannot inject code into the build. Bump deliberately.
-DRIVERPACKAGER_GIT_REF = "16eef8beb70303606f066524cda516b2aa7ce38d"  # master @ 2026-05-31
+DRIVERPACKAGER_GIT_REF = (
+    "16eef8beb70303606f066524cda516b2aa7ce38d"  # master @ 2026-05-31
+)
 
 FLAVORS = ("dev", "release")
 
@@ -63,9 +65,7 @@ def build_dp_argv(
     external tool.
     """
     if flavor not in FLAVORS:
-        raise ValueError(
-            f"unknown flavor {flavor!r}; expected one of {FLAVORS}"
-        )
+        raise ValueError(f"unknown flavor {flavor!r}; expected one of {FLAVORS}")
 
     argv: list[str] = [python_executable or sys.executable, str(driverpackager)]
     if verbose:
@@ -176,9 +176,7 @@ def build_one(
     do not overwrite each other when built in sequence.
     """
     if not (src_dir / manifest).is_file():
-        raise FileNotFoundError(
-            f"manifest not found: {src_dir / manifest}"
-        )
+        raise FileNotFoundError(f"manifest not found: {src_dir / manifest}")
 
     target_dir = out_dir / flavor
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -195,9 +193,7 @@ def build_one(
 
     produced = list(target_dir.glob("*.c4z"))
     if not produced:
-        raise RuntimeError(
-            f"driverpackager produced no .c4z in {target_dir}"
-        )
+        raise RuntimeError(f"driverpackager produced no .c4z in {target_dir}")
     return produced[0]
 
 

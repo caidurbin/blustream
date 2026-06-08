@@ -37,7 +37,10 @@ class TestDMP168ConfirmationWiring:
         assert cmd is not None
         assert callable(cmd.confirmation_message)
         with patch("builtins.input", return_value="yes") as mock_input:
-            assert confirm_command(cmd, yes=False, kwargs={"output": 2, "input": 5}) is True
+            assert (
+                confirm_command(cmd, yes=False, kwargs={"output": 2, "input": 5})
+                is True
+            )
             assert "2" in mock_input.call_args[0][0]
             assert "5" in mock_input.call_args[0][0]
 

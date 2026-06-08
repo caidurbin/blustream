@@ -64,9 +64,7 @@ def registry():
                     str,
                     required=True,
                     help_text="Name (non-empty)",
-                    validation=lambda v: (
-                        "Name must not be empty" if not v else None
-                    ),
+                    validation=lambda v: "Name must not be empty" if not v else None,
                 ),
             ],
             handler=lambda **kwargs: "OK",
@@ -94,9 +92,7 @@ class TestValidate:
 
     def test_valid_kwargs_with_optional(self, registry):
         """Valid kwargs including optional params should not raise."""
-        validate(
-            registry, "test_cmd", {"output": 1, "level": 50, "channel": "L"}
-        )
+        validate(registry, "test_cmd", {"output": 1, "level": 50, "channel": "L"})
 
     def test_no_params_command(self, registry):
         """Command with no parameters should pass with empty kwargs."""
@@ -147,36 +143,25 @@ class TestValidate:
 
     def test_validation_callable_valid(self, registry):
         """Validation callable returning None should pass."""
-        validate(
-            registry, "validated_cmd", {"delay_ms": 250, "name": "test"}
-        )
+        validate(registry, "validated_cmd", {"delay_ms": 250, "name": "test"})
 
     def test_validation_callable_invalid(self, registry):
         """Validation callable returning error string should fail."""
         with pytest.raises(ValidationError) as exc_info:
-            validate(
-                registry, "validated_cmd", {"delay_ms": 999, "name": "test"}
-            )
+            validate(registry, "validated_cmd", {"delay_ms": 999, "name": "test"})
         assert "Delay must be between 0-500" in str(exc_info.value)
 
     def test_validation_callable_error_message_preserved(self, registry):
         """Error message from validation callable should be in errors list."""
         with pytest.raises(ValidationError) as exc_info:
-            validate(
-                registry, "validated_cmd", {"delay_ms": 999, "name": "test"}
-            )
+            validate(registry, "validated_cmd", {"delay_ms": 999, "name": "test"})
         error = exc_info.value
-        assert any(
-            "Delay must be between 0-500" in msg
-            for _, msg in error.errors
-        )
+        assert any("Delay must be between 0-500" in msg for _, msg in error.errors)
 
     def test_multiple_validation_callable_failures(self, registry):
         """Multiple validation callable failures collected together."""
         with pytest.raises(ValidationError) as exc_info:
-            validate(
-                registry, "validated_cmd", {"delay_ms": 999, "name": ""}
-            )
+            validate(registry, "validated_cmd", {"delay_ms": 999, "name": ""})
         error = exc_info.value
         assert len(error.errors) == 2
         messages = [msg for _, msg in error.errors]

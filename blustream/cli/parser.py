@@ -96,9 +96,13 @@ def extract_kwargs(namespace: argparse.Namespace, command: Command) -> dict[str,
     kwargs: dict[str, Any] = {}
 
     for param in command.parameters:
-        if param.supports_relative and getattr(namespace, f"increase_{param.name}", False):
+        if param.supports_relative and getattr(
+            namespace, f"increase_{param.name}", False
+        ):
             kwargs[param.name] = "+"
-        elif param.supports_relative and getattr(namespace, f"decrease_{param.name}", False):
+        elif param.supports_relative and getattr(
+            namespace, f"decrease_{param.name}", False
+        ):
             kwargs[param.name] = "-"
         else:
             value = getattr(namespace, param.name, None)

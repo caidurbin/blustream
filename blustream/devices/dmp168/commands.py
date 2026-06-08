@@ -91,10 +91,37 @@ def _register_commands(registry: CommandRegistry) -> None:
             name="output_volume",
             description="Set output volume",
             parameters=[
-                Parameter("output", int, required=True, choices=list(range(9)), help_text="Output channel (0-8, 0=All)"),
-                Parameter("level", Any, required=True, help_text="Volume level (0-100 for percent, -76 to +24 for dB, or +/- for relative)", supports_relative=True),
-                Parameter("unit", str, required=False, default="percent", choices=["percent", "dB"], help_text="Volume unit", depends_on=Dependency(on="level", when=_is_relative_adjustment)),
-                Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Channel to adjust"),
+                Parameter(
+                    "output",
+                    int,
+                    required=True,
+                    choices=list(range(9)),
+                    help_text="Output channel (0-8, 0=All)",
+                ),
+                Parameter(
+                    "level",
+                    Any,
+                    required=True,
+                    help_text="Volume level (0-100 for percent, -76 to +24 for dB, or +/- for relative)",
+                    supports_relative=True,
+                ),
+                Parameter(
+                    "unit",
+                    str,
+                    required=False,
+                    default="percent",
+                    choices=["percent", "dB"],
+                    help_text="Volume unit",
+                    depends_on=Dependency(on="level", when=_is_relative_adjustment),
+                ),
+                Parameter(
+                    "channel",
+                    str,
+                    required=False,
+                    default="LR",
+                    choices=["L", "R", "LR"],
+                    help_text="Channel to adjust",
+                ),
             ],
             handler=lambda **kwargs: gen.format_output_volume(**kwargs),
         )
@@ -106,9 +133,27 @@ def _register_commands(registry: CommandRegistry) -> None:
             name="output_mute",
             description="Set output mute on or off",
             parameters=[
-                Parameter("output", int, required=True, choices=list(range(9)), help_text="Output channel (0-8, 0=All)"),
-                Parameter("mute", bool, required=True, help_text="True to mute, False to unmute"),
-                Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Channel to adjust"),
+                Parameter(
+                    "output",
+                    int,
+                    required=True,
+                    choices=list(range(9)),
+                    help_text="Output channel (0-8, 0=All)",
+                ),
+                Parameter(
+                    "mute",
+                    bool,
+                    required=True,
+                    help_text="True to mute, False to unmute",
+                ),
+                Parameter(
+                    "channel",
+                    str,
+                    required=False,
+                    default="LR",
+                    choices=["L", "R", "LR"],
+                    help_text="Channel to adjust",
+                ),
             ],
             handler=lambda **kwargs: gen.format_output_mute(**kwargs),
         )
@@ -120,10 +165,36 @@ def _register_commands(registry: CommandRegistry) -> None:
             name="route",
             description="Route input to output",
             parameters=[
-                Parameter("output", int, required=True, choices=list(range(9)), help_text="Output channel (0-8, 0=All)"),
-                Parameter("input", int, required=True, choices=list(range(1, 25)), help_text="Input channel (1-24)"),
-                Parameter("output_channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Output channel selector"),
-                Parameter("input_channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Input channel selector"),
+                Parameter(
+                    "output",
+                    int,
+                    required=True,
+                    choices=list(range(9)),
+                    help_text="Output channel (0-8, 0=All)",
+                ),
+                Parameter(
+                    "input",
+                    int,
+                    required=True,
+                    choices=list(range(1, 25)),
+                    help_text="Input channel (1-24)",
+                ),
+                Parameter(
+                    "output_channel",
+                    str,
+                    required=False,
+                    default="LR",
+                    choices=["L", "R", "LR"],
+                    help_text="Output channel selector",
+                ),
+                Parameter(
+                    "input_channel",
+                    str,
+                    required=False,
+                    default="LR",
+                    choices=["L", "R", "LR"],
+                    help_text="Input channel selector",
+                ),
             ],
             handler=lambda **kwargs: gen.format_route(
                 output=kwargs["output"],
@@ -140,7 +211,13 @@ def _register_commands(registry: CommandRegistry) -> None:
             name="preset_save",
             description="Save current config to preset",
             parameters=[
-                Parameter("preset", int, required=True, choices=list(range(1, 9)), help_text="Preset number (1-8)"),
+                Parameter(
+                    "preset",
+                    int,
+                    required=True,
+                    choices=list(range(1, 9)),
+                    help_text="Preset number (1-8)",
+                ),
             ],
             handler=lambda **kwargs: gen.format_preset_save(**kwargs),
         )
@@ -151,7 +228,13 @@ def _register_commands(registry: CommandRegistry) -> None:
             name="preset_recall",
             description="Recall preset config to current setting",
             parameters=[
-                Parameter("preset", int, required=True, choices=list(range(1, 9)), help_text="Preset number (1-8)"),
+                Parameter(
+                    "preset",
+                    int,
+                    required=True,
+                    choices=list(range(1, 9)),
+                    help_text="Preset number (1-8)",
+                ),
             ],
             handler=lambda **kwargs: gen.format_preset_recall(**kwargs),
         )
@@ -163,10 +246,37 @@ def _register_commands(registry: CommandRegistry) -> None:
             name="input_gain",
             description="Set input gain",
             parameters=[
-                Parameter("input", int, required=True, choices=list(range(17)), help_text="Input channel (0-16, 0=All)"),
-                Parameter("gain", Any, required=True, help_text="Gain value (0-100 for percent, -76 to +24 for dB, or +/- for relative)", supports_relative=True),
-                Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Channel to adjust"),
-                Parameter("unit", str, required=False, default=None, choices=["percent", "dB"], help_text="Gain unit (None for percent)", depends_on=Dependency(on="gain", when=_is_relative_adjustment)),
+                Parameter(
+                    "input",
+                    int,
+                    required=True,
+                    choices=list(range(17)),
+                    help_text="Input channel (0-16, 0=All)",
+                ),
+                Parameter(
+                    "gain",
+                    Any,
+                    required=True,
+                    help_text="Gain value (0-100 for percent, -76 to +24 for dB, or +/- for relative)",
+                    supports_relative=True,
+                ),
+                Parameter(
+                    "channel",
+                    str,
+                    required=False,
+                    default="LR",
+                    choices=["L", "R", "LR"],
+                    help_text="Channel to adjust",
+                ),
+                Parameter(
+                    "unit",
+                    str,
+                    required=False,
+                    default=None,
+                    choices=["percent", "dB"],
+                    help_text="Gain unit (None for percent)",
+                    depends_on=Dependency(on="gain", when=_is_relative_adjustment),
+                ),
             ],
             handler=lambda **kwargs: gen.format_input_gain(
                 input_ch=kwargs["input"],
@@ -183,9 +293,27 @@ def _register_commands(registry: CommandRegistry) -> None:
             name="input_mute",
             description="Set input mute on or off",
             parameters=[
-                Parameter("input", int, required=True, choices=list(range(17)), help_text="Input channel (0-16, 0=All)"),
-                Parameter("mute", bool, required=True, help_text="True to mute, False to unmute"),
-                Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Channel to adjust"),
+                Parameter(
+                    "input",
+                    int,
+                    required=True,
+                    choices=list(range(17)),
+                    help_text="Input channel (0-16, 0=All)",
+                ),
+                Parameter(
+                    "mute",
+                    bool,
+                    required=True,
+                    help_text="True to mute, False to unmute",
+                ),
+                Parameter(
+                    "channel",
+                    str,
+                    required=False,
+                    default="LR",
+                    choices=["L", "R", "LR"],
+                    help_text="Channel to adjust",
+                ),
             ],
             handler=lambda **kwargs: gen.format_input_mute(
                 input_ch=kwargs["input"],
@@ -201,7 +329,13 @@ def _register_commands(registry: CommandRegistry) -> None:
             name="preset_delete",
             description="Delete preset from system",
             parameters=[
-                Parameter("preset", int, required=True, choices=list(range(1, 9)), help_text="Preset number (1-8)"),
+                Parameter(
+                    "preset",
+                    int,
+                    required=True,
+                    choices=list(range(1, 9)),
+                    help_text="Preset number (1-8)",
+                ),
             ],
             handler=lambda **kwargs: gen.format_preset_delete(**kwargs),
             requires_confirmation=True,
@@ -215,7 +349,13 @@ def _register_commands(registry: CommandRegistry) -> None:
             name="preset_status",
             description="Get preset configuration status",
             parameters=[
-                Parameter("preset", int, required=True, choices=list(range(1, 9)), help_text="Preset number (1-8)"),
+                Parameter(
+                    "preset",
+                    int,
+                    required=True,
+                    choices=list(range(1, 9)),
+                    help_text="Preset number (1-8)",
+                ),
             ],
             handler=lambda **kwargs: gen.format_preset_status(**kwargs),
             return_type=PresetStatus,
@@ -229,10 +369,36 @@ def _register_commands(registry: CommandRegistry) -> None:
             name="output_remove",
             description="Remove input from output",
             parameters=[
-                Parameter("output", int, required=True, choices=list(range(9)), help_text="Output channel (0-8, 0=All)"),
-                Parameter("input", int, required=True, choices=list(range(1, 25)), help_text="Input channel (1-24)"),
-                Parameter("output_channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Output channel selector"),
-                Parameter("input_channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Input channel selector"),
+                Parameter(
+                    "output",
+                    int,
+                    required=True,
+                    choices=list(range(9)),
+                    help_text="Output channel (0-8, 0=All)",
+                ),
+                Parameter(
+                    "input",
+                    int,
+                    required=True,
+                    choices=list(range(1, 25)),
+                    help_text="Input channel (1-24)",
+                ),
+                Parameter(
+                    "output_channel",
+                    str,
+                    required=False,
+                    default="LR",
+                    choices=["L", "R", "LR"],
+                    help_text="Output channel selector",
+                ),
+                Parameter(
+                    "input_channel",
+                    str,
+                    required=False,
+                    default="LR",
+                    choices=["L", "R", "LR"],
+                    help_text="Input channel selector",
+                ),
             ],
             handler=lambda **kwargs: gen.format_output_remove(
                 output=kwargs["output"],
@@ -241,7 +407,9 @@ def _register_commands(registry: CommandRegistry) -> None:
                 input_channel=kwargs.get("input_channel", "LR"),
             ),
             requires_confirmation=True,
-            confirmation_message=lambda kwargs: f"Remove input {kwargs['input']} from output {kwargs['output']}?",
+            confirmation_message=lambda kwargs: (
+                f"Remove input {kwargs['input']} from output {kwargs['output']}?"
+            ),
         )
     )
 
@@ -251,7 +419,13 @@ def _register_commands(registry: CommandRegistry) -> None:
             name="output_delay",
             description="Set output delay time",
             parameters=[
-                Parameter("output", int, required=True, choices=list(range(9)), help_text="Output channel (0-8, 0=All)"),
+                Parameter(
+                    "output",
+                    int,
+                    required=True,
+                    choices=list(range(9)),
+                    help_text="Output channel (0-8, 0=All)",
+                ),
                 Parameter(
                     "delay_ms",
                     int,
@@ -263,7 +437,14 @@ def _register_commands(registry: CommandRegistry) -> None:
                         else None
                     ),
                 ),
-                Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Channel to adjust"),
+                Parameter(
+                    "channel",
+                    str,
+                    required=False,
+                    default="LR",
+                    choices=["L", "R", "LR"],
+                    help_text="Channel to adjust",
+                ),
             ],
             handler=lambda **kwargs: gen.format_output_delay(**kwargs),
         )
@@ -275,8 +456,20 @@ def _register_commands(registry: CommandRegistry) -> None:
             name="output_mix",
             description="Set output mixing mode",
             parameters=[
-                Parameter("output", int, required=True, choices=list(range(9)), help_text="Output channel (0-8, 0=All)"),
-                Parameter("mode", int, required=True, choices=list(range(7)), help_text="Mix mode (0=None, 1=Swap, 2=Mono L+R, 3=Mono All L, 4=Mono All R, 5=Mono L-R, 6=Mono R-L)"),
+                Parameter(
+                    "output",
+                    int,
+                    required=True,
+                    choices=list(range(9)),
+                    help_text="Output channel (0-8, 0=All)",
+                ),
+                Parameter(
+                    "mode",
+                    int,
+                    required=True,
+                    choices=list(range(7)),
+                    help_text="Mix mode (0=None, 1=Swap, 2=Mono L+R, 3=Mono All L, 4=Mono All R, 5=Mono L-R, 6=Mono R-L)",
+                ),
             ],
             handler=lambda **kwargs: gen.format_output_mix(**kwargs),
         )
@@ -288,9 +481,30 @@ def _register_commands(registry: CommandRegistry) -> None:
             name="output_master_volume",
             description="Set output master volume",
             parameters=[
-                Parameter("level", Any, required=True, help_text="Volume level (0-100 for percent, -76 to +24 for dB, or +/- for relative)", supports_relative=True),
-                Parameter("unit", str, required=False, default="percent", choices=["percent", "dB"], help_text="Volume unit", depends_on=Dependency(on="level", when=_is_relative_adjustment)),
-                Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Channel to adjust"),
+                Parameter(
+                    "level",
+                    Any,
+                    required=True,
+                    help_text="Volume level (0-100 for percent, -76 to +24 for dB, or +/- for relative)",
+                    supports_relative=True,
+                ),
+                Parameter(
+                    "unit",
+                    str,
+                    required=False,
+                    default="percent",
+                    choices=["percent", "dB"],
+                    help_text="Volume unit",
+                    depends_on=Dependency(on="level", when=_is_relative_adjustment),
+                ),
+                Parameter(
+                    "channel",
+                    str,
+                    required=False,
+                    default="LR",
+                    choices=["L", "R", "LR"],
+                    help_text="Channel to adjust",
+                ),
             ],
             handler=lambda **kwargs: gen.format_output_master_volume(**kwargs),
         )
@@ -302,8 +516,20 @@ def _register_commands(registry: CommandRegistry) -> None:
             name="output_master_mute",
             description="Set output master mute on or off",
             parameters=[
-                Parameter("mute", bool, required=True, help_text="True to mute, False to unmute"),
-                Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Channel to adjust"),
+                Parameter(
+                    "mute",
+                    bool,
+                    required=True,
+                    help_text="True to mute, False to unmute",
+                ),
+                Parameter(
+                    "channel",
+                    str,
+                    required=False,
+                    default="LR",
+                    choices=["L", "R", "LR"],
+                    help_text="Channel to adjust",
+                ),
             ],
             handler=lambda **kwargs: gen.format_output_master_mute(**kwargs),
         )
@@ -315,9 +541,27 @@ def _register_commands(registry: CommandRegistry) -> None:
             name="output_channel_lock",
             description="Set output channel lock on or off",
             parameters=[
-                Parameter("output", int, required=True, choices=list(range(9)), help_text="Output channel (0-8, 0=All)"),
-                Parameter("lock", bool, required=True, help_text="True to lock, False to unlock"),
-                Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Channel to adjust"),
+                Parameter(
+                    "output",
+                    int,
+                    required=True,
+                    choices=list(range(9)),
+                    help_text="Output channel (0-8, 0=All)",
+                ),
+                Parameter(
+                    "lock",
+                    bool,
+                    required=True,
+                    help_text="True to lock, False to unlock",
+                ),
+                Parameter(
+                    "channel",
+                    str,
+                    required=False,
+                    default="LR",
+                    choices=["L", "R", "LR"],
+                    help_text="Channel to adjust",
+                ),
             ],
             handler=lambda **kwargs: gen.format_output_channel_lock(**kwargs),
         )
@@ -363,10 +607,37 @@ def _register_commands(registry: CommandRegistry) -> None:
             name="group_volume",
             description="Set group volume",
             parameters=[
-                Parameter("group", int, required=True, choices=list(range(5)), help_text="Group number (0-4, 0=All)"),
-                Parameter("level", Any, required=True, help_text="Volume level (0-100 for percent, -76 to +24 for dB, or +/- for relative)", supports_relative=True),
-                Parameter("unit", str, required=False, default="percent", choices=["percent", "dB"], help_text="Volume unit", depends_on=Dependency(on="level", when=_is_relative_adjustment)),
-                Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Channel to adjust"),
+                Parameter(
+                    "group",
+                    int,
+                    required=True,
+                    choices=list(range(5)),
+                    help_text="Group number (0-4, 0=All)",
+                ),
+                Parameter(
+                    "level",
+                    Any,
+                    required=True,
+                    help_text="Volume level (0-100 for percent, -76 to +24 for dB, or +/- for relative)",
+                    supports_relative=True,
+                ),
+                Parameter(
+                    "unit",
+                    str,
+                    required=False,
+                    default="percent",
+                    choices=["percent", "dB"],
+                    help_text="Volume unit",
+                    depends_on=Dependency(on="level", when=_is_relative_adjustment),
+                ),
+                Parameter(
+                    "channel",
+                    str,
+                    required=False,
+                    default="LR",
+                    choices=["L", "R", "LR"],
+                    help_text="Channel to adjust",
+                ),
             ],
             handler=lambda **kwargs: gen.format_group_volume(**kwargs),
         )
@@ -378,9 +649,27 @@ def _register_commands(registry: CommandRegistry) -> None:
             name="group_mute",
             description="Set group mute on or off",
             parameters=[
-                Parameter("group", int, required=True, choices=list(range(5)), help_text="Group number (0-4, 0=All)"),
-                Parameter("mute", bool, required=True, help_text="True to mute, False to unmute"),
-                Parameter("channel", str, required=False, default="LR", choices=["L", "R", "LR"], help_text="Channel to adjust"),
+                Parameter(
+                    "group",
+                    int,
+                    required=True,
+                    choices=list(range(5)),
+                    help_text="Group number (0-4, 0=All)",
+                ),
+                Parameter(
+                    "mute",
+                    bool,
+                    required=True,
+                    help_text="True to mute, False to unmute",
+                ),
+                Parameter(
+                    "channel",
+                    str,
+                    required=False,
+                    default="LR",
+                    choices=["L", "R", "LR"],
+                    help_text="Channel to adjust",
+                ),
             ],
             handler=lambda **kwargs: gen.format_group_mute(**kwargs),
         )

@@ -67,7 +67,9 @@ class MockConnection(Connection):
                 idx = self._buffer.find(LINE_TERMINATOR)
 
             if not self._chunks:
-                raise TimeoutError("Mock connection exhausted before predicate satisfied")
+                raise TimeoutError(
+                    "Mock connection exhausted before predicate satisfied"
+                )
 
             chunk = self._chunks.pop(0)
             if isinstance(chunk, Exception):
@@ -90,7 +92,6 @@ class ConcreteDevice(BlustreamDevice):
 
 
 class TestBlustreamDevice:
-
     def test_init(self):
         conn = MockConnection()
         device = ConcreteDevice(conn)
@@ -245,7 +246,11 @@ class TestBlustreamDevice:
         await device.send_command("VOL CH=0 LR 50%")
 
         contents = log_path.read_text(encoding="utf-8")
-        headers = re.findall(r"^==== (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z) ====$", contents, re.MULTILINE)
+        headers = re.findall(
+            r"^==== (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z) ====$",
+            contents,
+            re.MULTILINE,
+        )
         assert len(headers) == 2
         assert "command: POWER ON" in contents
         assert "command: VOL CH=0 LR 50%" in contents
@@ -263,7 +268,9 @@ class TestBlustreamDevice:
         assert not log_path.exists()
 
     @pytest.mark.asyncio
-    async def test_send_command_log_failure_does_not_break_command(self, tmp_path, caplog):
+    async def test_send_command_log_failure_does_not_break_command(
+        self, tmp_path, caplog
+    ):
         bad_path = tmp_path / "missing_dir" / "commands.log"
         conn = MockConnection()
         conn.queue("POWER ON\r\n[SUCCESS]ok\r\n")
@@ -274,4 +281,6 @@ class TestBlustreamDevice:
             response = await device.send_command("POWER ON")
 
         assert "[SUCCESS]" in response
-        assert any("Failed to write command log" in rec.message for rec in caplog.records)
+        assert any(
+            "Failed to write command log" in rec.message for rec in caplog.records
+        )

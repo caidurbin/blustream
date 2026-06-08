@@ -46,7 +46,9 @@ class BlustreamDevice(ABC):
             with open(self._command_log_path, "a", encoding="utf-8") as fh:
                 fh.write(f"\n==== {ts} ====\ncommand: {command}\n")
         except OSError as e:
-            logger.warning("Failed to write command log %s: %s", self._command_log_path, e)
+            logger.warning(
+                "Failed to write command log %s: %s", self._command_log_path, e
+            )
 
     async def connect(self) -> None:
         if not self._connected:
@@ -70,16 +72,13 @@ class BlustreamDevice(ABC):
         return self._connected and self._connection.is_connected()
 
     @abstractmethod
-    def get_commands(self) -> list[str]:
-        ...
+    def get_commands(self) -> list[str]: ...
 
     @abstractmethod
-    async def execute_command(self, name: str, **kwargs: Any) -> Any:
-        ...
+    async def execute_command(self, name: str, **kwargs: Any) -> Any: ...
 
     @abstractmethod
-    async def get_status(self) -> Any:
-        ...
+    async def get_status(self) -> Any: ...
 
     async def send_command(
         self,

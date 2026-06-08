@@ -165,7 +165,9 @@ class DMP168(BlustreamDevice):
         if name == "preset_status":
             # Pass preset number to parser if available
             preset_number = kwargs.get("preset")
-            return self._parser.parse_preset_status(response, preset_number=preset_number)
+            return self._parser.parse_preset_status(
+                response, preset_number=preset_number
+            )
         elif name in ["uptime", "temp"]:
             # Extract value from uptime/temp command responses
             # Common formats:
@@ -174,7 +176,9 @@ class DMP168(BlustreamDevice):
             # - "47.4C" or "0000:08:57:01" (direct value)
 
             # Try [SUCCESS] pattern first
-            success_match = re.search(r"\[SUCCESS\].*?is\s+([^\s]+)", response, re.IGNORECASE)
+            success_match = re.search(
+                r"\[SUCCESS\].*?is\s+([^\s]+)", response, re.IGNORECASE
+            )
             if success_match:
                 return success_match.group(1).strip().rstrip(".,;: \r\n")
 
@@ -241,7 +245,9 @@ class DMP168(BlustreamDevice):
             kwargs["unit"] = unit
         await self.execute_command("output_volume", **kwargs)
 
-    async def set_output_mute(self, output: int, mute: bool, channel: str = "LR") -> None:
+    async def set_output_mute(
+        self, output: int, mute: bool, channel: str = "LR"
+    ) -> None:
         """Set output mute.
 
         Args:
@@ -249,7 +255,9 @@ class DMP168(BlustreamDevice):
             mute: True to mute, False to unmute
             channel: Channel ("L", "R", or "LR")
         """
-        await self.execute_command("output_mute", output=output, mute=mute, channel=channel)
+        await self.execute_command(
+            "output_mute", output=output, mute=mute, channel=channel
+        )
 
     async def route_input_to_output(
         self,
@@ -300,9 +308,7 @@ class DMP168(BlustreamDevice):
         current = await self._current_output_source(output)
         if current is None:
             return
-        await self.execute_command(
-            "output_remove", output=output, input=current.column
-        )
+        await self.execute_command("output_remove", output=output, input=current.column)
 
     async def _current_output_source(self, output: int) -> Optional[OutputSource]:
         """Return the source currently routed to ``output`` (L channel), or None."""
@@ -352,7 +358,9 @@ class DMP168(BlustreamDevice):
             kwargs["unit"] = unit
         await self.execute_command("input_gain", **kwargs)
 
-    async def set_input_mute(self, input_ch: int, mute: bool, channel: str = "LR") -> None:
+    async def set_input_mute(
+        self, input_ch: int, mute: bool, channel: str = "LR"
+    ) -> None:
         """Set input mute.
 
         Args:
@@ -360,7 +368,9 @@ class DMP168(BlustreamDevice):
             mute: True to mute, False to unmute
             channel: Channel ("L", "R", or "LR")
         """
-        await self.execute_command("input_mute", input=input_ch, mute=mute, channel=channel)
+        await self.execute_command(
+            "input_mute", input=input_ch, mute=mute, channel=channel
+        )
 
     async def get_preset_status(self, preset: int) -> PresetStatus:
         """Get preset status.
@@ -396,7 +406,9 @@ class DMP168(BlustreamDevice):
             input_channel=input_channel,
         )
 
-    async def set_output_delay(self, output: int, delay_ms: int, channel: str = "LR") -> None:
+    async def set_output_delay(
+        self, output: int, delay_ms: int, channel: str = "LR"
+    ) -> None:
         """Set output delay.
 
         Args:
@@ -404,7 +416,9 @@ class DMP168(BlustreamDevice):
             delay_ms: Delay time in milliseconds (0-500)
             channel: Channel ("L", "R", or "LR")
         """
-        await self.execute_command("output_delay", output=output, delay_ms=delay_ms, channel=channel)
+        await self.execute_command(
+            "output_delay", output=output, delay_ms=delay_ms, channel=channel
+        )
 
     async def set_output_mix(self, output: int, mode: int) -> None:
         """Set output mixing mode.
@@ -442,7 +456,9 @@ class DMP168(BlustreamDevice):
         """
         await self.execute_command("output_master_mute", mute=mute, channel=channel)
 
-    async def set_output_channel_lock(self, output: int, lock: bool, channel: str = "LR") -> None:
+    async def set_output_channel_lock(
+        self, output: int, lock: bool, channel: str = "LR"
+    ) -> None:
         """Set output channel lock.
 
         Args:
@@ -450,7 +466,9 @@ class DMP168(BlustreamDevice):
             lock: True to lock, False to unlock
             channel: Channel ("L", "R", or "LR")
         """
-        await self.execute_command("output_channel_lock", output=output, lock=lock, channel=channel)
+        await self.execute_command(
+            "output_channel_lock", output=output, lock=lock, channel=channel
+        )
 
     async def get_uptime_raw(self) -> str:
         """Get the raw system uptime-duration string.
@@ -517,8 +535,9 @@ class DMP168(BlustreamDevice):
             mute: True to mute, False to unmute
             channel: Channel ("L", "R", or "LR")
         """
-        await self.execute_command("group_mute", group=group, mute=mute, channel=channel)
+        await self.execute_command(
+            "group_mute", group=group, mute=mute, channel=channel
+        )
 
 
 cmd_module._register_commands(DMP168.commands)
-

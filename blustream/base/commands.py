@@ -92,4 +92,3 @@ class CommandRegistry:
             List of all command metadata
         """
         return list(self._commands.values())
-

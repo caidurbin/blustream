@@ -30,7 +30,14 @@ from blustream.devices.dmp168.uptime_parser import parse as parse_uptime
 from .const import DOMAIN
 from .coordinator import BlustreamConfigEntry
 
-TO_REDACT_ENTRY = {CONF_HOST, CONF_MAC, "hostname", "title", "discovery_keys", CONF_UNIQUE_ID}
+TO_REDACT_ENTRY = {
+    CONF_HOST,
+    CONF_MAC,
+    "hostname",
+    "title",
+    "discovery_keys",
+    CONF_UNIQUE_ID,
+}
 TO_REDACT_DEVICE = {ATTR_CONNECTIONS, ATTR_IDENTIFIERS}
 
 

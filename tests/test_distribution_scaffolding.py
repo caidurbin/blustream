@@ -51,9 +51,7 @@ class TestLicense:
     """Acceptance: a top-level LICENSE file formalizes Apache 2.0 licensing."""
 
     def test_license_file_exists_at_repo_root(self):
-        assert LICENSE_PATH.is_file(), (
-            "issue #19 requires a top-level LICENSE file"
-        )
+        assert LICENSE_PATH.is_file(), "issue #19 requires a top-level LICENSE file"
 
     def test_license_is_apache_2_0(self):
         text = LICENSE_PATH.read_text()

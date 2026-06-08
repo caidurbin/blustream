@@ -132,9 +132,7 @@ def _render_wire_step(step: dict) -> list[str]:
     if "var" in step:
         var = step["var"]
         prefix = step.get("prefix", "")
-        payload = (
-            f"{_py_str(prefix)} + str({var})" if prefix else f"str({var})"
-        )
+        payload = f"{_py_str(prefix)} + str({var})" if prefix else f"str({var})"
         if "when_ne" in step:
             cond_value = _py_literal(step["when_ne"])
             return [

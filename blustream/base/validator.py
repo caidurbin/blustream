@@ -50,11 +50,13 @@ def validate(
     # Pass one: per-parameter checks
     for param in command.parameters:
         if param.required and param.name not in kwargs:
-            errors.append((
-                param.name,
-                f"Missing required parameter '{param.name}' for command "
-                f"'{command_name}'.",
-            ))
+            errors.append(
+                (
+                    param.name,
+                    f"Missing required parameter '{param.name}' for command "
+                    f"'{command_name}'.",
+                )
+            )
             continue
 
         if param.name not in kwargs:
@@ -69,11 +71,13 @@ def validate(
             choices_str = ", ".join(str(c) for c in param.choices[:5])
             if len(param.choices) > 5:
                 choices_str += f", ... (total {len(param.choices)} options)"
-            errors.append((
-                param.name,
-                f"Invalid value '{value}' for parameter '{param.name}'. "
-                f"Valid options are: {choices_str}.",
-            ))
+            errors.append(
+                (
+                    param.name,
+                    f"Invalid value '{value}' for parameter '{param.name}'. "
+                    f"Valid options are: {choices_str}.",
+                )
+            )
 
         if param.validation is not None:
             result = param.validation(value)
@@ -81,9 +85,7 @@ def validate(
                 errors.append((param.name, result))
 
     if errors:
-        messages = "; ".join(
-            f"{name}: {msg}" for name, msg in errors
-        )
+        messages = "; ".join(f"{name}: {msg}" for name, msg in errors)
         raise ValidationError(
             f"Validation failed for '{command_name}': {messages}",
             errors=errors,
@@ -106,25 +108,27 @@ def validate(
 
             if dep.when is None:
                 if dep_value is None:
-                    errors.append((
-                        param.name,
-                        f"Parameter '{param.name}' requires "
-                        f"'{dep.on}' to be provided.",
-                    ))
+                    errors.append(
+                        (
+                            param.name,
+                            f"Parameter '{param.name}' requires "
+                            f"'{dep.on}' to be provided.",
+                        )
+                    )
                     break
             else:
                 if dep_value is not None and dep.when(dep_value):
-                    errors.append((
-                        param.name,
-                        f"Parameter '{param.name}' cannot be used "
-                        f"with the current value of '{dep.on}'.",
-                    ))
+                    errors.append(
+                        (
+                            param.name,
+                            f"Parameter '{param.name}' cannot be used "
+                            f"with the current value of '{dep.on}'.",
+                        )
+                    )
                     break
 
         if errors:
-            messages = "; ".join(
-                f"{name}: {msg}" for name, msg in errors
-            )
+            messages = "; ".join(f"{name}: {msg}" for name, msg in errors)
             raise ValidationError(
                 f"Validation failed for '{command_name}': {messages}",
                 errors=errors,

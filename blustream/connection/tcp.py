@@ -168,7 +168,9 @@ class TCPConnection(Connection):
                 return
 
             if not chunk:
-                logger.debug(f"Remote closed during banner discard; got {len(buffer)} chars")
+                logger.debug(
+                    f"Remote closed during banner discard; got {len(buffer)} chars"
+                )
                 return
 
             buffer += chunk
@@ -181,7 +183,9 @@ class TCPConnection(Connection):
             try:
                 self._writer.close()
                 try:
-                    await asyncio.wait_for(self._writer.wait_closed(), timeout=TIMEOUT_WAIT_CLOSED)
+                    await asyncio.wait_for(
+                        self._writer.wait_closed(), timeout=TIMEOUT_WAIT_CLOSED
+                    )
                 except asyncio.TimeoutError:
                     pass
             except Exception as e:
@@ -322,7 +326,9 @@ class TCPConnection(Connection):
                 )
 
             self._buffer += chunk_str
-            logger.debug(f"Received {len(chunk_str)} chars; buffer now {len(self._buffer)}")
+            logger.debug(
+                f"Received {len(chunk_str)} chars; buffer now {len(self._buffer)}"
+            )
 
             if len(accumulated) + len(self._buffer) > MAX_RESPONSE_CHARS:
                 raise ConnectionError(

@@ -34,9 +34,7 @@ class ValidationError(BlustreamError):
         errors: List of (parameter_name, message) tuples.
     """
 
-    def __init__(
-        self, message: str, errors: Optional[list[tuple[str, str]]] = None
-    ):
+    def __init__(self, message: str, errors: Optional[list[tuple[str, str]]] = None):
         self.errors: list[tuple[str, str]] = errors or []
         super().__init__(message)
 
@@ -45,4 +43,3 @@ class TimeoutError(BlustreamError):
     """Raised when an operation times out."""
 
     pass
-

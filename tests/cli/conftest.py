@@ -19,5 +19,7 @@ SEATBELT_MESSAGE = (
 @pytest.fixture(autouse=True)
 def _block_telnet():
     """Patch telnetlib3.open_connection to raise in all CLI tests."""
-    with patch("telnetlib3.open_connection", side_effect=RuntimeError(SEATBELT_MESSAGE)):
+    with patch(
+        "telnetlib3.open_connection", side_effect=RuntimeError(SEATBELT_MESSAGE)
+    ):
         yield

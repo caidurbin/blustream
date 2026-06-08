@@ -96,9 +96,7 @@ def _render_validation_lua(rule: dict) -> list[str]:
         lines.append(f"{INDENT}{INDENT}error({message})")
         lines.append(f"{INDENT}end")
     elif "choices" in rule:
-        lines.append(
-            f"{INDENT}if not {_in_set_expr(name, list(rule['choices']))} then"
-        )
+        lines.append(f"{INDENT}if not {_in_set_expr(name, list(rule['choices']))} then")
         lines.append(f"{INDENT}{INDENT}error({message})")
         lines.append(f"{INDENT}end")
     else:
@@ -140,9 +138,7 @@ def _render_wire_step_lua(step: dict) -> list[str]:
         var = step["var"]
         prefix = step.get("prefix", "")
         payload = (
-            f"{_lua_str(prefix)} .. tostring({var})"
-            if prefix
-            else f"tostring({var})"
+            f"{_lua_str(prefix)} .. tostring({var})" if prefix else f"tostring({var})"
         )
         if "when_ne" in step:
             return [
@@ -172,9 +168,7 @@ def _render_args_unpack(params: list[dict]) -> list[str]:
         if "default" in p:
             default = _lua_literal(p["default"])
             if default != "nil":
-                lines.append(
-                    f"{INDENT}if {name} == nil then {name} = {default} end"
-                )
+                lines.append(f"{INDENT}if {name} == nil then {name} = {default} end")
     return lines
 
 
