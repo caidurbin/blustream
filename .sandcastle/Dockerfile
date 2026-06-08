@@ -32,6 +32,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Go-built linters from the builder stage.
 COPY --from=gobuild /go/bin/betterleaks /go/bin/actionlint /usr/local/bin/
 
+# git PATH shim: shadows /usr/bin/git (PATH puts /usr/local/bin first) to refuse
+# pre-commit-gate bypasses (`commit --no-verify`/`-n`, inline `-c core.hooksPath`)
+# for ALL sandbox tooling, not just Claude Code's Bash tool. argv-based, so no
+# shell-parsing edge cases. Belt-and-suspenders with the PreToolUse hook in
+# .claude/hooks/. Falls through to real git for everything else.
+COPY --chmod=0755 git-shim.sh /usr/local/bin/git
+
 # Lua rocks for the luacheck pre-commit hook and the busted suite, pinned to the
 # versions CI installs (lint-control4.yml / test-control4.yml). --lua-version
 # targets the 5.1 interpreter installed above rather than luarocks' default.
