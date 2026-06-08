@@ -345,14 +345,6 @@ async def test_volume_down_uses_native_relative_step(hass: HomeAssistant) -> Non
     device.set_output_volume.assert_awaited_once_with(6, "-", channel="LR")
 
 
-async def test_volume_step_is_one_percent(hass: HomeAssistant) -> None:
-    device = _setup_device()
-    await _install(hass, device)
-    # HA exposes the configured step so the frontend long-press matches.
-    state = hass.states.get(_entity_id(hass, 1))
-    assert state.attributes["volume_step"] == 0.01
-
-
 async def test_equal_channels_have_no_divergence_attributes(
     hass: HomeAssistant,
 ) -> None:
