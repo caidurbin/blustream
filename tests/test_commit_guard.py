@@ -49,6 +49,8 @@ DENY = [
     "git status\ngit commit -n",
     "cat <<EOF\nx\nEOF\ngit commit --no-verify",  # here-doc then the bypass
     "if true; then git commit --no-verify; fi",  # leading shell keyword
+    "git commit -nu",  # real -n precedes -u (--untracked-files), still a bypass
+    "git commit -uno -n",  # legit -uno, but a real -n token follows
 ]
 
 # --- must ALLOW: the false-positive classes the hardening fixes, plus normals.
@@ -84,6 +86,11 @@ ALLOW = [
     'git commit -am"green"',
     "git commit -mn",  # message is literally "n"
     "git commit -m 'a\nb'",  # newline inside a quoted message stays data
+    # attached-value short options whose value contains an "n" are not the -n flag
+    "git commit -uno",  # --untracked-files=no
+    "git commit -unormal -m wip",  # --untracked-files=normal, then a message
+    "git commit -Sname",  # --gpg-sign=<keyid containing n>
+    "git commit -S -m wip",  # bare --gpg-sign (default key), never eats "wip"
 ]
 
 # --- must fail OPEN (allow) on malformed input rather than wedge ---

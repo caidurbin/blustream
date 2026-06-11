@@ -80,6 +80,13 @@ _VALUE_OPTS = {
 }
 # Short value-option letters, for clustered forms like ``-am <msg>``.
 _VALUE_LETTERS = set("mFcCt")
+# Short options taking an *optional, attached-only* value: ``-u[<mode>]``
+# (--untracked-files) and ``-S[<keyid>]`` (--gpg-sign). Like the value letters
+# they terminate the boolean part of a cluster -- everything after them is the
+# value, so ``-uno`` / ``-Skeyid`` is not misread as carrying ``-n`` -- but
+# unlike them they never consume the *next* token (the value is attached, or
+# defaults when absent).
+_ATTACHED_VALUE_LETTERS = set("uS")
 
 # git-level options (before the subcommand) that consume the following token.
 _GIT_VALUE_OPTS = {
@@ -186,14 +193,18 @@ def _scan_commit_options(opts: list[str]) -> str | None:
             # rest of the cluster as its attached value (``-mfix``) or, if it is
             # the last letter, the next token (``-am <msg>``). ``n`` means
             # --no-verify only when it appears *before* that value letter, so a
-            # message value that merely contains "n" (``-mdone``) is not misread.
+            # message value that merely contains "n" (``-mdone``), or an
+            # attached-value option like ``-uno`` / ``-Skeyid``, is not misread.
             cluster = a[1:]
             consumes_next = False
             boolean_part = cluster
             for idx, ch in enumerate(cluster):
-                if ch in _VALUE_LETTERS:
+                if ch in _VALUE_LETTERS or ch in _ATTACHED_VALUE_LETTERS:
                     boolean_part = cluster[:idx]
-                    consumes_next = idx == len(cluster) - 1
+                    # m/F/c/C/t take the next token when they end the cluster
+                    # (``-am <msg>``); u/S take only an attached value and never
+                    # consume the next token.
+                    consumes_next = ch in _VALUE_LETTERS and idx == len(cluster) - 1
                     break
             if "n" in boolean_part:
                 return _SHORT_N

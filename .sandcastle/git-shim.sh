@@ -89,7 +89,8 @@ if [ "$sub" = "commit" ]; then
         # the rest of the cluster as its attached value (-mfix) or, if it is the
         # last letter, the next token (-am <msg>). `n` means --no-verify only
         # when it appears before that value letter, so a message value that
-        # merely contains n (-mdone) is not misread.
+        # merely contains n (-mdone), or an attached-value option like -uno
+        # (--untracked-files) / -Skeyid (--gpg-sign), is not misread.
         cluster="${a#-}"
         boolean_part="$cluster"
         consumes_next=0
@@ -99,6 +100,12 @@ if [ "$sub" = "commit" ]; then
             [mFcCt])
               boolean_part="${cluster:0:$idx}"
               [ "$idx" -eq "$((${#cluster} - 1))" ] && consumes_next=1
+              break
+              ;;
+            [uS])
+              # optional attached-only value: terminates the cluster but never
+              # consumes the next token (-uno, -Skeyid, or bare -u/-S).
+              boolean_part="${cluster:0:$idx}"
               break
               ;;
           esac
