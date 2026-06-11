@@ -37,10 +37,11 @@ If applicable, use RGR to complete the task.
 
 Before committing, run:
 
+- `ruff format .` — formats in place; the commit hook rejects unformatted code
 - `ruff check blustream tests`
 - `pytest`
 
-Both must pass.
+`ruff check` and `pytest` must pass.
 
 # COMMIT
 

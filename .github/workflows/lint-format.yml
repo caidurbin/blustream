@@ -1,0 +1,42 @@
+name: "Lint: format"
+
+# Server-side backstop for the ruff-format pre-commit hook, which is otherwise
+# local-only (see .pre-commit-config.yaml) -- the one local hook without a CI
+# twin. Catches unformatted code that reaches main via any path that skips the
+# local hook: a host without `pre-commit install`, `SKIP=ruff-format`, or a
+# direct push. Honors [tool.ruff] exclude, so the generated _generated.py
+# (ADR-0007) is left alone, matching the hook.
+#
+# No path filter (like lint-library.yml / lint-cli.yml, the sibling ruff jobs):
+# a formatting gate must not be skippable by touching a .py file on a path that
+# dodges a filter.
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked --extra dev
+
+      - name: Run ruff format --check
+        # --check is the gate (non-zero if anything is unformatted); --diff makes
+        # a failure self-explanatory in the log. `.` honors [tool.ruff] exclude.
+        run: uv run ruff format --check --diff .
