@@ -9,9 +9,13 @@ pins parse, so the checker itself can't crash on malformed input.
 
 from __future__ import annotations
 
+import io
 import json
+import urllib.error
+import urllib.request
 from pathlib import Path
 
+import pytest
 from packaging.requirements import Requirement
 
 import tools.check_manifest_requirements_published as guard
@@ -84,6 +88,42 @@ class TestInstallableVersions:
         # == pin (PEP 592), so a yanked-but-present version stays installable.
         releases = {"0.3.0": [{"filename": "c.whl", "yanked": True}]}
         assert installable_versions(releases) == ["0.3.0"]
+
+
+class TestPublishedVersions:
+    """The PyPI fetch maps the JSON payload through installable_versions and
+    treats an unknown project (404) as 'no releases' while letting other
+    network errors fail the release closed."""
+
+    @staticmethod
+    def _urlopen_returning(payload):
+        def _open(url, timeout=None):
+            return io.BytesIO(json.dumps(payload).encode())
+
+        return _open
+
+    @staticmethod
+    def _urlopen_raising(code):
+        def _open(url, timeout=None):
+            raise urllib.error.HTTPError(url, code, "boom", None, None)
+
+        return _open
+
+    def test_maps_payload_and_drops_fileless_versions(self, monkeypatch):
+        payload = {"releases": {"0.1.0": [{"filename": "a.whl"}], "0.2.0": []}}
+        monkeypatch.setattr(urllib.request, "urlopen", self._urlopen_returning(payload))
+        assert guard.published_versions("blustream") == ["0.1.0"]
+
+    def test_unknown_project_404_returns_empty(self, monkeypatch):
+        monkeypatch.setattr(urllib.request, "urlopen", self._urlopen_raising(404))
+        assert guard.published_versions("does-not-exist") == []
+
+    def test_other_http_error_propagates(self, monkeypatch):
+        # A 503/transient failure must NOT be read as "unpublished" -- it
+        # propagates so the release fails closed rather than false-passing.
+        monkeypatch.setattr(urllib.request, "urlopen", self._urlopen_raising(503))
+        with pytest.raises(urllib.error.HTTPError):
+            guard.published_versions("blustream")
 
 
 class TestMain:
