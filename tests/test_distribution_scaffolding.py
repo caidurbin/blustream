@@ -31,6 +31,7 @@ LICENSE_PATH = REPO_ROOT / "LICENSE"
 WORKFLOWS_DIR = REPO_ROOT / ".github" / "workflows"
 RELEASE_PYPI_PATH = WORKFLOWS_DIR / "release-pypi.yml"
 RELEASE_C4Z_PATH = WORKFLOWS_DIR / "release-c4z.yml"
+RELEASE_HACS_PATH = WORKFLOWS_DIR / "release-hacs.yml"
 README_PATH = REPO_ROOT / "README.md"
 
 
@@ -167,6 +168,90 @@ class TestReleaseC4zWorkflow:
                 if "contents" in permissions:
                     break
         assert permissions.get("contents") == "write"
+
+
+class TestReleaseHacsWorkflow:
+    """Acceptance: ``hacs-v*`` tags publish a GitHub release, gated on a
+    check that the manifest's pinned requirements are published on PyPI."""
+
+    def test_workflow_file_exists(self):
+        assert RELEASE_HACS_PATH.is_file()
+
+    def test_triggers_only_on_hacs_v_prefixed_tags(self):
+        wf = _load_workflow(RELEASE_HACS_PATH)
+        triggers = wf["on"]
+        assert "hacs-v*" in triggers["push"]["tags"]
+        # The library (v*) and driver (c4-v*) lanes must not fire here, or
+        # a library/driver tag would publish an integration release.
+        assert "v*" not in triggers["push"]["tags"]
+        assert "c4-v*" not in triggers["push"]["tags"]
+
+    def test_runs_on_ubuntu(self):
+        wf = _load_workflow(RELEASE_HACS_PATH)
+        jobs = wf["jobs"]
+        assert any(
+            str(job.get("runs-on", "")).startswith("ubuntu") for job in jobs.values()
+        )
+
+    def test_workflow_grants_contents_write_permission(self):
+        # Creating a GitHub release requires contents: write; accept it at
+        # workflow or job scope (the requirements guard job is read-only).
+        wf = _load_workflow(RELEASE_HACS_PATH)
+        scopes = [wf.get("permissions") or {}]
+        scopes += [job.get("permissions") or {} for job in wf["jobs"].values()]
+        assert any(scope.get("contents") == "write" for scope in scopes)
+
+    def test_guards_that_manifest_requirements_are_published(self):
+        # The hacs-v0.2.0 regression: the manifest pinned blustream==0.3.0
+        # before its v0.3.0 PyPI release, so HA could not install it after a
+        # restart. The release must run the published-requirements guard so
+        # an unsatisfiable pin fails the release, not users' setups.
+        text = RELEASE_HACS_PATH.read_text()
+        assert "tools/check_manifest_requirements_published.py" in text
+
+    def test_requirements_guard_gates_the_release(self):
+        # The guard only protects the release if the release job waits on
+        # it. Assert the job that creates the GitHub release ``needs`` the
+        # job that runs the guard, so a future edit can't leave the guard
+        # running in parallel (or dropped) while the release still ships.
+        wf = _load_workflow(RELEASE_HACS_PATH)
+        jobs = wf["jobs"]
+        release_jobs = {
+            name: job
+            for name, job in jobs.items()
+            if "softprops/action-gh-release" in yaml.safe_dump(job)
+        }
+        guard_jobs = {
+            name
+            for name, job in jobs.items()
+            if "check_manifest_requirements_published" in yaml.safe_dump(job)
+        }
+        assert release_jobs, "expected a job that creates the GitHub release"
+        assert guard_jobs, "expected a job that runs the requirements guard"
+        for name, job in release_jobs.items():
+            needs = job.get("needs") or []
+            if isinstance(needs, str):
+                needs = [needs]
+            assert guard_jobs & set(needs), (
+                f"release job '{name}' must `needs` the requirements guard"
+            )
+
+    def test_requirements_guard_is_not_neutered(self):
+        # `needs` only gates the release if the guard job actually fails on a
+        # bad pin. A `continue-on-error: true` on the job or its steps would
+        # let the guard "succeed" despite a non-zero exit, reopening the hole
+        # while the gating test above still passed.
+        wf = _load_workflow(RELEASE_HACS_PATH)
+        for name, job in wf["jobs"].items():
+            if "check_manifest_requirements_published" not in yaml.safe_dump(job):
+                continue
+            assert job.get("continue-on-error") is not True, (
+                f"guard job '{name}' must not set continue-on-error"
+            )
+            for step in job.get("steps", []):
+                assert step.get("continue-on-error") is not True, (
+                    f"a step in guard job '{name}' must not set continue-on-error"
+                )
 
 
 class TestReadmeDescribesAllThreeComponents:

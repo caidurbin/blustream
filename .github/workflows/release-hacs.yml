@@ -23,21 +23,58 @@ name: Release (HACS)
 # Control4 `.c4z` basename carries no version and its driver.xml
 # `<version>` is a decoupled integer for Composer update detection, so
 # release-c4z.yml has no tag-vs-version guard at all.)
+#
+# A second guard runs first: Home Assistant pip-installs the manifest
+# `requirements` at setup time, so a release that pins a version absent
+# from PyPI installs fine in this repo yet aborts on the user's box with
+# "No solution found when resolving dependencies" (the blustream==0.3.0 /
+# hacs-v0.2.0 regression). The `verify-requirements` job below fails the
+# release if any pin is unpublished. It runs ONLY here, on the release
+# tag -- never on PRs/main, where this monorepo legitimately holds a pin
+# ahead of its PyPI release while library and integration co-develop. It
+# also runs third-party code (`pip install packaging`) and so is scoped
+# `contents: read`; the release job that holds `contents: write` runs no
+# dependency code, mirroring release-pypi.yml's build/publish split.
 
 on:
   push:
     tags:
       - "hacs-v*"
 
-permissions:
-  # Creating a GitHub release requires write access to repository contents.
-  # Without this the publish step fails with HTTP 403.
-  contents: write
+# No workflow-wide privileges; each job requests only what it needs.
+permissions: {}
 
 jobs:
+  verify-requirements:
+    name: Verify manifest requirements are published on PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+
+      - name: Check manifest requirements resolve on PyPI
+        # Exits non-zero (with a ::error:: annotation per offender) if any
+        # manifest pin has no published release that satisfies it, so the
+        # `release` job below never runs against an unresolvable library.
+        run: |
+          python -m pip install --quiet --disable-pip-version-check packaging
+          python tools/check_manifest_requirements_published.py \
+            custom_components/blustream/manifest.json
+
   release:
     name: Publish GitHub release for HACS
+    needs: verify-requirements
     runs-on: ubuntu-latest
+    permissions:
+      # Creating a GitHub release requires write access to repository
+      # contents. Without this the publish step fails with HTTP 403.
+      contents: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
