@@ -894,16 +894,18 @@ class _SingleReaderConnection(Connection):
     """A connection that mimics the one shared telnetlib3 reader.
 
     The integration shares a single ``TCPConnection`` — and therefore a single
-    ``telnetlib3.TelnetReader`` (an ``asyncio.StreamReader`` subclass) — between
-    the coordinator's status poll and every service call. asyncio's reader
+    ``telnetlib3`` reader — between the coordinator's status poll and every
+    service call. That reader carries its own single-waiter guard (telnetlib3
+    reimplements asyncio's ``_wait_for_data`` rather than subclassing
+    ``asyncio.StreamReader``): awaiting ``read()`` from two coroutines at once
     raises ``RuntimeError("read() called while another coroutine is already
-    waiting for incoming data")`` if two coroutines await ``read()`` at once.
+    waiting for incoming data")``.
 
     This stand-in reproduces that exact guard: a second ``read_until`` entered
     while one is still in flight raises the same error. It also returns ``str``,
-    as telnetlib3 does (a raw ``asyncio.StreamReader`` returns ``bytes``).
-    Replies are handed out one per ``read_until`` from a queue the test feeds,
-    so the in-flight window is controlled with no sleeps.
+    as telnetlib3's reader does with an encoding set (the default). Replies are
+    handed out one per ``read_until`` from a queue the test feeds, so the
+    in-flight window is controlled with no sleeps.
     """
 
     def __init__(self) -> None:
