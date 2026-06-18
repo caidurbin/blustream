@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import timedelta
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -34,6 +35,18 @@ from custom_components.blustream.const import DOMAIN  # noqa: E402
 from custom_components.blustream.diagnostics import (  # noqa: E402
     async_get_config_entry_diagnostics,
 )
+
+# diagnostics.py reports the integration's manifest ``version``; read it from
+# the manifest here too so this assertion can't drift on a version bump (it
+# previously hard-coded "0.1.0" and broke when the integration went to 0.2.0).
+INTEGRATION_VERSION = json.loads(
+    (
+        Path(__file__).resolve().parents[3]
+        / "custom_components"
+        / "blustream"
+        / "manifest.json"
+    ).read_text(encoding="utf-8")
+)["version"]
 
 HOST = "192.0.2.10"
 MAC = "34:d0:b8:21:22:33"
@@ -126,7 +139,7 @@ async def test_diagnostics_returns_expected_shape(hass: HomeAssistant) -> None:
 
     assert data["status"] == _make_status().to_dict()
     assert data["uptime_raw"] == UPTIME_RAW
-    assert data["integration_version"] == "0.1.0"
+    assert data["integration_version"] == INTEGRATION_VERSION
     assert data["library_version"] == LIBRARY_VERSION
 
 
