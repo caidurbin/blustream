@@ -1,5 +1,6 @@
 """Abstract base device class for Blustream devices."""
 
+import asyncio
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
@@ -37,6 +38,13 @@ class BlustreamDevice(ABC):
         self._connected = False
         self._command_log_path = command_log_path
         self._response_timeout = response_timeout
+        # Serialises full request/response cycles over the single shared
+        # connection. The device fronts one telnetlib3 reader, which raises
+        # ``RuntimeError("read() called while another coroutine is already
+        # waiting for incoming data")`` if two coroutines read at once — e.g.
+        # a Home Assistant service call landing mid-poll. One transaction at a
+        # time on the wire (Python >=3.12, so constructing here binds no loop).
+        self._command_lock = asyncio.Lock()
 
     def _log_command(self, command: str) -> None:
         if not self._command_log_path:
@@ -100,6 +108,14 @@ class BlustreamDevice(ABC):
         per-command branching here, no sleep/quick-read heuristics, no
         substring sentinels. All that knowledge lives in the terminator
         the caller supplies.
+
+        The send-then-read pair is held under ``_command_lock`` so a command
+        and the status poll (or two commands) can't interleave their reads on
+        the one shared connection — overlapping reads on the underlying
+        telnetlib3 reader raise ``RuntimeError`` and surface as a spurious
+        ``CommandError``. The lock makes transactions atomic, not merely the
+        individual reads. It is not reentrant: no code path calls
+        ``send_command`` while already holding it.
         """
         if not self.is_connected:
             raise ConnectionError(
@@ -111,8 +127,9 @@ class BlustreamDevice(ABC):
         budget = timeout if timeout is not None else self._response_timeout
 
         try:
-            await self._connection.send(command.encode("utf-8") + b"\r\n")
-            return await self._connection.read_until(terminator, timeout=budget)
+            async with self._command_lock:
+                await self._connection.send(command.encode("utf-8") + b"\r\n")
+                return await self._connection.read_until(terminator, timeout=budget)
         except (ConnectionError, TimeoutError) as e:
             raise CommandError(
                 f"Command execution failed: {str(e)}. Please check the device connection and try again."
