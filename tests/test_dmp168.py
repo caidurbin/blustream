@@ -1,10 +1,14 @@
 """Tests for DMP168 device."""
 
+import asyncio
+from collections.abc import Callable
 from datetime import timedelta
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from blustream.base.connection import Connection
 from blustream.base.exceptions import CommandError, ConnectionError, ValidationError
 from blustream.devices.dmp168.commands import (
     build_output_volume_command,
@@ -881,3 +885,119 @@ class TestDMP168Device:
 
         with pytest.raises(ParseError):
             await device.get_uptime()
+
+
+_STATUS_FIXTURE = Path(__file__).resolve().parent / "fixtures/status_live_full.txt"
+
+
+class _SingleReaderConnection(Connection):
+    """A connection that mimics the one shared telnetlib3 reader.
+
+    The integration shares a single ``TCPConnection`` — and therefore a single
+    ``telnetlib3.TelnetReader`` (an ``asyncio.StreamReader`` subclass) — between
+    the coordinator's status poll and every service call. asyncio's reader
+    raises ``RuntimeError("read() called while another coroutine is already
+    waiting for incoming data")`` if two coroutines await ``read()`` at once.
+
+    This stand-in reproduces that exact guard: a second ``read_until`` entered
+    while one is still in flight raises the same error. It also returns ``str``,
+    as telnetlib3 does (a raw ``asyncio.StreamReader`` returns ``bytes``).
+    Replies are handed out one per ``read_until`` from a queue the test feeds,
+    so the in-flight window is controlled with no sleeps.
+    """
+
+    def __init__(self) -> None:
+        self._connected = True
+        self._reading = False
+        self.read_in_flight = asyncio.Event()
+        self.sent: list[bytes] = []
+        self._responses: asyncio.Queue[str] = asyncio.Queue()
+
+    def feed_response(self, text: str) -> None:
+        """Queue the full reply the next ``read_until`` will return."""
+        self._responses.put_nowait(text)
+
+    async def connect(self) -> None:
+        self._connected = True
+
+    async def disconnect(self) -> None:
+        self._connected = False
+
+    def is_connected(self) -> bool:
+        return self._connected
+
+    async def send(self, data: bytes) -> None:
+        if not self._connected:
+            raise ConnectionError("Not connected")
+        self.sent.append(data)
+
+    async def read_until(self, predicate: Callable[[str], bool], timeout: float) -> str:
+        if self._reading:
+            raise RuntimeError(
+                "read() called while another coroutine is already "
+                "waiting for incoming data"
+            )
+        self._reading = True
+        self.read_in_flight.set()
+        try:
+            return await self._responses.get()
+        finally:
+            self._reading = False
+
+
+class TestConcurrentTransactionsSerialize:
+    """A shared connection must serialise overlapping request/response cycles.
+
+    Regression for the HA report: ``media_player.volume_mute`` fired while the
+    coordinator's 30s status poll was mid-read raised ``CommandError: An
+    unexpected error occurred during command execution: read() called while
+    another coroutine is already waiting for incoming data``.
+    """
+
+    @pytest.mark.asyncio
+    async def test_harness_reproduces_single_waiter_guard(self) -> None:
+        """Sanity: the fake reproduces the concurrent-read guard.
+
+        Without this, the serialisation test below could pass vacuously — a
+        fake that never rejects overlap would prove nothing.
+        """
+        conn = _SingleReaderConnection()
+        first = asyncio.create_task(conn.read_until(lambda _line: True, timeout=5))
+        await conn.read_in_flight.wait()
+
+        with pytest.raises(RuntimeError, match="already waiting for incoming data"):
+            await conn.read_until(lambda _line: True, timeout=5)
+
+        conn.feed_response("[SUCCESS]\r\n")
+        await first
+
+    @pytest.mark.asyncio
+    async def test_status_poll_and_mute_do_not_collide(self) -> None:
+        """A mute fired mid-poll waits its turn instead of racing the reader."""
+        conn = _SingleReaderConnection()
+        device = DMP168(host="192.0.2.100", connection=conn)
+        device._connected = True
+
+        status_text = _STATUS_FIXTURE.read_bytes().decode("utf-8")
+
+        # The coordinator's poll, left parked mid-read.
+        poll = asyncio.create_task(device.get_status())
+        await conn.read_in_flight.wait()
+
+        # The user mute, fired while the poll holds the reader (the reported
+        # scenario). It must queue behind the poll, not enter the reader.
+        mute = asyncio.create_task(device.set_output_mute(1, True))
+        await asyncio.sleep(0)
+
+        # Release the poll, then the mute — order is deterministic because the
+        # mute is serialised behind the poll.
+        conn.feed_response(status_text)
+        status = await poll
+
+        conn.feed_response("[SUCCESS]\r\n")
+        await mute  # pre-fix: raises the wrapped single-waiter CommandError
+
+        assert isinstance(status, SystemStatus)
+        # Both transactions reached the wire, in order: STATUS then the mute.
+        assert len(conn.sent) == 2
+        assert conn.sent[0].startswith(b"STATUS")
