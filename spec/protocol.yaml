@@ -62,6 +62,11 @@ commands:
     params: []
     wire: "TEMP"
 
+  help:
+    description: "Print the device help / command listing."
+    params: []
+    wire: "HELP"
+
   # --------- Power / standby / lifecycle ---------
 
   power_on:

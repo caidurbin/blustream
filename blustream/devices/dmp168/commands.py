@@ -24,6 +24,7 @@ from blustream.devices.dmp168.models import PresetStatus, SystemStatus
 build_status_command = gen.format_status
 build_uptime_command = gen.format_uptime
 build_temp_command = gen.format_temp
+build_help_command = gen.format_help
 build_power_on_command = gen.format_power_on
 build_power_off_command = gen.format_power_off
 build_standby_command = gen.format_standby
@@ -53,6 +54,19 @@ def _is_relative_adjustment(value: Any) -> bool:
 
 def _register_commands(registry: CommandRegistry) -> None:
     """Register all DMP168 commands with metadata."""
+
+    # Help — the device's ?/HELP command listing. Read-only diagnostic that
+    # returns the raw HELP text verbatim (framed in execute_command on its
+    # =-only footer, since HELP emits no [SUCCESS]/[ERROR] marker).
+    registry.register(
+        Command(
+            name="help",
+            description="Print the device help / command listing",
+            parameters=[],
+            handler=lambda **kwargs: gen.format_help(),
+            return_type=str,
+        )
+    )
 
     # Status command
     registry.register(

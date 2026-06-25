@@ -11,11 +11,12 @@ import pytest
 from blustream.base.connection import Connection
 from blustream.base.exceptions import CommandError, ConnectionError, ValidationError
 from blustream.devices.dmp168.commands import (
+    build_help_command,
     build_output_volume_command,
     build_power_on_command,
     build_status_command,
 )
-from blustream.devices.dmp168.device import DMP168
+from blustream.devices.dmp168.device import DMP168, _help_terminator
 from blustream.devices.dmp168.models import (
     OutputRouting,
     OutputSource,
@@ -115,6 +116,10 @@ class TestDMP168Commands:
     def test_build_status_command(self):
         """Test STATUS command builder."""
         assert build_status_command() == "STATUS"
+
+    def test_build_help_command(self):
+        """Test HELP command builder."""
+        assert build_help_command() == "HELP"
 
     def test_build_power_on_command(self):
         """Test PON command builder."""
@@ -399,6 +404,64 @@ class TestDMP168Device:
         assert "status" in commands
         assert "power_on" in commands
         assert "output_volume" in commands
+        assert "help" in commands
+
+    def test_help_terminator_frames_on_footer_after_header(self):
+        """HELP has no [SUCCESS] marker; the predicate fires on the =-only
+        footer, and only after the help header arms it — so a welcome-banner
+        =-only sentinel arriving first can't end the read early."""
+        predicate = _help_terminator()
+        footer = "=" * 64 + "\r\n"
+        # Banner sentinel before the header must NOT fire (not yet armed).
+        assert predicate(footer) is False
+        # Header arms the predicate.
+        assert predicate("?/HELP                 Print Help Information\r\n") is False
+        # Section headers carry text -> not =-only -> never fire.
+        assert predicate("======================= System Control Command\r\n") is False
+        # The closing =-only footer fires.
+        assert predicate(footer) is True
+
+    @pytest.mark.asyncio
+    @patch("blustream.devices.dmp168.device.TCPConnection")
+    async def test_execute_command_help_sends_help_and_returns_listing(
+        self, mock_connection_class
+    ):
+        """execute_command('help') sends HELP and returns the raw listing."""
+        listing = (
+            "DMP168 Help Info\r\n"
+            "======================= System Control Command\r\n"
+            "REBOOT                 Set System Reboot\r\n"
+            "================================================================\r\n"
+        )
+        mock_conn = MagicMock()
+        mock_conn.send = AsyncMock()
+        mock_conn.read_until = AsyncMock(return_value=listing)
+        mock_conn.is_connected = MagicMock(return_value=True)
+        mock_conn.connect = AsyncMock()
+        mock_connection_class.return_value = mock_conn
+
+        device = DMP168(host="192.0.2.100")
+        await device.connect()
+        result = await device.execute_command("help")
+
+        mock_conn.send.assert_awaited_once_with(b"HELP\r\n")
+        assert "REBOOT                 Set System Reboot" in result
+        # Raw listing returned verbatim, only the outer CRLF stripped.
+        assert result.startswith("DMP168 Help Info")
+        assert not result.endswith("\r\n")
+
+    @pytest.mark.asyncio
+    @patch("blustream.devices.dmp168.device.TCPConnection")
+    async def test_get_help_delegates_to_execute_command(self, mock_connection_class):
+        """The high-level get_help() wrapper delegates to execute_command('help')."""
+        mock_connection_class.return_value = MagicMock()
+        device = DMP168(host="192.0.2.100")
+        device.execute_command = AsyncMock(return_value="DMP168 Help Info ...")
+
+        result = await device.get_help()
+
+        device.execute_command.assert_awaited_once_with("help")
+        assert result == "DMP168 Help Info ..."
 
     @pytest.mark.asyncio
     @patch("blustream.devices.dmp168.device.TCPConnection")

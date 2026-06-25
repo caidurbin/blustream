@@ -2,7 +2,7 @@
 
 DO NOT EDIT. Regenerate with: python -m spec.codegen.emit_python
 Source: spec/protocol.yaml
-Spec hash: 69d3d20d2ec63493
+Spec hash: 45fac3c9db9e5834
 Device: Blustream dmp168
 Firmware baseline: 1.5.0
 """
@@ -27,6 +27,11 @@ def format_uptime() -> str:
 def format_temp() -> str:
     """Get system temperature."""
     return 'TEMP'
+
+
+def format_help() -> str:
+    """Print the device help / command listing."""
+    return 'HELP'
 
 
 def format_power_on() -> str:

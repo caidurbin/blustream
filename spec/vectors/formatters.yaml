@@ -40,6 +40,11 @@ vectors:
     args: {}
     expected_wire: "TEMP"
 
+  - name: help emits literal HELP
+    op: help
+    args: {}
+    expected_wire: "HELP"
+
   # ---------- Power / lifecycle (no params) ----------
 
   - name: power_on emits literal PON
