@@ -5,6 +5,20 @@ here. The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and the project follows the `v*` release lane published to PyPI (see
 `.github/workflows/release-pypi.yml`).
 
+## [Unreleased]
+
+### Added
+
+- `DMP168.get_help()` and a `help` CLI command — send the device's `?/HELP`
+  and return its raw command listing verbatim. The device's HELP is the
+  authoritative record of the commands its firmware supports; the published
+  API doc and user manual have been observed to drift from it (the REVA1
+  manual mislabels `REBOOT` as "Set System Key Control", whereas the live
+  V1.5.0 firmware reports "Set System Reboot" — surfaced in #78). HELP emits
+  no `[SUCCESS]`/`[ERROR]` marker, so it is framed on the listing's `=`-only
+  footer. Defined in `spec/protocol.yaml` and covered by the shared formatter
+  vectors like every other command.
+
 ## [0.3.0] - 2026-06-07
 
 Typed output sources and output settings in `SystemStatus`, so a single

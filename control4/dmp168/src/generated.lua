@@ -2,7 +2,7 @@
 --
 -- DO NOT EDIT. Regenerate with: python -m spec.codegen.emit_lua
 -- Source: spec/protocol.yaml
--- Spec hash: 69d3d20d2ec63493
+-- Spec hash: 45fac3c9db9e5834
 -- Device: Blustream dmp168
 -- Firmware baseline: 1.5.0
 
@@ -25,6 +25,11 @@ end
 function M.format_temp(_)
     -- Get system temperature.
     return "TEMP"
+end
+
+function M.format_help(_)
+    -- Print the device help / command listing.
+    return "HELP"
 end
 
 function M.format_power_on(_)

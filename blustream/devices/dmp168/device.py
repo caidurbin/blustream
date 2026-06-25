@@ -53,6 +53,37 @@ def _status_terminator() -> Callable[[str], bool]:
     return predicate
 
 
+def _help_terminator() -> Callable[[str], bool]:
+    """Stateful predicate that fires on the ``=``-only footer of HELP.
+
+    ``HELP`` (``?/HELP`` in the protocol) streams a multi-section command
+    listing with no ``[SUCCESS]``/``[ERROR]`` marker; it ends with a
+    ``=``-only rule before the trailing DSP-utilisation prose. The
+    section headers (``======= System Control Command``) carry text, so
+    they are never ``=``-only — only the closing rule is. As with
+    ``_status_terminator``, arm only AFTER the help header is seen so a
+    welcome-banner ``=``-only sentinel (the device re-broadcasts the
+    banner to every port-23 client on peer connect) can't end the read
+    before the listing has even started.
+    """
+    armed = False
+
+    def predicate(line: str) -> bool:
+        nonlocal armed
+        if not armed:
+            if "Help Info" in line or "Print Help Information" in line:
+                armed = True
+            return False
+        stripped = line.rstrip("\r\n")
+        return (
+            bool(stripped)
+            and len(stripped) >= STATUS_FOOTER_MIN_WIDTH
+            and set(stripped) == {"="}
+        )
+
+    return predicate
+
+
 class DMP168(BlustreamDevice):
     """DMP168 digital audio matrix processor device."""
 
@@ -159,6 +190,17 @@ class DMP168(BlustreamDevice):
                 timeout=STATUS_RESPONSE_TIMEOUT,
             )
             return self._parser.parse_status(response)
+
+        if name == "help":
+            # HELP has no [SUCCESS] marker; frame on its =-only footer and
+            # return the raw listing verbatim (no parsing).
+            return (
+                await self.send_command(
+                    cmd_str,
+                    terminator=_help_terminator(),
+                    timeout=STATUS_RESPONSE_TIMEOUT,
+                )
+            ).strip("\r\n")
 
         response = await self.send_command(cmd_str)
 
@@ -498,6 +540,15 @@ class DMP168(BlustreamDevice):
             Temperature string
         """
         return await self.execute_command("temp")
+
+    async def get_help(self) -> str:
+        """Return the device's raw ``?/HELP`` command listing.
+
+        A read-only diagnostic: the device's own authoritative record of the
+        commands its firmware supports (the published API doc and user manual
+        have been observed to drift from it). Returned verbatim.
+        """
+        return await self.execute_command("help")
 
     async def reboot(self) -> None:
         """Reboot the device."""
