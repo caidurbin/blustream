@@ -21,6 +21,11 @@ candidates survived; 7 were refuted with evidence).
    authoritative side; two findings flag conflicts where the *code* is plausibly the
    wrong side (R5, R23).
 
+**Status:** all 27 findings were walked through one-by-one on 2026-07-01 and each
+carries a **Resolution** paragraph recording the agreed disposition. Execution of the
+agreed edits is follow-up work; R23 is already tracked as issue
+[#83](https://github.com/caidurbin/blustream/issues/83).
+
 ## Priorities at a glance
 
 | #  | Sev | Doc | Finding |
@@ -53,6 +58,9 @@ POC" is genuinely project vocabulary, keep one tight `## Language` entry:
 deliberately narrow entity count; now historical (entity expansion landed in
 `hacs-v0.2.0` per ADR 0014). See ADR 0009."
 
+**Resolution (2026-07-01):** Delete the section entirely — no replacement glossary
+term. ADR 0009 is the sole home for the decision and rationale.
+
 ### R4 (high) — Shrink "Device identity" to a glossary entry
 
 The section is a smuggled spike report: firmware versions, the 52-command probe result,
@@ -70,6 +78,12 @@ detail not already in ADR 0010 into it: the concrete mDNS collision consequence 
 out-of-the-box units on one LAN collide on `dmp168.local` until renamed). The
 HELP-matches-published-API note can live in the spike doc, which 0010 already cites.
 
+**Resolution (2026-07-01):** Agreed as proposed: shrink to the one-sentence glossary
+entry linking ADR 0010; relocate the mDNS two-unit-collision consequence into ADR
+0010's zeroconf paragraph (composing with R21's wording fix there); the HELP-verbatim
+note stays in the spike doc (canonical for empirical findings per R1). Keep the term —
+device identity is genuine recurring project vocabulary.
+
 ### R8 (medium) — Adopt the CONTEXT-FORMAT structure
 
 The file follows none of the house glossary structure: no `## Language` section, terms
@@ -80,6 +94,13 @@ Uptime section's "prefer boot time … reserve uptime" guidance).
 **Fix:** Restructure to the template: a 1–2 sentence context description, then
 `## Language` with `**Term**:` entries (Uptime duration, Boot time, Source, Routing,
 Bus, Device identity, Gold-tier POC if kept), each 1–2 sentences with `_Avoid_:` lines.
+
+**Resolution (2026-07-01):** Adopt the template. Rebuild CONTEXT.md to the house
+format: context description, then `## Language` with `**Term**:` entries — Uptime
+duration, Boot time, Source, Routing, Bus, Device identity (no Gold-tier POC term, per
+R2) — each 1–2 sentences with `_Avoid_:` lines where synonyms exist. This is the
+umbrella restructure that R2/R4/R9/R10's per-entry resolutions compose into; execute as
+one rewrite of the file.
 
 ### R9 (medium) — Tighten "Source" and "Routing"; stop duplicating ADR 0014
 
@@ -97,6 +118,11 @@ ADR 0014." Soften "L and R move together" to "normally a stereo pair; per-channe
 divergence is possible via the web GUI (ADR 0014)". Leave the hardware-constraint
 argument and entity mapping solely in ADR 0014.
 
+**Resolution (2026-07-01):** Accepted as proposed. Source and Routing become the tight
+`## Language` entries above (with the softened stereo-pair sentence and `_Avoid_`
+lines); the hardware-constraint argument and HA entity mapping live solely in ADR 0014.
+The Bus entry is kept, tightened to the same shape.
+
 ### R10 (medium) — Split "Uptime" into two terms; drop the implementation paragraphs
 
 The entry opens with a correct one-line definition, then spends two paragraphs on
@@ -110,6 +136,11 @@ instant the device last booted, derived from uptime duration; the value HA's upt
 sensor reports. _Avoid_: uptime (for the derived datetime)." Delete the implementation
 paragraphs — ADR 0011 already records the typed-method boundary and the
 `timedelta → datetime` derivation.
+
+**Resolution (2026-07-01):** Accepted. Split into the two `## Language` entries above
+and delete the implementation paragraphs outright — no new home for the
+`get_uptime_raw()` / `SensorDeviceClass.UPTIME` mapping (ADR 0011 records the boundary
+and derivation; the specific names are visible in the code and sensor docstring).
 
 ---
 
@@ -131,6 +162,12 @@ tree (tags `hacs-v*`)", and add one sentence recording that the three tag prefix
 deliberately disjoint so a tag for one artifact cannot trigger another artifact's
 release workflow.
 
+**Resolution (2026-07-01):** Amend ADR 0008 in place, as proposed. The underlying
+decision (public OSS, three artifacts, independent releases) is unchanged — this
+completes the record rather than reversing it, so no supersession machinery; a separate
+release-lane ADR was considered and rejected as splitting one distribution story across
+two ADRs.
+
 ### R11 (medium) — ADR 0009 contradicts ADR 0012 on stale-device handling
 
 ADR 0009 lists "stale-device handling" among the surfaces built to Gold standard from
@@ -139,6 +176,11 @@ rule `exempt` (1:1 entry-to-device). ADR 0012 + `quality_scale.yaml` are authori
 
 **Fix:** In ADR 0009, drop "stale-device handling" from the surface list, or change it
 to "stale-device handling (later declared exempt — ADR 0012)".
+
+**Resolution (2026-07-01):** Drop "stale-device handling" from ADR 0009's surface list.
+The item was aspirational when written and turned out to be N/A (1:1 entry-to-device);
+removing it makes the list simply true, and ADR 0012 + `quality_scale.yaml` remain the
+record of the exemption.
 
 ### R5 (medium) — ADR 0005: make the port split explicit; reconcile the spec comment
 
@@ -157,6 +199,13 @@ the Lua driver (and is what `spec/protocol.yaml`'s `default_port` / generated
 to 23 via telnetlib3, which handles the IAC negotiation." Then reconcile the
 `spec/protocol.yaml` transport comment (code-side follow-up) to stop calling 8000 "the
 canonical port for automation clients".
+
+**Resolution (2026-07-01):** Option 1 — clarify the split on both sides: the ADR 0005
+sentence as proposed, plus the `spec/protocol.yaml` transport-comment fix (spec/codegen
+side) so the spec stops calling 8000 "the canonical port for automation clients". The
+alternative of making 8000 canonical for the Python side too (code behavior change) was
+considered and rejected — it contradicts ADR 0005's recorded decision with no driver
+beyond comment consistency.
 
 ### R7 (medium) — ADR 0012 bundles seven sub-decisions and duplicates in-repo rationale
 
@@ -180,6 +229,15 @@ the rest: per-rule reasoning stays solely in `quality_scale.yaml`, CI-tooling ra
 stays in the workflow headers, and the `VERSION`/`MINOR_VERSION` rationale becomes a
 comment next to those attributes in `config_flow.py`.
 
+**Resolution (2026-07-01):** Option 1 — trim to a tight core ADR keeping the five
+surprising, hard-to-reverse choices as short bold-lead items (test location, coverage
+split, pinned-HA + daily cron, `py.typed` from v0.1.0, `"loggers"` rationale — the last
+stays in the ADR because JSON manifests can't carry comments). Relocations as proposed:
+per-rule reasoning lives solely in `quality_scale.yaml`, CI detail in workflow headers,
+`VERSION`/`MINOR_VERSION` rationale as a `config_flow.py` comment; drop the `rm -rf`
+folklore sentence. Splitting into multiple ADRs was considered and rejected as
+ceremony.
+
 ### R13 (medium) — ADR 0013: drop the brittle test count and the dangling deferral
 
 "All 309 tests pass on each" no longer matches CI (the library lane alone collects 413
@@ -192,6 +250,12 @@ vulnerable dep was dev-only). Replace the count with "the full test suite passes
 each matrix leg" and delete the "Deferred to a dedicated `style:` commit" sentence
 (see also R23).
 
+**Resolution (2026-07-01):** Agreed as proposed: keep the decision and why-3.12
+paragraphs; count becomes "the full test suite passes on each matrix leg"; scope
+paragraph compresses to a one-sentence `## Consequences`; the deferred-`style:`-commit
+sentence is deleted, with the underlying ruff `target-version` loose end handed to
+R23's resolution (tracking issue or the bump itself).
+
 ### R14 (medium) — ADR 0012: dead "Q12 grilling transcript" citation
 
 "see Q12 grilling transcript / future ADR if revisited" points at a conversation
@@ -201,6 +265,11 @@ transcript that is not in the repository and is unrecoverable.
 entry-to-device — full rationale in `quality_scale.yaml`'s rule comment)". Adopt as a
 house rule: never cite conversation transcripts from ADRs; distill the rationale inline
 or into a committed file.
+
+**Resolution (2026-07-01):** Fix the citation as proposed (folds into R7's rewrite of
+ADR 0012 — the trimmed ADR must not carry the dead pointer forward). The formal
+house-rule codification was considered and skipped — no rule text gets added to the
+skill or docs/agents/; the practice is applied here without being legislated.
 
 ### R15 (medium) — Add `date:` frontmatter to ADRs anchored to external timelines
 
@@ -214,6 +283,11 @@ carries `applies_to`, so this composes with the house format at zero structural 
 at minimum on 0010/0012/0013, ideally all, backfilled from `git log`. Do not add full
 Status headers wholesale; the house format reserves those for revisited decisions.
 
+**Resolution (2026-07-01):** All 14 numbered ADRs get `date:` frontmatter, backfilled
+from each file's first-commit date in `git log`; new ADRs get a date at creation.
+Status frontmatter is still not added wholesale — reserved for revisited decisions per
+the house format.
+
 ### R16 (medium) — Missing ADR: the identifier-hygiene harness
 
 The secret-scanning decision — betterleaks with custom IPv4/IPv6/MAC rules, the policy
@@ -226,6 +300,14 @@ clears the house bar: hard to reverse (history was rewritten to enforce it — i
 
 **Fix:** Add ADR 0015, 2–3 sentences per the house format, pointing at
 `docs/secret-scanning-allowlist.md` for the operational mechanics.
+
+**Resolution (2026-07-01):** Add ADR 0015 as proposed: committed identifiers must use
+IETF documentation ranges; betterleaks pre-commit + CI gate with custom IP/MAC rules;
+the Blustream OUI prefix as the one allowed real value; violations resolved by moving
+the value into a documentation range, not widening the allowlist; pointer to
+`docs/secret-scanning-allowlist.md` for mechanics. Frontmatter uses
+`applies_to: [repo]` — the taxonomy's first repo-wide value, adopted deliberately for
+cross-artifact decisions.
 
 ### R18 (low) — ADR 0010: trim pinned call signatures into optional sections
 
@@ -245,6 +327,13 @@ DHCP callbacks to configured entries). Retitle the last two paragraphs as
 `## Consequences` and `## Considered Options` (keep the PR citations). Point to the
 spike doc for the MA-M analysis.
 
+**Resolution (2026-07-01):** Accepted as proposed — trim in place, no code changes;
+keep the two non-obvious constraints (7-hex-digit prefix, `registered_devices: true`);
+`## Consequences` + `## Considered Options` with PR citations; signatures dropped;
+MA-M analysis delegated to the spike doc. Execute as a single ADR 0010 rewrite
+composing R4 (collision consequence moves in), R20 (supersession wording), and R21
+(hostname wording).
+
 ### R20 (low) — ADR 0010: plan supersession, not in-place revision
 
 The rejected-alternatives paragraph anticipates being edited in place ("a future
@@ -254,6 +343,9 @@ in-place revision would obscure why the discovered/manual/entry-id chain existed
 
 **Fix:** Reword the final clause: "…supersedes the discovered/manual fallback chain;
 record that decision in a new ADR and mark this one `status: superseded by ADR-NNNN`."
+
+**Resolution (2026-07-01):** Accepted — reword as proposed; no status frontmatter added
+now. Part of the single ADR 0010 rewrite (with R4, R18, R21).
 
 ### R21 (low) — ADR 0010 vs CONTEXT.md: "fixed" vs "user-configurable" mDNS hostname
 
@@ -268,6 +360,10 @@ carry stable identity) is unchanged.
 `DMP168.local` (user-renameable via the web GUI, never MAC-derived), and TXT records
 carry no identity, so zeroconf cannot supply a stable identifier."
 
+**Resolution (2026-07-01):** Accepted — reword as proposed; the same paragraph absorbs
+R4's relocated two-unit-collision consequence (including the renamed-unit
+zeroconf-matcher caveat). Part of the single ADR 0010 rewrite.
+
 ### R22 (low) — ADR 0013: wrong citation for the wheel-contents claim
 
 The wheel-contents claim is code-accurate, but its "(ADR 0008)" citation points at an
@@ -277,6 +373,10 @@ stays available for the Python CLI).
 
 **Fix:** Drop the citation or replace it: "(see `pyproject.toml`; port-23 telnet
 support per ADR 0005)".
+
+**Resolution (2026-07-01):** Replace the citation with "(see `pyproject.toml`; port-23
+telnet support per ADR 0005)" — the corrected pointer does real work now that R5 makes
+ADR 0005 explicitly own the port-split story.
 
 ### R23 (low) — ADR 0013: the deferred ruff bump never landed and has no tracking pointer
 
@@ -290,6 +390,13 @@ plausibly the wrong side.
 land the bump and append "(done in `<commit>`)". Either way the deferral note
 self-resolves.
 
+**Resolution (2026-07-01):** Tracked as issue
+[#83](https://github.com/caidurbin/blustream/issues/83) (filed during this review after
+confirming no existing issue covered it — searched all 81 open+closed). The ADR gets no
+pointer since R13 deletes the deferral sentence; the issue is the tracking. Landing the
+bump inside this docs pass was rejected — ADR 0013's keep-the-style-diff-separate logic
+still holds.
+
 ### R24 (low) — ADRs 0001/0002/0004/0005: "future HA integration" is no longer future
 
 All four still say "future HA integration" ("future HA" in 0004), but the integration
@@ -299,6 +406,10 @@ unchanged; the framing makes these ADRs read as older than the shipped state.
 **Fix:** One-word sweep: "the future HA integration" → "the HA integration" (in 0001,
 optionally "…exposes more than routing — see ADR 0014"). No status frontmatter needed.
 
+**Resolution (2026-07-01):** Accepted — sweep all four ADRs (0001/0002/0004/0005); in
+ADR 0001 the closing clause becomes "the HA integration exposes more than routing — see
+ADR 0014" since the *may* has resolved. No status frontmatter.
+
 ### R25 (low) — ADR 0006: `DEBUG_MODE` is not the shipped property name
 
 The ADR names the property `DEBUG_MODE`, but the shipped Composer property is
@@ -307,6 +418,9 @@ The ADR names the property `DEBUG_MODE`, but the shipped Composer property is
 
 **Fix:** Change the ADR text to "A `Debug Mode` Property gates verbose `print()`
 output…".
+
+**Resolution (2026-07-01):** Accepted — rename to `Debug Mode` in ADR 0006, matching
+the shipped Composer property surface the dealer actually sees.
 
 ### R26 (low) — ADR 0014: consequence sentence is narrower than shipped behavior
 
@@ -320,6 +434,9 @@ L-only.
 channels are muted; writes always target both channels; divergence is surfaced in
 `extra_state_attributes` rather than widening the entity surface."
 
+**Resolution (2026-07-01):** Agreed — sharpen as proposed; lands inside R19's
+**Consequence.** paragraph in the single ADR 0014 rewrite.
+
 ### R19 (low) — ADR 0014: break up the 23-line single paragraph
 
 The body is one unbroken paragraph fusing six concerns — decision, hardware constraint,
@@ -331,6 +448,11 @@ bold-lead paragraphs.
 **Fix:** Split following the house pattern (bold-lead paragraphs, not `##` headers): a
 2–4 sentence lead stating constraint + decision, then **Rejected alternatives.**,
 **Clearing a route.**, **Bus mixing deferred.**, and **Consequence.**
+
+**Resolution (2026-07-01):** Accepted — split into the bold-lead paragraphs as
+proposed, keeping the CONTEXT.md-reversal note visible under **Rejected
+alternatives.**; the **Consequence.** paragraph absorbs R26's sharpened wording in the
+same rewrite.
 
 ---
 
@@ -357,6 +479,16 @@ ADR" wording in `docs/secret-scanning-allowlist.md`), change frontmatter to
 ADR 0010, which rejects ARP lookup, adds an optional manual-MAC field, and drops the
 hostname dhcp matcher."
 
+**Resolution (2026-07-01):** Move + supersede, and additionally excise the superseded
+"Recommendation for the HA integration" section entirely (including its
+config-flow-shape and two-unit-collision subsections) rather than keeping it for
+provenance. Concretely: `git mv` to `docs/dmp168-identity-spike.md`, frontmatter
+`status: superseded by ADR-0010`, a one-line note under the title that the empirical
+findings (Tasks 1–4) remain the canonical record and the removed Recommendation is
+superseded by ADR 0010, and both pointers updated (ADR 0010's citation path; the
+"identity-spike ADR" wording in `docs/secret-scanning-allowlist.md`). The Summary's
+one-sentence Tier-2 recommendation stays, covered by the supersession note.
+
 ### R17 (medium) — Replace the `/tmp` artefact trail
 
 The evidence trail points at five `/tmp` paths (probe script, raw captures, mDNS
@@ -370,6 +502,11 @@ anticipates a `NET MAC?` feature request), commit a cleaned-up probe script unde
 `tests/integration/` or `tools/` and link that instead. Adopt as a house rule: docs
 never cite `/tmp`, screenshots, or transcripts — evidence is either distilled into the
 doc or committed.
+
+**Resolution (2026-07-01):** One-sentence replacement only (Artefacts section plus the
+two inline `/tmp` citations in the Task 1 method line). No probe script gets committed
+or tracked — re-probe reproducibility deemed not worth the code work. House-rule
+codification skipped, consistent with R14.
 
 ---
 
@@ -387,6 +524,10 @@ integration described below as deferred/future work has since shipped (first rel
 `hacs-v0.1.0`; see the README, CHANGELOG, and ADRs 0009–0012 and 0014 for current
 state)."
 
+**Resolution (2026-07-01):** Agreed — reword as proposed. The header states only
+immutable facts ("first release `hacs-v0.1.0`") and delegates current state to README /
+CHANGELOG / ADRs 0009–0012 + 0014, so it cannot go stale again.
+
 ### R6 (medium) — Phase 4 contradicts §3 and ADR 0008 on `.c4z` encryption
 
 Phase 4 says the GitHub release ships an "encrypted production `.c4z`", contradicting
@@ -399,6 +540,16 @@ decision — not banner-covered staleness.
 non-`-ae`) `.c4z` attached on `c4-v*` tag", or append a bracketed erratum: "[erratum:
 releases ship unencrypted, per §3 and ADR-0008]".
 
+**Resolution (2026-07-01):** Direct fix — rewrite the Phase 4 line to "Cut GitHub
+release with the release (unencrypted, non-`-ae`) `.c4z` attached on `c4-v*` tag".
+Ground truth was independently verified before deciding: the build pipeline has no
+encryption path (the vendored driverpackager's encryption is gated on
+`driver.xml` `encryption="2"`, which this repo does not set; a release-flavor build
+with the exact CI command yields plaintext `driver.lua` inside the `.c4z`). §3 and
+ADR 0008 are correct; Phase 4 was wrong at time of writing. Side observation from the
+verification, no action here: no `c4-v*` GitHub release has been cut yet — the lane
+exists but is unexercised.
+
 ### R27 (low) — Drop the placeholder author email
 
 The author line pairs the real name with `name@example.com` — a deliberate post-scrub
@@ -410,6 +561,10 @@ attributes the doc.
 this is the only file using the placeholder, also remove or update the
 `name@example.com` row in the allowlist doc so it doesn't document an unused
 convention.
+
+**Resolution (2026-07-01):** Part 1 only — drop the parenthetical to plain
+"**Author:** Cai Durbin". Part 2 skipped: the `name@example.com` row in
+`docs/secret-scanning-allowlist.md` stays as-is.
 
 ---
 
