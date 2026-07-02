@@ -22,8 +22,9 @@ candidates survived; 7 were refuted with evidence).
    wrong side (R5, R23).
 
 **Status:** all 27 findings were walked through one-by-one on 2026-07-01 and each
-carries a **Resolution** paragraph recording the agreed disposition. Execution of the
-agreed edits is follow-up work; R23 is already tracked as issue
+carries a **Resolution** paragraph recording the agreed disposition. The agreed edits
+were executed on 2026-07-01 (multi-agent execution with an independent per-cluster
+review pass; all resolutions verified faithful). R23 lives on as issue
 [#83](https://github.com/caidurbin/blustream/issues/83).
 
 ## Priorities at a glance

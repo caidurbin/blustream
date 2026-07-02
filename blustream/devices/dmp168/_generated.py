@@ -2,7 +2,7 @@
 
 DO NOT EDIT. Regenerate with: python -m spec.codegen.emit_python
 Source: spec/protocol.yaml
-Spec hash: 45fac3c9db9e5834
+Spec hash: 6344f42d8183677e
 Device: Blustream dmp168
 Firmware baseline: 1.5.0
 """

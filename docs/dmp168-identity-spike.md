@@ -1,9 +1,11 @@
 ---
 applies_to: [ha-integration]
-status: draft
+status: superseded by ADR-0010
 ---
 
 # DMP168 stable-identity discovery: spike findings
+
+Empirical findings (Tasks 1–4) remain the canonical record. The Recommendation section this report originally carried has been removed; it is superseded by [ADR 0010](adr/0010-ha-integration-device-identity.md), which rejects ARP lookup, adds an optional manual-MAC field, and drops the hostname dhcp matcher.
 
 Spike against firmware **MCU V1.5.0 / Web V1.4.0 / DSP V1.5.9** at `192.0.2.176` on 2026-05-27. Goal: determine whether the Home Assistant custom integration can read a stable hardware identifier (MAC / serial / hostname) from the device over the network.
 
@@ -13,7 +15,7 @@ Spike against firmware **MCU V1.5.0 / Web V1.4.0 / DSP V1.5.9** at `192.0.2.176`
 
 ## Task 1 — Undocumented command probe
 
-Method: one fresh raw-TCP connection to port 8000 per command, send `<CMD>\r\n`, read up to ~1.2 s, classify by `[SUCCESS]` / `[ERROR]` markers. Probe script: `/tmp/dmp168_probe.py`; full responses: `/tmp/dmp168_probe_full.txt`.
+Method: one fresh raw-TCP connection to port 8000 per command, send `<CMD>\r\n`, read up to ~1.2 s, classify by `[SUCCESS]` / `[ERROR]` markers. Probe script and full responses were ephemeral, not retained.
 
 ### Banner / HELP capture
 
@@ -51,7 +53,7 @@ Method: one fresh raw-TCP connection to port 8000 per command, send `<CMD>\r\n`,
 
 ## Task 2 — mDNS
 
-Method: `dns-sd -G v4 dmp168.local`, `dns-sd -B _services._dns-sd._udp local`, plus a Python `zeroconf.ServiceBrowser` across ~25 candidate service types filtering by the device's IP. Script: `/tmp/dmp168_mdns.py`.
+Method: `dns-sd -G v4 dmp168.local`, `dns-sd -B _services._dns-sd._udp local`, plus a Python `zeroconf.ServiceBrowser` across ~25 candidate service types filtering by the device's IP. Script was ephemeral, not retained.
 
 ### Services advertised
 
@@ -92,40 +94,6 @@ The web-GUI screenshot in `references/REVA1_DMP168_User_Manual.pdf` p. 24 shows 
 - The **28-bit prefix `34:D0:B8:2`** is sub-allocated to **Blustream Pty Ltd** (AU). Range `34:D0:B8:20:00:00` – `34:D0:B8:2F:FF:FF`, ~1M MACs.
 - HA's DHCP matcher must use **at least 7 hex digits** (`34D0B82*`) — matching only on the 24-bit OUI would also match every other tenant of the same MA-M block.
 
-## Recommendation for the HA integration
-
-**Tier 1 (in-band identity command):** unreachable — no undocumented MAC / serial / hostname command exists in firmware 1.5.0.
-
-**Tier 2 (network-layer discovery):** is the supported path. Configure both:
-
-```python
-# manifest.json
-"dhcp": [
-  {"hostname": "dmp168*", "macaddress": "34D0B82*"}
-],
-"zeroconf": [
-  {"type": "_http._tcp.local.", "name": "dmp168*"}
-]
-```
-
-- **DHCP discovery** fires when the DMP168 takes a lease on the user's LAN. HA delivers `DhcpServiceInfo` carrying `ip`, `hostname`, and `macaddress` directly to `async_step_dhcp` — no device query needed. Use `macaddress.upper()` (colons stripped) as the config-entry `unique_id`.
-- **Zeroconf discovery** fires when the device joins the LAN with mDNS enabled (the default). The `ZeroconfServiceInfo` payload carries `host`, `port`, `hostname`, and `properties` (TXT) but **does not include the MAC** — to set a stable `unique_id` from this path, follow up with an ARP / `getmac`-style lookup against the discovered IP, or accept zeroconf as a discovery-only signal and let DHCP supply the canonical identifier.
-- **Manual entry** (Tier 3) stays available as the user-input fallback in `async_step_user`. Ask only for IP; do not ask the user for the MAC.
-
-**Two-unit collision risk.** Hostname `DMP168.local` is fixed (not MAC-derived), so two DMP168s on one LAN both claim it. mDNS will let one win; the loser is reachable only by IP. The config-entry `unique_id` should be the MAC (not the hostname) so two-unit installations remain disambiguable.
-
-**Simplest config-flow shape**
-
-1. `async_step_dhcp` — primary entry point, sets `unique_id = format_mac(discovery.macaddress)`, aborts on duplicate.
-2. `async_step_zeroconf` — fires for the http advertisement; resolve the MAC for the discovered IP via `homeassistant.helpers.device_registry.format_mac` after an ARP lookup, then route into the same finishing step as DHCP.
-3. `async_step_user` — manual IP entry; probe the device with the existing `blustream` library's `status` to confirm reachability, then look up the MAC via ARP and set `unique_id`.
-
-All three converge on a `unique_id = MAC` and a single config entry per physical device.
-
 ## Artefacts
 
-- Probe script: `/tmp/dmp168_probe.py`
-- Full per-command responses: `/tmp/dmp168_probe_full.txt`
-- Port-23 banner capture: `/tmp/dmp168_port23_banner.txt`
-- HELP capture: `/tmp/dmp168_help.txt`
-- mDNS enumeration script: `/tmp/dmp168_mdns.py`
+The probe/mDNS scripts and raw captures were ephemeral (`/tmp`), not retained; the tables above are the complete surviving record.

@@ -13,8 +13,11 @@ device:
   firmware_baseline: "1.5.0"
 
 # Wire transport defaults. The DMP168 listens on two ports concurrently:
-#   * default_port (8000) — raw TCP, the canonical port for automation clients
-#   * alternative_port (23) — telnet, intentionally left free for ad-hoc use
+#   * default_port (8000) — raw TCP (no telnet IAC negotiation), the default for
+#     the Lua/Control4 driver
+#   * alternative_port (23) — telnet, the default for the Python library, CLI, and
+#     HA integration (telnetlib3 handles IAC); also remains available for ad-hoc tools
+# See docs/adr/0005-c4-tcp-port-8000.md for the port split.
 # `terminator` is the line ending appended to every outbound command.
 transport:
   default_port: 8000
