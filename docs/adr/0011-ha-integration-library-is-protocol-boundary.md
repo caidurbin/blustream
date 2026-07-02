@@ -1,5 +1,6 @@
 ---
 applies_to: [ha-integration, python-library]
+date: 2026-05-29
 ---
 
 # HA integration: library owns the protocol, integration is a thin HA mapper

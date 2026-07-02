@@ -1,7 +1,7 @@
 # Control4 Driver for Blustream DMP168 — Implementation Plan
 
-**Status:** Historical plan (Draft, 2026-05-06). This is a point-in-time record. The Home Assistant integration described below as deferred/future work has since shipped as **v0.1.0** (HACS `hacs-v0.1.0`) — see the README and ADRs 0009–0012. Forward-looking mentions of the integration reflect the plan's original v1 scope, not current state.
-**Author:** Cai Durbin (`name@example.com`)
+**Status:** Historical plan (Draft, 2026-05-06). This is a point-in-time record. The Home Assistant integration described below as deferred/future work has since shipped (first release `hacs-v0.1.0`; see the README, CHANGELOG, and ADRs 0009–0012 and 0014 for current state). Forward-looking mentions of the integration reflect the plan's original v1 scope, not current state.
+**Author:** Cai Durbin
 **Scope:** Add a Control4 driver to the existing Python project, restructured as a monorepo, with a codegen-driven protocol layer that prevents drift across implementations. A Home Assistant integration is reserved as future work but not implemented in this phase.
 
 This document captures architectural decisions, empirical findings about the device, the implementation roadmap, and known open items. Several individual decisions in this document are good candidates for promotion to standalone ADRs under `docs/adr/` once that directory is established.
@@ -370,7 +370,7 @@ This phase already pays off: spec-driven Python with mechanical drift detection 
 ### Phase 4 — Public release
 
 - Publish `blustream` to PyPI on `v*` tag.
-- Cut GitHub release with the encrypted production `.c4z` attached on `c4-v*` tag.
+- Cut GitHub release with the release (unencrypted, non-`-ae`) `.c4z` attached on `c4-v*` tag.
 - Update README with: install instructions for each component, dealer-facing C4 install steps, link to a getting-started guide.
 - Optional: announce on c4forums.com (Driver Development category) and the Home Assistant community forum (forward-looking, even though HA integration is deferred).
 

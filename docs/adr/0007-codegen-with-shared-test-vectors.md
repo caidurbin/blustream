@@ -1,5 +1,6 @@
 ---
 applies_to: [spec, python-library, c4-driver]
+date: 2026-05-06
 ---
 
 # Codegen with shared test vectors as protocol source of truth

@@ -79,6 +79,8 @@ async def _validate_connectivity(host: str, port: int) -> None:
 class BlustreamConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a Blustream config flow."""
 
+    # Shipped from v0.1 so future async_migrate_entry upgrades have
+    # version numbers to bump against (ADR 0012).
     VERSION = 1
     MINOR_VERSION = 1
 

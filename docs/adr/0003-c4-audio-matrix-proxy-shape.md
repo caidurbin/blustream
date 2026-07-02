@@ -1,5 +1,6 @@
 ---
 applies_to: [c4-driver]
+date: 2026-05-06
 ---
 
 # Control4 driver: audio matrix proxy shape

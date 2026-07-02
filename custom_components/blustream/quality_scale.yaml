@@ -208,7 +208,11 @@ rules:
   inject-websession:
     status: exempt
     comment: |
-      Library uses TCP (telnetlib3), not HTTP/aiohttp.
+      Library uses TCP (telnetlib3), not HTTP/aiohttp. If a future
+      entity ever needs an HTTP surface (e.g. volume control via
+      web-GUI scrape), design that API to accept an injected
+      aiohttp.ClientSession from day one -- retrofitting injection
+      later is painful.
   strict-typing:
     status: todo
     comment: |
