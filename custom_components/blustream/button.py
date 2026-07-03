@@ -2,10 +2,11 @@
 
 A single ``button`` that reboots the DMP168. It inherits coordinator
 availability and so greys out when the device is unreachable — honest,
-because reboot travels over the same TCP channel that dies in the documented
-"problem state", whose only recovery is a physical power-cycle
-(``docs/dmp168-known-issues.md``). There is deliberately no out-of-band
-reboot path, so the button has no ``always_available`` override.
+because on older firmware (Web_GUI ≤ V1.4.0) the device can wedge into a
+state where every control surface (Telnet, raw TCP, web CGI) dies together
+and only a physical power-cycle recovers it. Reboot travels over that same
+TCP channel, so there is deliberately no out-of-band reboot path and the
+button has no ``always_available`` override.
 """
 
 from __future__ import annotations

@@ -89,6 +89,8 @@ logger namespace so HA's debug toggle reaches the wire layer).
 | Entity         | Class                          | Description                                                   |
 | -------------- | ------------------------------ | ------------------------------------------------------------ |
 | Uptime         | `SensorDeviceClass.UPTIME`     | Boot time of the DMP168 (relative time).                     |
+| Temperature    | `SensorDeviceClass.TEMPERATURE` | Device temperature in °C.                                    |
+| DSP usage      | `SensorStateClass.MEASUREMENT` | DSP utilization as a percentage.                              |
 | Output 1–8     | `MediaPlayerDeviceClass.RECEIVER` | One per output; `select_source` routes a source, plus volume and mute. |
 | Reboot         | `ButtonDeviceClass.RESTART`    | Reboots the device over its TCP control channel (CONFIG-category). |
 

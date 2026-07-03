@@ -103,7 +103,8 @@ class BlustreamTemperatureSensor(CoordinatorEntity[BlustreamCoordinator], Sensor
 class BlustreamDspUsageSensor(CoordinatorEntity[BlustreamCoordinator], SensorEntity):
     """Reports DSP utilization as a percentage (issue #68).
 
-    Useful for diagnosing the documented ~3 h idle "problem state".
+    Useful for spotting abnormal device load when diagnosing firmware
+    misbehavior (older firmware could wedge spontaneously at idle).
     """
 
     _attr_has_entity_name = True

@@ -11,21 +11,29 @@ library.
 control4/
 └── dmp168/
     ├── src/         # Driver source — input to drivers-driverpackager
-    │   ├── manifest.xml # Build manifest listing the items below
-    │   ├── driver.xml   # Proxy/capabilities declaration
-    │   └── driver.lua   # Driver lifecycle and command handlers
+    │   ├── manifest.xml            # Build manifest listing the items below
+    │   ├── driver.xml              # Proxy/capabilities declaration
+    │   ├── driver.lua              # Driver lifecycle and command handlers
+    │   ├── connection.lua          # TCP connection state machine
+    │   ├── polling_coordinator.lua # Periodic STATUS polling
+    │   ├── proxy_handler.lua       # audio_matrix_switch proxy commands
+    │   ├── optimistic_tracker.lua  # Optimistic updates + command lockout
+    │   ├── status_parser.lua       # STATUS response parser
+    │   ├── vector_runner.lua       # Shared test-vector runner
+    │   └── generated.lua           # Codegen output from spec/protocol.yaml
     └── spec/        # Busted unit tests (run in CI on Lua 5.1)
 ```
 
-`src/` currently holds the no-op driver shell from issue #17 — it
-registers in Composer Pro as an `audio_matrix_switch` proxy with 16
-stereo input + 8 stereo output bindings (per
-[ADR-0003](../docs/adr/0003-c4-audio-matrix-proxy-shape.md)) but the
-Lua handlers are empty. Connection state machine, polling coordinator,
-proxy handler, and the codegen-emitted `generated.lua`
-(see [ADR-0007](../docs/adr/0007-codegen-with-shared-test-vectors.md))
-arrive in later slices. The `spec/` tree carries a smoke test today so
-the CI Lua harness has something to exercise.
+The driver registers in Composer Pro as an `audio_matrix_switch` proxy
+with 16 stereo input + 8 stereo output bindings (per
+[ADR-0003](../docs/adr/0003-c4-audio-matrix-proxy-shape.md)). Protocol
+primitives live in the codegen-emitted `generated.lua`
+(see [ADR-0007](../docs/adr/0007-codegen-with-shared-test-vectors.md));
+the hand-written modules cover the connection state machine, polling
+with optimistic lockout
+([ADR-0004](../docs/adr/0004-c4-polling-with-optimistic-lockout.md)),
+and the proxy command handlers. The `spec/` tree carries busted specs
+for each module plus the shared-vector smoke test.
 
 ## Building the .c4z
 

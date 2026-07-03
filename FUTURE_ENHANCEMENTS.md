@@ -111,10 +111,9 @@ This document tracks planned future enhancements to the Blustream device control
 
 ## Testing Enhancements
 
-**Current State**: ~1,400 lines across `tests/test_base_device.py`, `tests/test_connection.py`, `tests/test_dmp168.py`, `tests/test_parser.py`, with a `MockConnection` and a `status_response.txt` fixture. Coverage is being collected.
+**Current State**: A broad suite under `tests/` — unit modules for the parsers, connection, and device layers, `tests/cli/` for the CLI, `tests/components/` for the HA integration, and `tests/integration/` — plus shared spec vectors exercised from both the Python and Lua sides. Coverage is being collected.
 
 **Future Enhancement**:
-- CLI tests (no `tests/test_cli.py` today; the ~700-line `cli/main.py` is uncovered)
 - Full mock device server that speaks the wire protocol, for end-to-end tests against `TCPConnection`
 - Response parsing edge cases and error-path coverage
 - Performance / property-based testing

@@ -4,7 +4,7 @@ The reviewer agent loads this via `@.sandcastle/CODING_STANDARDS.md` during code
 
 ## Style
 
-- Python 3.8+ compatible (see `pyproject.toml` `target-version = "py38"`)
+- Python 3.12+ (see `pyproject.toml` `requires-python = ">=3.12"` and ADR-0013)
 - Line length 88 (ruff / Black compatible)
 - Run `ruff check blustream tests` and `ruff format` before committing
 - Prefer `async`/`await` for device I/O — every public DMP168 method is async
