@@ -11,7 +11,7 @@
 #
 # Beyond the bundled secret rules (`[extend].useDefault`), this adds custom rules
 # for the device identifiers token-shaped scanners miss — IPv4, IPv6 and MAC
-# addresses in test fixtures, spec vectors and monitor logs. Every example
+# addresses in test fixtures and spec vectors. Every example
 # identifier in the repo lives in an IETF documentation range, so the allowlists
 # below permit ONLY those ranges (RFC 5737 / 3849 / 7042) plus the vendor OUI that
 # is required to be public. Any *real* (non-documentation) IP or MAC therefore

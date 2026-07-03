@@ -88,8 +88,8 @@ def _create_global_parser() -> argparse.ArgumentParser:
         metavar="PATH",
         default=None,
         help=(
-            "Append each command sent to the device to PATH with a UTC timestamp, "
-            "using the same '==== <ts> ====' format as monitor_dmp168.sh."
+            "Append each command sent to the device to PATH under a "
+            "'==== <UTC timestamp> ====' section header."
         ),
     )
     return parser

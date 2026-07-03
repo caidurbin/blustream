@@ -71,8 +71,10 @@ uvx --from . blustream --host 192.0.2.100 status
 ### Control4 driver
 
 Download the `.c4z` from the latest [GitHub release](https://github.com/caidurbin/blustream/releases)
-tagged `c4-v*` and install it through Composer Pro. See
-`docs/control4-driver-plan.md` for the dealer-load workflow.
+tagged `c4-v*` and install it through Composer Pro. The driver is dealer-loadable
+and deliberately not distributed through drivercentral.io / Snap One certification
+(see `docs/adr/0008-public-oss-no-snap-one-cert.md`); `docs/adr/0006-c4-offline-first-dealer-load.md`
+describes the dealer-load development loop.
 
 ### Home Assistant integration
 

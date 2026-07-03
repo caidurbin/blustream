@@ -1,6 +1,6 @@
 # Control4 Driver for Blustream DMP168 — Implementation Plan
 
-**Status:** Historical plan (Draft, 2026-05-06). This is a point-in-time record. The Home Assistant integration described below as deferred/future work has since shipped (first release `hacs-v0.1.0`; see the README, CHANGELOG, and ADRs 0009–0012 and 0014 for current state). Forward-looking mentions of the integration reflect the plan's original v1 scope, not current state.
+**Status:** Historical plan (Draft, 2026-05-06). This is a point-in-time record. The Home Assistant integration described below as deferred/future work has since shipped (first release `hacs-v0.1.0`; see the README and ADRs 0009–0012 and 0014 for current state). Forward-looking mentions of the integration reflect the plan's original v1 scope, not current state. Some planned artifacts also shipped at different paths or not at all — Lua tests live at `control4/dmp168/spec/*_spec.lua` (not `tests/run.lua`), `manifest.xml` lives under `src/`, and `docs/driver-protocol.md` and `spec/vectors/parsers.yaml` were never created (this doc and `spec/protocol.yaml` remain the record of the empirical findings). The tree is authoritative.
 **Author:** Cai Durbin
 **Scope:** Add a Control4 driver to the existing Python project, restructured as a monorepo, with a codegen-driven protocol layer that prevents drift across implementations. A Home Assistant integration is reserved as future work but not implemented in this phase.
 
@@ -20,7 +20,7 @@ This document captures architectural decisions, empirical findings about the dev
 
 ### 1.2 Non-goals (v1)
 
-- Volume, mute, or power capability on the Control4 matrix proxy. The downstream amplifier owns user-facing volume/mute in the user's topology; matrix power is managed internally by the driver, not exposed as a proxy capability.
+- Volume, mute, or power capability on the Control4 matrix proxy. A downstream amplifier is assumed to own user-facing volume/mute — the typical topology for this device class; matrix power is managed internally by the driver, not exposed as a proxy capability.
 - DSP, EQ, ducking, audio sensing, contact closures, presets, output grouping. These remain accessible via the device's web GUI for setup-time configuration.
 - Internal Bus mixing channels exposed to Control4 as bindable inputs.
 - Independent L/R channel control. Channel-lock is always on.
@@ -159,9 +159,9 @@ blustream/                             ← repo root
 
 Decisions that cleared the ADR-worthy bar (hard-to-reverse + surprising + real trade-off) have been promoted to standalone ADRs under [`docs/adr/`](adr/). The rest stay here as the canonical record.
 
-### D1. Access path: friendly dealer + planned own Composer Pro license
+### D1. Access path: dealer-mediated controller access
 
-The user is a homeowner with a Control4 system and a friendly dealer who will load test builds. A path to acquiring a personal Composer Pro license through the dealer or via Snap One's Driver Development Partner program exists but has no concrete timeline. Iteration optimization assumes the slow dealer-load loop for now.
+Access to a live Control4 controller is dealer-mediated: test builds are dealer-loaded, and no Composer Pro license is assumed. Iteration optimization therefore assumes the slow dealer-load loop.
 
 ### D2. Driver scope: minimum viable matrix (routing only)
 
@@ -217,14 +217,14 @@ See section 2 above.
 
 ## 7. Empirical findings about the DMP168
 
-These were discovered during the design conversation and are not in the manufacturer's references. They should be captured in `docs/driver-protocol.md` once that file exists; until then, they live here as the canonical record.
+These behaviors are not documented in the manufacturer's references. They should be captured in `docs/driver-protocol.md` once that file exists; until then, they live here as the canonical record.
 
 - **Two control listeners exist:** Telnet on port **23** (default) and TCP on port **8000** (default). Both expose the full command surface. Both are independently enable/disableable in the web GUI.
 - **Port 23 performs telnet IAC negotiation** (sends `0xFF 0x03 / 0x01 / 0x01 / 0x00` on connect — DO/WILL escape codes). Clients must filter or speak telnet (`telnetlib3` works in Python).
 - **Port 8000 does not perform telnet negotiation.** Raw text command/response. Cleaner to write a Lua driver against; chosen as the driver's default port (D7).
 - **Concurrent multi-client TCP works.** Verified empirically: two clients on the same port (both 23 and 8000) and clients on different ports remain alive and responsive simultaneously. No multiplexer needed for parallel use of Control4 + future HA integration + CLI + web GUI.
 - **`POFF` is documented as "Power Save State", not a hard power-off.** TCP listeners remain alive after `POFF`. The driver can detect off-state and issue `PON` over the network.
-- **Firmware version drift in references:** the manufacturer manual is rev'd against firmware 1.1.0; current firmware on the test device is **1.5.0**. Command surface is consistent but minor diffs may exist; the driver pins firmware 1.5.0 as its tested baseline in `spec/protocol.yaml`.
+- **Firmware version drift in references:** the manufacturer manual is rev'd against firmware 1.1.0, while current firmware is **1.5.0**. Command surface is consistent but minor diffs may exist; the driver pins firmware 1.5.0 as its tested baseline in `spec/protocol.yaml`.
 - **mDNS:** the device publishes itself as `dmp168.local`. Suitable for the `Host` property as an alternative to a static IP (D8).
 - **Default credentials (factory):** the vendor ships a documented factory username/password (see the Blustream DMP168 user manual). First admin login is forced to set a new password.
 ---
@@ -362,10 +362,10 @@ This phase already pays off: spec-driven Python with mechanical drift detection 
 ### Phase 3 — Live smoke test
 
 - Build dev `.c4z` with `-ae`.
-- Send to dealer; have them load into the live project.
+- Dealer-load the build into a live Control4 project.
 - Run smoke test: route input 1 → output 1, verify audio path, watch `DEBUG_MODE` output.
 - Iterate on bugs via the dealer-load loop, using Lua-console hot patches for fast fixes.
-- Tag `c4-v0.1.0` once the smoke test passes consistently for ~1 week of normal use.
+- Tag `c4-v0.1.0` once the smoke test passes consistently on live hardware over a sustained period.
 
 ### Phase 4 — Public release
 
@@ -385,7 +385,7 @@ Tracked as future work. When started:
 
 ### Phase 6 (deferred) — Second Blustream device
 
-When the user adds another Blustream device to the project, the codegen architecture pays off:
+When support for another Blustream device is added, the codegen architecture pays off:
 
 - Add a new `spec/<device>.yaml`.
 - Re-run codegen; new generated files appear in `blustream/devices/<device>/` and `control4/<device>/src/`.
@@ -410,14 +410,6 @@ When the user adds another Blustream device to the project, the codegen architec
 - `STATUS` parser implementation strategy — line-indexed vs. regex. Prototype during Phase 2.
 - Whether to split this plan doc into multiple ADRs under `docs/adr/`. Probably yes, once `docs/adr/` exists; D1 through D13 are reasonable ADR boundaries.
 
-### 10.3 Will require a follow-on grilling session
+### 10.3 Will require a follow-on design discussion
 
 - The CLI's long-term destiny (primary product vs. dev tool) — affects whether it tracks the device's full feature surface or stays narrow. Currently it has more features than the driver exposes; that asymmetry is fine for now.
-- Whether to pursue Snap One Driver Development Partner status independently (separate from going through the dealer for a Composer Pro license).
-- Whether the user invests in a used dev controller (HC-250 / EA-1) once Composer Pro arrives, or relies on Virtual Director.
-
----
-
-## 11. Source-conversation provenance
-
-This document is the synthesis of a `/grill-me` design session. Decisions were locked one branch at a time, with research grounding (Exa searches, the manufacturer references in `references/`, and an empirical TCP probe of the live device at `192.0.2.176`). The conversation also produced a throwaway diagnostic script that confirmed concurrent multi-client TCP support; that script can be discarded, and the finding is captured in section 7.
