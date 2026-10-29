@@ -1,6 +1,6 @@
 # Live read-only capture: DMP168, 29 Oct 2026
 
-Phase 0 of `reviews/live-test-plan.md`. These are raw captures from the real matrix, to be used as ground truth for a simulator.
+Read-only capture from the real matrix. These are raw captures from the real matrix, to be used as ground truth for a simulator.
 
 - **Firmware:** MCU_Main V1.5.0 / Web_GUI V1.4.0a / DSP V1.5.9.
 - **Uptime at capture:** 149 days, 4 hours.
@@ -20,9 +20,9 @@ Only these commands were sent. Each is a query according to `spec/protocol.yaml`
 Every command was terminated with `\r\n`.
 
 **Skipped:**
-- The plan's `OUT 9 FR 1`. It is a routing write, so a firmware that misparsed it could change a route. `PRESET 9 STATUS` covers the out-of-range `[ERROR]` case instead.
-- The plan's `PRESET STATUS 1` word order. It isn't in the spec or in HELP.
-- `DSP STATUS` and `EQ PRESET xx STATUS`. Both look read-only in HELP, but neither is in the spec, so I left them for now.
+- `OUT 9 FR 1`. It is a routing write, so a firmware that misparsed it could change a route. `PRESET 9 STATUS` covers the out-of-range `[ERROR]` case instead.
+- `PRESET STATUS 1` (that word order). It isn't in the spec or in HELP.
+- `DSP STATUS` and `EQ PRESET xx STATUS`. Both look read-only in HELP, but neither is in the spec, so they were not sent.
 
 **Machine state before and after:**
 - The first and last `STATUS` on each port are byte-identical apart from the system line, which holds temperature, uptime and DSP%. That covers routing, volumes, mutes, EQ, presets and network.
@@ -67,12 +67,12 @@ Every command was terminated with `\r\n`.
 ## Differences from the spec and code
 
 1. **Every client on both ports receives all command output.**
-   - With nothing sent, both passive sockets received every `STATUS` that another LAN client issued, about every 32–35 s. My guess is that this is your HA integration's 30 s poll, but I haven't confirmed it.
+   - With nothing sent, both passive sockets received every `STATUS` that another LAN client issued, about every 32–35 s. This is probably a Home Assistant integration's 30 s poll, but that is unconfirmed.
    - On port 23 the broadcast includes that client's command echo. On port 8000 it doesn't.
-   - As a result, my first `STATUS` on each port came back with two full dumps (`p*_A_STATUS_1.bin`).
+   - As a result, the first commanded `STATUS` on each port came back with two full dumps (`p*_A_STATUS_1.bin`).
    - A `probe.py` rerun showed this is timing, not "first command after connect". One of those runs got a stray `STATUS` dump in reply to `UPTIME`.
    - Impact:
-     - Any reader can pick up another client's `[SUCCESS]`/`[ERROR]`/`STATUS` as its own reply. This matters for framing in `tcp.py`/`device.py` and in `connection.lua`, and for B1/B6.
+     - Any reader can pick up another client's `[SUCCESS]`/`[ERROR]`/`STATUS` as its own reply. This matters for framing in `tcp.py`/`device.py` and in `connection.lua`, and for the Control4 command queue.
      - The simulator must broadcast.
 2. **The port-23 banner also reaches port-8000 clients.**
    - When a port-23 client connects, every open client on both ports gets the banner (`passive_p8000_180s.bin` starts with it).
@@ -81,7 +81,7 @@ Every command was terminated with `\r\n`.
 3. **`STATUS` can arrive corrupted.**
    - In the passive capture, 6 binary frames `AA 54 <len:u16 BE> 07 <payload> A5` were interleaved in `STATUS` text, identically on both ports. Their payloads were EQ fields and the `Telnet TCP/IP Mac` line.
    - Bytes were also dropped nearby, e.g. `[4000 ,00,off ]`.
-   - None of my own commanded dumps were corrupted.
+   - None of the commanded dumps were corrupted.
    - Both `status_parser.parse` and `DMP168Parser.parse_status` accept the corrupted stream without raising, so bad data would pass silently.
    - This is a good fault-injection case for the simulator.
 4. **Port 23 adds an echo and a prompt.**
@@ -90,13 +90,13 @@ Every command was terminated with `\r\n`.
 5. **An empty preset returns `[ERROR]`.**
    - `PRESET 1 STATUS` on an empty preset gives `[ERROR]Preset 1 config status null.` and not a status body.
    - `parse_preset_status` / `send_command` will see that as an error for any unsaved preset.
-6. **`HELP` has prose after its footer.** The trailing DSP prose comes after the `=`-only footer that `_help_terminator` stops on, so roughly 900 bytes stay in the buffer ahead of the next reply. I haven't verified the effect.
+6. **`HELP` has prose after its footer.** The trailing DSP prose comes after the `=`-only footer that `_help_terminator` stops on, so roughly 900 bytes stay in the buffer ahead of the next reply. The effect is unverified.
 7. **`HELP` doesn't match the spec in a few places.** These are untested, since they are writes.
    - **No `OUT MASTER`:** there is no `OUT MASTER VOL` or `OUT MASTER MUTE`, only `GROUP MASTER …` and `BUS MASTER …`. The spec's `output_master_volume` and `output_master_mute` may be rejected.
    - **Channel token placement:**
      - HELP: `OUT xx VOL vv yy zz`, `OUT xx MUTE vv ON/OFF`, `OUT xx DELAY vv yy`.
      - Spec: emits the channel both before and after `VOL`/`MUTE`, and before `DELAY`.
-   - **Input range:** `OUT xx vv FR yy` allows inputs 1–24, the same as the spec. The plan's B1 candidate (input 20) may therefore be accepted rather than rejected.
+   - **Input range:** `OUT xx vv FR yy` allows inputs 1–24, the same as the spec. A route to input 20 may therefore be accepted rather than rejected, so it is not a reliable way to provoke an `[ERROR]`.
 8. **Fixture drift:**
    - `tests/fixtures/status_live_full.txt` has Web_GUI `V1.4.0`, baud 9600, output delay `0 0` and Local `DMP168`.
    - Live has `V1.4.0a`, 57600, `110 110` and `?`.

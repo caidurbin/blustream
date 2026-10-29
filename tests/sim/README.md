@@ -36,4 +36,15 @@ state; STATUS, UPTIME and TEMP always return the recorded values.
 `test_known_bugs.py` (and `tests/components/blustream/test_sim_reconnect.py`
 for Home Assistant) reproduce known client bugs as strict `xfail` tests: they
 assert the correct behaviour, so a fix makes them pass and the fix then removes
-the marker.
+the marker. The bug labels in their reasons:
+
+- **B1:** an `[ERROR]` reply is returned as a normal response, so a rejected
+  command is reported as a success. The test forces the rejection with
+  `reject_next()`, because no valid write command was recorded failing.
+- **B2:** when the device closes the socket, `is_connected` stays True, so
+  nothing reconnects and every later poll fails.
+
+The Control4 command-queue risk (sends interleaving with a streaming STATUS,
+and a stall when the device goes silent) is not covered yet: the driver's
+specs run under busted on Lua 5.1, which this simulator doesn't drive. The
+`chunk_delay` and `silent` switches are there for that work.
