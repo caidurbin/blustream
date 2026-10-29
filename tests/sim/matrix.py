@@ -33,7 +33,6 @@ import socket
 from collections import deque
 from dataclasses import dataclass
 from functools import cache
-from itertools import zip_longest
 from pathlib import Path
 
 # Built rather than written out so the IPv4 secret-scan rule has nothing to flag.
@@ -55,19 +54,22 @@ ERR_PRESET_RANGE = (
 # Not recorded: no write command was sent to the real device.
 WRITE_SUCCESS = b"[SUCCESS]\r\n"
 
+# Presets 1-8, the range spec/protocol.yaml gives the preset commands.
 PRESET_COUNT = 8
 
+# Framing kept apart from the client's _status_terminator on purpose, so the
+# simulator can't share a framing bug with the code under test.
 _STATUS_HEADER = b"=" * 64 + b"\r\n                      DMP168 Status"
 _STATUS_FOOTER = b"\r\n" + b"=" * 64 + b"\r\n"
 _BINARY_FRAME_START = b"\xaa\x54"
 
 
+@cache
 def recording(name: str) -> bytes:
     """Return the bytes of one capture file."""
     return (RECORDINGS / name).read_bytes()
 
 
-@cache
 def banner() -> bytes:
     """The welcome banner every open client gets when a port-23 client connects."""
     return recording("p23_A_after-B-connect.bin")
@@ -103,20 +105,23 @@ def _known_verbs() -> frozenset[str]:
 
 def _strip_telnet(data: bytes) -> bytes:
     """Drop telnet IAC commands and subnegotiations from client input."""
+    if IAC not in data:
+        return data
     out = bytearray()
     i = 0
     while i < len(data):
         byte = data[i]
+        nxt = data[i + 1] if i + 1 < len(data) else None
         if byte != IAC:
             out.append(byte)
             i += 1
-        elif i + 1 < len(data) and data[i + 1] == IAC:
+        elif nxt == IAC:
             out.append(IAC)
             i += 2
-        elif i + 1 < len(data) and data[i + 1] == IAC_SB:
+        elif nxt == IAC_SB:
             end = data.find(bytes([IAC, IAC_SE]), i + 2)
             i = len(data) if end < 0 else end + 2
-        elif i + 1 < len(data) and data[i + 1] >= 0xFB:
+        elif nxt is not None and nxt >= 0xFB:
             i += 3
         else:
             i += 2
@@ -133,8 +138,8 @@ class SimulatedMatrix:
     """A fake DMP168 on two loopback ports. Use as ``async with``.
 
     ``telnet_port`` plays the device's port 23 and ``raw_port`` its port 8000;
-    both are picked by the OS unless given. ``chunk_size`` and ``chunk_delay``
-    control how replies are streamed (the real STATUS arrives in ~600 small
+    both are picked by the OS unless given. A non-zero ``chunk_delay`` streams
+    replies in ``chunk_size`` pieces with that pause between them (the real STATUS arrives in ~600 small
     chunks over ~1.5 s).
     """
 
@@ -286,17 +291,15 @@ class SimulatedMatrix:
             )
 
     async def _write(self, payloads: dict[_Client, bytes]) -> None:
-        """Stream each payload to its client, chunk by chunk, in step."""
-        size = self.chunk_size
-        chunked = [
-            [(client, data[i : i + size]) for i in range(0, len(data), size)]
-            for client, data in payloads.items()
-        ]
-        for step in zip_longest(*chunked):
-            for client, chunk in filter(None, step):
-                if not client.writer.is_closing():
+        """Send each payload to its client, in ``chunk_size`` steps if delayed."""
+        longest = max(map(len, payloads.values()), default=0)
+        step = self.chunk_size if self.chunk_delay else max(longest, 1)
+        for offset in range(0, longest, step):
+            for client, data in payloads.items():
+                chunk = data[offset : offset + step]
+                if chunk and not client.writer.is_closing():
                     client.writer.write(chunk)
-            for client, _ in filter(None, step):
+            for client in payloads:
                 with contextlib.suppress(ConnectionError, OSError):
                     await client.writer.drain()
             if self.chunk_delay:

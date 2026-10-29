@@ -18,18 +18,12 @@ from blustream.connection.tcp import TCPConnection
 from blustream.devices.dmp168 import status_parser
 from blustream.devices.dmp168.device import DMP168
 from blustream.devices.dmp168.parser import DMP168Parser
-from tests.sim.matrix import SimulatedMatrix, corrupted_status
+from tests.sim.matrix import corrupted_status
 
-# Keeps connect() quick when the simulator sends no banner (port 8000, silent).
-BANNER_TIMEOUT = 0.3
+# Keeps connect() quick on port 8000 and on a silent device, which send no banner.
+BANNER_TIMEOUT = 0.1
 
 RECORDED_UPTIME = "0149:04:17:56"
-
-
-@pytest.fixture
-async def sim():
-    async with SimulatedMatrix() as matrix:
-        yield matrix
 
 
 @pytest.fixture(params=["telnet", "raw"])
@@ -140,4 +134,4 @@ async def test_banner_from_a_port_23_peer_does_not_break_the_next_reply(sim, dev
 async def test_silent_device_times_out(sim, device):
     sim.silent = True
     with pytest.raises(CommandError, match="No matching line"):
-        await device.send_command("UPTIME", timeout=0.5)
+        await device.send_command("UPTIME", timeout=0.2)

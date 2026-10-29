@@ -26,7 +26,7 @@ Fault switches:
 | `broadcast_foreign(cmd)` | Broadcast another client's reply to `cmd` now |
 | `drop_connections()` | Abort every client socket; the listeners stay up |
 | `silent = True` | Accept connections and read commands, but send nothing |
-| `chunk_size`, `chunk_delay` | Stream replies in small, slow chunks |
+| `chunk_delay`, `chunk_size` | Stream replies in `chunk_size` pieces with a pause between them |
 
 Only recorded replies are exact. Write commands were never sent to the real
 device, so the simulator answers them with a guessed `[SUCCESS]` and changes no

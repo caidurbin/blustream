@@ -19,7 +19,7 @@ from tests.sim.matrix import (
     recording,
 )
 
-READ_IDLE = 0.2
+READ_IDLE = 0.1
 
 
 async def _read_idle(reader: asyncio.StreamReader, idle: float = READ_IDLE) -> bytes:
@@ -48,12 +48,6 @@ class Client:
 
     async def read(self) -> bytes:
         return await _read_idle(self.reader)
-
-
-@pytest.fixture
-async def sim():
-    async with SimulatedMatrix() as matrix:
-        yield matrix
 
 
 @pytest.fixture
@@ -149,7 +143,7 @@ async def test_interleave_foreign_puts_another_reply_first(sim, connect):
 async def test_reject_next_overrides_the_reply(sim, connect):
     client = await connect(telnet=False)
     sim.reject_next()
-    assert await client.ask("UPTIME") == b"[ERROR]Command not found.\r\n"
+    assert await client.ask("UPTIME") == ERR_NOT_FOUND
     assert await client.ask("UPTIME") == recording("p8000_A_UPTIME_1.bin")
 
 
@@ -192,3 +186,14 @@ def test_existing_parsers_accept_the_simulated_status():
     assert status.power == "On"
     assert len(status.routing) == 16
     assert status_parser.parse(text)["power"] == "On"
+
+
+async def test_chunk_delay_streams_status_in_pieces_with_the_same_bytes():
+    async with SimulatedMatrix(chunk_size=1024, chunk_delay=0.01) as matrix:
+        reader, writer = await asyncio.open_connection(matrix.host, matrix.raw_port)
+        writer.write(b"STATUS\r\n")
+        first = await reader.read(65536)
+        rest = await _read_idle(reader)
+        writer.close()
+    assert len(first) == 1024
+    assert first + rest == recording("p8000_A_STATUS_2.bin")
