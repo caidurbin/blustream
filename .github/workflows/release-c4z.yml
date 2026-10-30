@@ -77,7 +77,7 @@ jobs:
         # softprops/action-gh-release reads the tag from the trigger
         # ref and creates a release named after the tag (e.g.
         # `c4-v1.0.0`). The `files` glob attaches the built artifact.
-        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           files: dist/c4z/release/*.c4z
           fail_on_unmatched_files: true
