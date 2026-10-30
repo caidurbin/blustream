@@ -59,6 +59,6 @@ jobs:
 
       - name: Run HACS validation
         if: steps.visibility.outputs.private == 'false'
-        uses: hacs/action@dcb30e72781db3f207d5236b861172774ab0b485 # main @ 2026-05-31
+        uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa # main @ 2026-05-31
         with:
           category: integration
