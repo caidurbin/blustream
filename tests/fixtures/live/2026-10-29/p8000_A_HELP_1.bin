@@ -1,0 +1,364 @@
+
+================================================================
+                      DMP168 Help Info
+      FW Version:MCU_Main V1.5.0/Web_GUI V1.4.0a
+                 DSP V1.5.9
+
+======================= System Information Command
+?/HELP                 Print Help Information
+STATUS                 Print System Status And Port Status
+UPTIME                 Print System Uptime
+TEMP                   Print System Temperature
+======================= System Control Command
+PON                    Power On, System Run On Normal State
+POFF                   Power Off, System Run On Power Save State
+STANDBY xx             Set System Standby Mode To xx
+                       xx=0:Sleep, 1:Standby
+RESET                  Reset System Settings To Default
+                       (Should Type "Yes" To Confirm, "No" To Discard)
+RESET ALL              Reset System And Network Settings To Default
+                       (Should Type "Yes" To Confirm, "No" To Discard)
+REBOOT                 Set System Reboot
+AUTO STB xx            Set System Auto Standby Time
+                       xx=0: Auto Standby Off
+                       xx=[1...120]: Auto Standby Time,(mins)
+RSB xx                 Set RS232 Baud Rate To xx Bps
+                       xx=[0:115200, 1:57600, 2:38400, 3:19200, 4:9600]
+LEVEL UNIT xx          Set Audio Level Unit To xx
+                       xx=[0...1]: 0=dB, 1=%
+DSP STATUS             The Proportion Of Resources Currently Used By DSP
+VOLUME CHANGE FADE ON/OFF   Set Volume Change Fade On Or Off
+======================= Iutput Control Command
+IN xx CH LOCK ON/OFF   Set Input: xx L/R Channels Lock/Unlock
+                       xx=[0...16]: 0: All
+IN xx GAIN vv yy zz    Set Input: xx Gain To yy
+                       xx=[0...16]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=[0...100]: Gain Value
+                       yy=[-76...+24] When zz = dB (Step=0.01)
+                       yy= + Or - To Increment Or Decrement The Gain
+                       If zz == dB Then The Audio Format Is In dB, If Any Other Characters
+                       (Or No Characters) Are Entered Then The Gain Is In %
+IN xx MUTE vv ON/OFF   Set Input: xx Mute On Or Off
+                       xx=[0...16]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+IN xx APPLY TO ALL     Set Input: xx Mute/Gain Apply TO All Inputs
+                       xx=1
+IN xx EQ LOCK ON/OFF   Set Input: xx EQ L/R Lock/Unlock
+                       xx=[0...16]: 0: All
+IN xx EQ vv yy FRQ zz SLOPE aa
+                       Set Input: xx EQ yy To FRQ zz SLOPE aa
+                       xx=[0...16]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=1/8: EQ Index
+                       zz=[20...20000]: Frequency Value [Hz]
+                       aa=[0,6,12,18 or 24]: Slope Value [dB], 0:Off
+IN xx EQ vv yy FRQ zz GAIN aa
+                       Set Input: xx EQ yy To FRQ zz GAIN aa
+                       xx=[0...16]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=2/7: EQ Index
+                       zz=[20...20000]: Frequency Value [Hz]
+                       aa=[-20...+20]: Gain Value [dB] (Step=0.1)
+IN xx EQ vv yy FRQ zz GAIN aa Q bb
+                       Set Input: xx EQ yy To FRQ zz GAIN aa Q bb
+                       xx=[0...16]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=[3...6]: EQ Index
+                       zz=[20...20000]: Frequency Value [Hz]
+                       aa=[-20...+20]: Gain Value [dB] (Step=0.1)
+                       bb=[0.02...16]: Q Value(Step=0.01)
+IN xx EQ vv yy RESET   Reset Input: xx EQ To Default Setting
+                       xx=[0...16]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=[0...8]: EQ Index 0: All
+IN xx EQ vv PRESET yy   Set Input: xx EQ To Preset yy
+                       xx=[0...16]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=[1...8]: EQ Preset Index
+IN xx vv TO BUS yy zz  Put Input: xx Into BUS: yy
+                       xx=[1...16]
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=[1...8]: BUS Index
+                       zz=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+IN xx MAX GAIN vv yy   Set Users Should Be Able To Set Input: xx The Maximum GAIN yy
+                       xx=[0...16]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified Then Both Channels Are Adjusted
+                       yy=[-12...24]: dB
+======================= BUS Control Command
+BUS xx vv REM IN yy zz  Set BUS: xx Remove Input: yy
+                       xx=[1...8]
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=[1...16]
+                       zz=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+BUS xx CH LOCK ON/OFF  Set BUS: xx L/R Channels Lock/Unlock
+                       xx=[0...8]: 0: All
+BUS xx GAIN vv yy zz   Set BUS: xx Gain To yy
+                       xx=[0...8]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=[0...100]: Gain Value
+                       yy=[-76...+24] When zz = dB (Step=0.01)
+                       yy= + Or - To Increment Or Decrement The Gain
+                       If zz == dB Then The Audio Format Is In dB, If Any Other Characters
+                       (Or No Characters) Are Entered Then The Gain Is In %
+BUS xx MUTE zz ON/OFF  Set BUS: xx Mute On Or Off
+                       xx=[0...8]: 0: All
+                       zz=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+BUS xx APPLY TO ALL    Set BUS: xx Mute/Gain Apply To All BUS
+                       xx=1
+BUS MASTER GAIN vv xx yy  Set BUS Master Gain Value
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       xx=[0...100]: Gain Value
+                       xx=[-76...+24] When yy = dB (Step=0.01)
+                       xx= + Or - To Increment Or Decrement The Gain
+                       If yy == dB Then The Audio Format Is In dB, If Any Other Characters
+                       (Or No Characters) Are Entered Then The Gain Is BUS %
+BUS MASTER MUTE vv ON/OFF  Set BUS Master Mute On Or Off
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+BUS MASTER CH LOCK ON/OFF  Set BUS Master L/R Channels Lock/Unlock
+BUS MASTER MAX GAIN vv yy  Set Users Should Be Able To Set BUS Master The Maximum Gain yy
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified Then Both Channels Are Adjusted
+                       yy=[-12...24]: dB
+BUS xx DUCK vv SOURCE yy zz  Set BUS: xx Duck Source To yy
+                       xx=[1...8]
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=[0...16]: 0: Off
+                       zz=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+BUS xx DUCK zz SENS yy  Set BUS: xx Duck Sensitivity To yy (dBFs)
+                       xx=[1...8]
+                       zz=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=[-60...0]
+BUS xx DUCK zz LEVEL yy  Set BUS: xx Duck Level To yy
+                       xx=[1...8]
+                       zz=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=[0...100]
+BUS xx DUCK zz TIME yy  Set BUS: xx Duck Time To yy(ms)
+                       xx=[1...8]
+                       zz=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=[0...10000]Duck Time, Millisecond
+BUS xx MAX GAIN vv yy  Set Users Should Be Able To Set BUS: xx The Maximum GAIN yy
+                       xx=[0...8]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified Then Both Channels Are Adjusted
+                       yy=[-12...24]: dB
+======================= Output Control Command
+OUT xx vv FR yy zz     Set Output: xx From Input: yy
+                       xx=[0...8]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=[1...24]
+OUT xx vv REM yy zz    Set Output: xx Remove Input: yy
+                       xx=[0...8]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=[1...24]
+                       zz=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+OUT xx CH LOCK ON/OFF  Set Output: xx L/R Channels Lock/Unlock
+                       xx=[0...8]: 0: All
+OUT xx VOL vv yy zz    Set Output: xx Volume To yy
+                       xx=[0...8]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=[0...100]: Volume Value
+                       yy=[-76...+24] When zz = dB (Step=0.01)
+                       yy= + Or - To Increment Or Decrement The Volume
+                       If zz == dB Then The Audio Format Is In dB, If Any Other Characters
+                       (Or No Characters) Are Entered Then The Volume Is In %
+OUT xx MUTE vv ON/OFF  Set Output: xx Mute On Or Off
+                       xx=[0...8]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+OUT xx DELAY vv yy     Set Output: xx Delay Time To yy (ms)
+                       xx=[0...8]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=[0...500]: Delay Time, Millisecond
+OUT xx MIX yy          Set Output: xx Mix yy
+                       xx=[0...8]: 0: All
+                       yy=0: None
+                       yy=1: Swap (Left And Right)
+                       yy=2: Mono (Left + Right)
+                       yy=3: Mono (All Left)
+                       yy=4: Mono (All Right)
+                       yy=5: Mono (Left - Right)
+                       yy=6: Mono (Right - Left)
+OUT xx APPLY TO ALL    Set Output: xx Mute/Gain/Delay Apply To All Outputs
+                       xx=1
+OUT xx EQ LOCK ON/OFF  Set Output: xx EQ L/R Lock/Unlock
+                       xx=[0...8]: 0 : All
+OUT xx EQ vv yy FRQ zz SLOPE aa
+                       Set Output: xx EQ yy To FRQ zz SLOPE aa
+                       xx=[0...8]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=1/8: EQ Index
+                       zz=[20...20000]: Frequency Value [Hz]
+                       aa=[0,6,12,18 or 24]: Slope Value [dB], 0:Off
+OUT xx EQ vv yy FRQ zz GAIN aa
+                       Set Output: xx EQ yy To FRQ zz GAIN aa
+                       xx=[0...8]:0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=2/7: EQ Index
+                       zz=[20...20000]: Frequency Value [Hz]
+                       aa=[-20...+20]: Gain Value [dB] (Step=0.1)
+OUT xx EQ vv yy FRQ zz GAIN aa Q bb
+                       Set Output: xx EQ yy To FRQ zz GAIN aa Q bb
+                       xx=[0...8]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=[3...6]: EQ Index
+                       zz=[20...20000]: Frequency Value [Hz]
+                       aa=[-20...+20]: Gain Value [dB] (Step=0.1)
+                       bb=[0.02...16]: Q Value(Step=0.01)
+OUT xx EQ vv yy RESET  Reset Output: xx EQ To Default Setting
+                       xx=[0...8]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=[0...8]: EQ Index 0: All
+OUT xx EQ vv PRESET yy  Set Output: xx EQ To Preset yy
+                       xx=[0...8]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=[1...8]: EQ Preset Index
+OUT xx GROUP yy        Set Output: xx To Group yy
+                       xx=[0...8]: 0: All
+                       yy=[0...4]: 0: Remove From Group
+OUT xx MAX VOL vv yy   Set Users Should Be Able To Set Output: xx The Maximum Volume yy
+                       xx=[0...8]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified Then Both Channels Are Adjusted
+                       yy=[-12...24]: dB
+======================= Group/Master Control Command
+GROUP xx CH LOCK ON/OFF  Set Group: xx L/R Channels Lock/Unlock
+                       xx=[0...4]: 0: All
+GROUP xx VOL vv yy zz  Set Group: xx Volume To yy
+                       xx=[0...4]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=[0...100]: Volume Value
+                       yy=[-76...+24] When yy = dB (Step=0.01)
+                       yy= + Or - To Increment Or Decrement The Volume
+                       If zz == dB Then The Audio Format Is In dB, If Any Other Characters
+                       (Or No Characters) Are Entered Then The Volume Is In %
+GROUP xx MUTE vv ON/OFF  Set Group: xx Mute On Or Off
+                       xx=[0...4]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+GROUP xx MAX VOL vv yy  Set Users Should Be Able To Set Group: xx The Maximum Volume yy
+                       xx=0...4]: 0: All
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified Then Both Channels Are Adjusted
+                       yy=[-12...24]: dB
+GROUP MASTER VOL vv xx yy  Set Group Master Volume Value
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       xx=[0...100]: Volume Value
+                       xx=[-76...+24] When yy = dB (Step=0.01)
+                       xx= + Or - To Increment Or Decrement The Volume
+                       If yy == dB Then The Audio Format Is In dB, If Any Other Characters
+                       (Or No Characters) Are Entered Then The Volume Is In %
+GROUP MASTER MUTE vv ON/OFF  Set Group Master Mute On Or Off
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+GROUP MASTER CH LOCK ON/OFF  Set Group Master L/R Channels Lock/Unlock
+GROUP MASTER MAX VOL vv yy  Set Users Should Be Able To Set Group Master The Maximum Volume yy
+                       vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified Then Both Channels Are Adjusted
+                       yy=[-12...24]: dB
+======================= Preset Control Command
+PRESET xx STATUS       Print Preset xx Config Status
+                       xx=[1...8]: Select Preset Index
+PRESET xx SAVE         Save Current Config To Preset: xx
+                       xx=[1...8]: Select Preset Index
+PRESET xx APPLY        Recall Preset: xx Config To The Current Setting
+                       xx=[1...8]: Select Preset Index
+PRESET xx DELETE       Delete Preset: xx From The System
+                       xx=[1...8]: Select Preset Index
+======================= Trigger Control Command
+TRG xx FUNC yy TYPE vv zz  Set Trigger:xx Function To yy With Type vv zz
+                       xx=[0...4]: 0: All
+                       yy=[0...4]
+                       yy=0:Trigger Disable
+                       yy=1:Recall Preset:
+                         zz=[1...8]: Select Preset Index
+                       yy=2:Recall Duker:
+                         zz=[1...8]: Bus Index
+                         vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+                       yy=3:System Mute
+                       yy=4:Channel Mute:
+                         zz=[1...8]: Select Output Channel Mute
+                         vv=[L, R or LR] This Is Optional. If L Or R Is Not Specified
+                       Then Both Channels Are Adjusted
+TRG xx TIME yy         Set Trigger: xx Effective Time To yy
+                       xx=[0...4]: 0: All
+                       yy=[0...120] Seconds
+======================= EQ Preset Control Command
+EQ PRESET xx STATUS    Print EQ Preset xx Config Status
+                       xx=[1...8]: Select EQ Preset Index
+EQ PRESET xx SAVE      Save EQ Preset Temporary Config To EQ Preset: xx
+                       xx=[1...8]: Select EQ Preset Index
+EQ PRESET xx CLEAR     Clear EQ Preset: xx Config
+                       xx=[1...8]: Select EQ Preset Index
+EQ PRESET yy FRQ zz SLOPE aa
+                       Set EQ Preset Temporary Config yy To FRQ zz SLOPE aa
+                       yy=1/8: EQ Index
+                       zz=[20...20000]: Frequency Value [Hz]
+                       aa=[0,6,12,18 or 24]: Slope Value [dB], 0:Off
+EQ PRESET yy FRQ zz GAIN aa
+                       Set EQ Preset Temporary Config yy To FRQ zz GAIN aa
+                       yy=2/7: EQ Index
+                       zz=[20...20000]: Frequency Value [Hz]
+                       aa=[-20...+20]: Gain Value [dB] (Step=0.1)
+EQ PRESET yy FRQ zz GAIN aa Q bb
+                       Set EQ Preset Temporary Config yy To FRQ zz GAIN aa Q bb
+                       yy=[3...6]: EQ Index
+                       zz=[20...20000]: Frequency Value [Hz]
+                       aa=[-20...+20]: Gain Value [dB] (Step=0.1)
+                       bb=[0.02...16]: Q Value(Step=0.01)
+EQ PRESET Temporary STATUS    Print EQ Preset Temporary Config Status
+======================= Network Control Command
+NET DHCP ON/OFF        Set Auto IP(DHCP) On Or Off
+NET IP xxx.xxx.xxx.xxx Set IP Address
+NET GW xxx.xxx.xxx.xxx Set Gateway Address
+NET SM xxx.xxx.xxx.xxx Set Subnet Mask Address
+NET TCPPORT ON/OFF     Set TCP/IP Port On Or Off
+NET TCPPORT xxxx       Set TCP/IP Port
+NET TN ON/OFF          Set Telnet On Or Off
+NET TN xxxx            Set Telnet Port
+NET RB                 Network Reboot And Apply New Config!!!
+NET DNS xxxx           Set DNS Domain Name To xxxx (xxxx, Max 16 Characters)
+================================================================
+
+The DMP168 features Audio Digital Signal Processing (DSP), of which every audio
+function will consume a percentage of the processing power available. The DSP
+utilization percentage is displayed on screen for your reference. If the DSP utilization
+percentage gets too high, the audio signal could be distorted. It is important to monitor
+the DSP utilization percentage and ensure it does not exceed 93%. A list of each DSP
+function and its DSP utilization percentage is as follow
+Function and DSP Utilization Percentage
+Default function: 17%
+Volume / Mute Control: 9%
+Audio Bus Mixing: 0.164% per mono channel of mixing
+Audio Ducking: 3%
+Audio delay: 7%
+Input Crossover / EQ / Shelf Fliter: 0.5% per filter per channel
+Output Crossover / EQ / Shelf Filter: 0.5% per filter per channel
