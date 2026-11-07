@@ -213,13 +213,10 @@ $RECYCLE.BIN/
 .Trash-*
 .nfs*
 
-# Node
-node_modules/
-
 # Claude Code
 # Most of .claude/ is machine-local agent state, but a few paths are shared so
-# all contributors -- and the sandcastle in-sandbox agents -- inherit them:
-# settings.json (team hooks/permissions) and the committed hooks/ scripts.
+# all contributors inherit them: settings.json (team hooks/permissions) and the
+# committed hooks/ scripts.
 # settings.local.json and worktrees/ stay machine-local via the .claude/* glob.
 .claude/*
 !.claude/settings.json

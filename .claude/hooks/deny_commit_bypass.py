@@ -18,9 +18,8 @@ So we strip heredoc bodies, split on shell operators, and inspect only the argv
 of the segment that actually runs ``git ... commit`` -- skipping the values of
 message-bearing options so a flag quoted as a message value is not misread.
 
-Scope: this governs Claude Code AGENTS only (interactive sessions + the
-sandcastle in-sandbox agents). It cannot affect a human in a plain terminal --
-for that, rely on the git-side hook, the sandbox ``git`` shim, and CI. It is a
+Scope: this governs Claude Code AGENTS only. It cannot affect a human in a
+plain terminal -- for that, rely on the git-side hook and CI. It is a
 guardrail against the *reflexive* ``--no-verify``, not a security boundary:
 deliberately quoted/obfuscated flags (``git commit '--no-verify'``,
 ``git $(echo commit) -n``) and env-var skips (``SKIP=hook git commit``) are out

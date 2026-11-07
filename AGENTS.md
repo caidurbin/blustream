@@ -14,6 +14,10 @@ Five canonical triage roles map 1:1 to label strings (`needs-triage`, `needs-inf
 
 Single-context layout: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
+## Coding standards
+
+Style, testing, architecture and commit rules live in `docs/CODING_STANDARDS.md`.
+
 ## Editing GitHub Actions workflows
 
 When you change any file under `.github/` (a workflow, `actionlint.yaml`, or a composite action), run `actionlint` before finishing and resolve everything it reports. It validates the Actions schema, type-checks `${{ }}` expressions, and runs shellcheck over `run:` blocks — catching mistakes a plain YAML parse can't. CI enforces the same check via `.github/workflows/lint-actionlint.yml`.
