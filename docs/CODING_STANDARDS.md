@@ -1,7 +1,5 @@
 # Coding Standards
 
-The reviewer agent loads this via `@.sandcastle/CODING_STANDARDS.md` during code review, so these standards are enforced at review time without costing tokens during implementation.
-
 ## Style
 
 - Python 3.12+ (see `pyproject.toml` `requires-python = ">=3.12"` and ADR-0013)
