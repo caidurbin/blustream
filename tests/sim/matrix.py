@@ -27,16 +27,13 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import ipaddress
 import re
-import socket
 from collections import deque
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 
-# Built rather than written out so the IPv4 secret-scan rule has nothing to flag.
-LOOPBACK = str(ipaddress.IPv4Address(socket.INADDR_LOOPBACK))
+LOOPBACK = "127.0.0.1"
 
 RECORDINGS = Path(__file__).resolve().parent.parent / "fixtures" / "live" / "2026-10-29"
 
