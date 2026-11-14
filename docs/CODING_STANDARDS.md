@@ -26,3 +26,5 @@
 - Use [Conventional Commits](https://www.conventionalcommits.org/): `<type>(<scope>): <description>`
 - `<type>` ∈ `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `chore`, `build`, `ci`
 - Subject ≤ 72 chars, imperative mood, no trailing period
+- Body explains the why and key decisions; wrap at 72
+- Footer references the issue: `Refs: #N`, or `Closes: #N` when the change fully resolves it. With squash merges, put the same line in the PR description so GitHub links or closes the issue
