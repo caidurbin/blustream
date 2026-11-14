@@ -71,9 +71,17 @@ class BlustreamDevice(ABC):
             )
 
     async def connect(self) -> None:
-        if not self._connected:
-            await self._connection.connect()
-            self._connected = True
+        """Open the link, or reopen it after the device dropped it.
+
+        A no-op while the link is up. After a drop, ``is_connected`` is
+        False and this opens a new link. Runs under ``_command_lock``, so
+        two callers reconnecting at once open one link, not two, and a
+        reconnect never overlaps a command still running on the old link.
+        """
+        async with self._command_lock:
+            if not self.is_connected:
+                await self._connection.connect()
+                self._connected = True
 
     async def disconnect(self) -> None:
         if self._connected:

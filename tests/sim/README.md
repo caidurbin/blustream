@@ -25,6 +25,7 @@ Fault switches:
 | `interleave_foreign(cmd)` | Broadcast another client's reply to `cmd` just before the next reply |
 | `broadcast_foreign(cmd)` | Broadcast another client's reply to `cmd` now |
 | `drop_connections()` | Abort every client socket; the listeners stay up |
+| `stop()`, then `start()` | Abort every client socket and stop listening, then listen again on the same ports |
 | `silent = True` | Accept connections and read commands, but send nothing |
 | `chunk_delay`, `chunk_size` | Stream replies in `chunk_size` pieces with a pause between them |
 
@@ -42,9 +43,11 @@ the marker. Each reason names its issue:
   `[ERROR]` reply raises `CommandError` carrying the device's message. Its
   tests carry no marker. They force the rejection with `reject_next()`,
   because no valid write command was recorded failing.
-- **B2 ([#108](https://github.com/caidurbin/blustream/issues/108)):** when the
-  device closes the socket, `is_connected` stays True, so nothing reconnects
-  and every later poll fails. Covered in the library and in Home Assistant.
+- **B2 ([#108](https://github.com/caidurbin/blustream/issues/108), fixed):**
+  when the device closes or resets the socket, the client marks itself
+  disconnected and the next `connect()` opens a new link. The B2 tests pin
+  this as regression tests, with no marker, in the library and in Home
+  Assistant.
 - **[#109](https://github.com/caidurbin/blustream/issues/109):** every reply is
   broadcast to every client, so a reader takes another client's reply that
   lands first as its own.

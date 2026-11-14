@@ -1,5 +1,6 @@
 """Tests for base device class."""
 
+import asyncio
 from typing import Callable, Union
 
 import pytest
@@ -24,6 +25,7 @@ class MockConnection(Connection):
 
     def __init__(self):
         self._connected = False
+        self.connect_calls = 0
         self._send_calls: list[bytes] = []
         self._chunks: list[Union[str, Exception]] = []
         self._buffer = ""
@@ -36,6 +38,9 @@ class MockConnection(Connection):
                 self._chunks.append(chunk)
 
     async def connect(self) -> None:
+        self.connect_calls += 1
+        # Yield once, as a real connect does, so concurrent callers interleave.
+        await asyncio.sleep(0)
         self._connected = True
 
     async def disconnect(self) -> None:
@@ -266,6 +271,38 @@ class TestBlustreamDevice:
         await device.connect()
         conn._connected = False
         assert not device.is_connected
+
+    @pytest.mark.asyncio
+    async def test_connect_after_connection_lost_reconnects(self):
+        conn = MockConnection()
+        device = ConcreteDevice(conn)
+        await device.connect()
+        conn._connected = False
+
+        await device.connect()
+
+        assert conn.connect_calls == 2
+        assert device.is_connected
+
+    @pytest.mark.asyncio
+    async def test_connect_while_connected_is_noop(self):
+        conn = MockConnection()
+        device = ConcreteDevice(conn)
+        await device.connect()
+        await device.connect()
+        assert conn.connect_calls == 1
+
+    @pytest.mark.asyncio
+    async def test_concurrent_reconnects_open_one_link(self):
+        conn = MockConnection()
+        device = ConcreteDevice(conn)
+        await device.connect()
+        conn._connected = False
+
+        await asyncio.gather(device.connect(), device.connect())
+
+        assert conn.connect_calls == 2
+        assert device.is_connected
 
     @pytest.mark.asyncio
     async def test_send_command_writes_command_log(self, tmp_path):
