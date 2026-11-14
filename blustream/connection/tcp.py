@@ -109,7 +109,6 @@ class TCPConnection(Connection):
                 telnetlib3.open_connection(self.host, self.port),
                 timeout=self.timeout,
             )
-            self._buffer = ""
 
             await self._discard_initial_data()
 
@@ -201,11 +200,15 @@ class TCPConnection(Connection):
                 if "feed_data after feed_eof" not in error_msg:
                     logger.warning(f"Error closing connection: {e}")
             finally:
-                self._reader = None
-                self._writer = None
-                self._connected = False
-                self._buffer = ""
+                self._forget_link()
                 logger.info(f"Disconnected from {self.host}:{self.port}")
+
+    def _forget_link(self) -> None:
+        """Clear the per-link state, so ``connect()`` starts from a clean slate."""
+        self._reader = None
+        self._writer = None
+        self._connected = False
+        self._buffer = ""
 
     def _close_lost_link(self) -> None:
         """Forget a link the device closed or reset, so ``connect()`` reopens it.
@@ -215,10 +218,7 @@ class TCPConnection(Connection):
         Safe to call when there is no link.
         """
         writer = self._writer
-        self._reader = None
-        self._writer = None
-        self._connected = False
-        self._buffer = ""
+        self._forget_link()
         if writer is None:
             return
         try:

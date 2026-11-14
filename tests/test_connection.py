@@ -21,6 +21,20 @@ def _accept_first(_line: str) -> bool:
     return True
 
 
+def _mock_link(reads) -> tuple[AsyncMock, AsyncMock]:
+    """A telnetlib3 reader and writer; ``reads`` feeds ``reader.read``.
+
+    ``close`` and ``write`` are synchronous on the real writer, so they are
+    plain mocks here.
+    """
+    reader = AsyncMock()
+    reader.read = AsyncMock(side_effect=reads)
+    writer = AsyncMock()
+    writer.close = MagicMock()
+    writer.write = MagicMock()
+    return reader, writer
+
+
 def _assert_link_dropped(conn: TCPConnection, writer: MagicMock) -> None:
     """The lost link is closed and forgotten, so connect() can reopen it."""
     writer.close.assert_called_once()
@@ -141,10 +155,7 @@ class TestTCPConnection:
 
         The link is dropped: no stale reader, writer or buffer stays behind.
         """
-        mock_reader = AsyncMock()
-        mock_writer = AsyncMock()
-        mock_writer.close = MagicMock()
-        mock_reader.read = AsyncMock(side_effect=[BANNER, "partial", ""])
+        mock_reader, mock_writer = _mock_link([BANNER, "partial", ""])
         mock_open_connection.return_value = (mock_reader, mock_writer)
 
         conn = TCPConnection(host="192.0.2.100", port=23)
@@ -159,11 +170,8 @@ class TestTCPConnection:
     @patch("telnetlib3.open_connection")
     async def test_read_until_reset(self, mock_open_connection):
         """A reset while reading drops the link."""
-        mock_reader = AsyncMock()
-        mock_writer = AsyncMock()
-        mock_writer.close = MagicMock()
-        mock_reader.read = AsyncMock(
-            side_effect=[BANNER, ConnectionResetError("Connection reset by peer")]
+        mock_reader, mock_writer = _mock_link(
+            [BANNER, ConnectionResetError("Connection reset by peer")]
         )
         mock_open_connection.return_value = (mock_reader, mock_writer)
 
@@ -179,11 +187,7 @@ class TestTCPConnection:
     @patch("telnetlib3.open_connection")
     async def test_send_after_remote_close(self, mock_open_connection):
         """EOF found by the pre-send drain drops the link and writes nothing."""
-        mock_reader = AsyncMock()
-        mock_writer = AsyncMock()
-        mock_writer.close = MagicMock()
-        mock_writer.write = MagicMock()
-        mock_reader.read = AsyncMock(side_effect=[BANNER, ""])
+        mock_reader, mock_writer = _mock_link([BANNER, ""])
         mock_open_connection.return_value = (mock_reader, mock_writer)
 
         conn = TCPConnection(host="192.0.2.100", port=23)
@@ -198,13 +202,8 @@ class TestTCPConnection:
     @pytest.mark.asyncio
     @patch("telnetlib3.open_connection")
     async def test_connect_after_drop_opens_new_link(self, mock_open_connection):
-        old_reader = AsyncMock()
-        old_writer = AsyncMock()
-        old_writer.close = MagicMock()
-        old_reader.read = AsyncMock(side_effect=[BANNER, ""])
-        new_reader = AsyncMock()
-        new_writer = AsyncMock()
-        new_reader.read = AsyncMock(side_effect=[BANNER])
+        old_reader, old_writer = _mock_link([BANNER, ""])
+        new_reader, new_writer = _mock_link([BANNER])
         mock_open_connection.side_effect = [
             (old_reader, old_writer),
             (new_reader, new_writer),
@@ -228,10 +227,7 @@ class TestTCPConnection:
         self, mock_open_connection
     ):
         """A reset during the banner read leaves no half-open link behind."""
-        mock_reader = AsyncMock()
-        mock_writer = AsyncMock()
-        mock_writer.close = MagicMock()
-        mock_reader.read = AsyncMock(side_effect=ConnectionResetError("reset"))
+        mock_reader, mock_writer = _mock_link(ConnectionResetError("reset"))
         mock_open_connection.return_value = (mock_reader, mock_writer)
 
         conn = TCPConnection(host="192.0.2.100", port=23)
