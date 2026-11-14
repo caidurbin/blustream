@@ -190,6 +190,18 @@ blustream --host 192.0.2.100 preset-recall --preset 1
 blustream --host 192.0.2.100 preset-status --preset 1
 ```
 
+### Reboot
+
+```bash
+# Reboot, then wait until the device answers again with its uptime reset
+blustream --host 192.0.2.100 --yes reboot
+```
+
+`reboot` exits non-zero when the device acknowledges the command but does not
+restart (firmware MCU V1.5.0 does this), or does not answer again within about
+a minute. In the library, `DMP168.reboot()` raises `RebootNotConfirmedError` or
+`TimeoutError` in those cases; `reboot(confirm=False)` only sends the command.
+
 ### JSON Output
 
 ```bash

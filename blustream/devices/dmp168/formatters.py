@@ -80,3 +80,14 @@ def format_preset_status(result: Any, ctx: RenderContext) -> str:
     if result.description:
         lines.append(f"Description: {result.description}")
     return "\n".join(lines)
+
+
+def format_reboot(result: Any, ctx: RenderContext) -> str:
+    """Report a reboot that ``DMP168.reboot()`` confirmed.
+
+    The command fails with an error instead when the device did not restart,
+    so reaching this formatter means it did.
+    """
+    if ctx.json:
+        return json.dumps({"restarted": True})
+    return "Device restarted."

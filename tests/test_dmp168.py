@@ -10,7 +10,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from blustream.base.connection import Connection
-from blustream.base.exceptions import CommandError, ConnectionError, ValidationError
+from blustream.base.exceptions import (
+    CommandError,
+    ConnectionError,
+    RebootNotConfirmedError,
+    ValidationError,
+)
 from blustream.devices.dmp168.commands import (
     build_help_command,
     build_output_volume_command,
@@ -980,6 +985,31 @@ class TestDMP168Device:
 
         with pytest.raises(ParseError):
             await device.get_uptime()
+
+    @pytest.mark.asyncio
+    @patch("blustream.devices.dmp168.device.TCPConnection")
+    async def test_rejected_reboot_raises_without_waiting(self, mock_connection_class):
+        """A REBOOT the device answers with [ERROR] fails at once with its message."""
+        mock_conn = AsyncMock()
+        mock_conn.is_connected = MagicMock(return_value=True)
+        mock_conn.read_until = AsyncMock(
+            side_effect=[
+                "[SUCCESS]The uptime of the system is 0000:08:57:01\r\n",
+                "[ERROR]Command not found.\r\n",
+            ]
+        )
+        mock_connection_class.return_value = mock_conn
+
+        device = DMP168(host="192.0.2.100")
+        await device.connect()
+
+        with pytest.raises(CommandError, match="Command not found") as exc_info:
+            await device.reboot()
+        assert not isinstance(exc_info.value, RebootNotConfirmedError)
+        assert [c.args[0] for c in mock_conn.send.await_args_list] == [
+            b"UPTIME\r\n",
+            b"REBOOT\r\n",
+        ]
 
 
 _STATUS_FIXTURE = Path(__file__).resolve().parent / "fixtures/status_live_full.txt"
