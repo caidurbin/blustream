@@ -13,7 +13,7 @@ import asyncio
 
 import pytest
 
-from blustream.base.exceptions import CommandError, ParseError
+from blustream.base.exceptions import CommandError, ConnectionError, ParseError
 from blustream.connection.tcp import TCPConnection
 from blustream.devices.dmp168 import status_parser
 from blustream.devices.dmp168.device import DMP168
@@ -68,11 +68,6 @@ async def test_connection_stays_usable_after_a_rejected_command(sim, device):
 # -- B2: the client never reconnects after the link drops -------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="B2 (#108): when the device closes the socket, is_connected stays True, "
-    "so the poll never calls connect() again and fails until a restart",
-)
 async def test_poll_recovers_after_link_drop(sim, device):
     await device.get_status()
     await sim.drop_connections()
@@ -82,6 +77,21 @@ async def test_poll_recovers_after_link_drop(sim, device):
     # What the HA coordinator does on its next poll.
     if not device.is_connected:
         await device.connect()
+    status = await device.get_status()
+    assert status.power == "On"
+
+
+async def test_poll_recovers_once_unreachable_device_is_back(sim, device):
+    await sim.stop()
+    with pytest.raises(CommandError):
+        await device.get_status()
+    assert not device.is_connected
+    with pytest.raises(ConnectionError):
+        await device.connect()
+    assert not device.is_connected
+
+    await sim.start()
+    await device.connect()
     status = await device.get_status()
     assert status.power == "On"
 

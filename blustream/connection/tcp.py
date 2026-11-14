@@ -96,8 +96,12 @@ class TCPConnection(Connection):
         self._buffer = ""
 
     async def connect(self) -> None:
-        """Establish TCP connection to device using telnetlib3."""
-        if self._connected:
+        """Establish TCP connection to device using telnetlib3.
+
+        A no-op while the link is up. After the link is lost (the device
+        closed or reset the socket), opens a new one.
+        """
+        if self.is_connected():
             return
 
         try:
@@ -105,11 +109,10 @@ class TCPConnection(Connection):
                 telnetlib3.open_connection(self.host, self.port),
                 timeout=self.timeout,
             )
-            self._connected = True
-            self._buffer = ""
 
             await self._discard_initial_data()
 
+            self._connected = True
             logger.info(f"Connected to {self.host}:{self.port}")
         except asyncio.TimeoutError as e:
             raise TimeoutError(
@@ -128,6 +131,10 @@ class TCPConnection(Connection):
                 f"An unexpected error occurred while connecting to {self.host}:{self.port}: {str(e)}. "
                 f"Please check the device connection and try again."
             ) from e
+        finally:
+            # A failed or cancelled connect leaves no half-open stream behind.
+            if not self._connected:
+                self._close_lost_link()
 
     async def _discard_initial_data(self) -> None:
         """Best-effort: consume the welcome banner if one arrives.
@@ -140,6 +147,9 @@ class TCPConnection(Connection):
         does not depend on banner discard for correctness, and the
         per-send drain in ``send()`` cleans up any banner-shaped noise
         that arrives later.
+
+        End of stream is not fine: the device closed the socket it just
+        accepted, so ``ConnectionError`` is raised and the connect fails.
         """
         if not self._reader:
             return
@@ -168,10 +178,9 @@ class TCPConnection(Connection):
                 return
 
             if not chunk:
-                logger.debug(
-                    f"Remote closed during banner discard; got {len(buffer)} chars"
+                raise ConnectionError(
+                    f"Connection closed by {self.host}:{self.port} while connecting."
                 )
-                return
 
             buffer += chunk
 
@@ -193,11 +202,31 @@ class TCPConnection(Connection):
                 if "feed_data after feed_eof" not in error_msg:
                     logger.warning(f"Error closing connection: {e}")
             finally:
-                self._reader = None
-                self._writer = None
-                self._connected = False
-                self._buffer = ""
+                self._clear_link_state()
                 logger.info(f"Disconnected from {self.host}:{self.port}")
+
+    def _clear_link_state(self) -> None:
+        """Clear the per-link state, so ``connect()`` starts from a clean slate."""
+        self._reader = None
+        self._writer = None
+        self._connected = False
+        self._buffer = ""
+
+    def _close_lost_link(self) -> None:
+        """Forget a link the device closed or reset, so ``connect()`` reopens it.
+
+        Closes the transport without waiting (the peer is gone, so there is
+        nothing to flush) and clears the reader, writer and line buffer.
+        Safe to call when there is no link.
+        """
+        writer = self._writer
+        self._clear_link_state()
+        if writer is None:
+            return
+        try:
+            writer.close()
+        except Exception as e:
+            logger.debug(f"Error closing lost connection: {e}")
 
     async def send(self, data: bytes) -> None:
         """Send bytes after draining any unsolicited pending data.
@@ -223,7 +252,7 @@ class TCPConnection(Connection):
             await self._writer.drain()
             logger.debug(f"Sent: {data!r}")
         except (OSError, UnicodeDecodeError) as e:
-            self._connected = False
+            self._close_lost_link()
             raise ConnectionError(
                 f"Failed to send data to device: {str(e)}. The connection may have been lost. "
                 f"Please check the device connection and try again."
@@ -236,6 +265,10 @@ class TCPConnection(Connection):
         finds no data within the budget breaks the loop. Also resets the
         line buffer so a partial-line tail from a prior abandoned read
         cannot prefix the next response.
+
+        End of stream or a reset here means the device closed the socket
+        since the last command: the link is dropped and ``ConnectionError``
+        raised rather than writing into a dead socket.
         """
         if not self._reader:
             return
@@ -253,6 +286,11 @@ class TCPConnection(Connection):
                 )
             except asyncio.TimeoutError:
                 break
+            except OSError as e:
+                self._close_lost_link()
+                raise ConnectionError(
+                    f"Connection to the device was lost: {e}. Call connect() to reconnect."
+                ) from e
             except BaseException:
                 # StopAsyncIteration from exhausted AsyncMock side_effect in
                 # tests; treat any non-timeout signal as "no more buffered
@@ -260,7 +298,10 @@ class TCPConnection(Connection):
                 # whole send.
                 break
             if not chunk:
-                break
+                self._close_lost_link()
+                raise ConnectionError(
+                    "Connection closed by the device. Call connect() to reconnect."
+                )
             discarded += len(chunk)
 
         if discarded:
@@ -313,17 +354,19 @@ class TCPConnection(Connection):
                     f"Got {len(accumulated)} chars; buffer holds {len(self._buffer)} chars."
                 ) from e
             except (OSError, UnicodeEncodeError) as e:
-                self._connected = False
+                self._close_lost_link()
                 raise ConnectionError(
                     f"Failed to receive data from device: {str(e)}. The connection may have been lost. "
                     f"Please check the device connection and try again."
                 ) from e
 
             if not chunk_str:
-                raise ConnectionError(
+                message = (
                     f"Connection closed before a matching line arrived. "
                     f"Got {len(accumulated)} chars; buffer holds {len(self._buffer)} chars."
                 )
+                self._close_lost_link()
+                raise ConnectionError(message)
 
             self._buffer += chunk_str
             logger.debug(
