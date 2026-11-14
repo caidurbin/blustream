@@ -9,14 +9,38 @@ per platform.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+
 from homeassistant.const import CONF_MAC, CONF_NAME
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import (
     CONNECTION_NETWORK_MAC,
     DeviceInfo,
 )
 
+from blustream.base.exceptions import CommandError as BlustreamCommandError
+
 from .const import DOMAIN
 from .coordinator import BlustreamConfigEntry, BlustreamCoordinator
+
+
+@contextmanager
+def command_errors() -> Iterator[None]:
+    """Raise a failed device command as a translated ``HomeAssistantError``.
+
+    The library raises ``CommandError`` when the device rejects a command or
+    the exchange fails. Inside this context the error reaches the user as a
+    failed action that carries the device's message.
+    """
+    try:
+        yield
+    except BlustreamCommandError as err:
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="command_failed",
+            translation_placeholders={"error": str(err)},
+        ) from err
 
 
 def build_device_info(

@@ -13,7 +13,19 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_RESPONSE_TIMEOUT = 5.0
 
-SIMPLE_RESPONSE_MARKERS = ("[SUCCESS]", "[ERROR]")
+ERROR_MARKER = "[ERROR]"
+SIMPLE_RESPONSE_MARKERS = ("[SUCCESS]", ERROR_MARKER)
+
+
+def _device_error_message(response: str) -> Optional[str]:
+    """Return the text of a closing ``[ERROR]`` line, or None.
+
+    Only the last line is read: it is the line that ended the read. Any
+    ``[ERROR]`` text earlier in a multi-section reply is data.
+    """
+    last_line = response.rstrip("\r\n").rpartition("\n")[2]
+    _, marker, message = last_line.partition(ERROR_MARKER)
+    return message.strip() if marker else None
 
 
 def is_simple_marker(line: str) -> bool:
@@ -104,10 +116,15 @@ class BlustreamDevice(ABC):
         callers issuing multi-section replies (e.g. STATUS) pass their
         own end-of-response predicate.
 
-        ``send_command`` is intentionally response-shape agnostic — no
-        per-command branching here, no sleep/quick-read heuristics, no
-        substring sentinels. All that knowledge lives in the terminator
-        the caller supplies.
+        A response that closes with an ``[ERROR]`` line is a command the
+        device rejected: it raises ``CommandError`` carrying the device's
+        message instead of returning the text.
+
+        Apart from that closing-line ``[ERROR]`` check, ``send_command`` is
+        intentionally response-shape agnostic — no per-command branching
+        here, no sleep/quick-read heuristics, no substring sentinels. The
+        knowledge of where a reply ends lives in the terminator the caller
+        supplies.
 
         The send-then-read pair is held under ``_command_lock`` so a command
         and the status poll (or two commands) can't interleave their reads on
@@ -129,7 +146,7 @@ class BlustreamDevice(ABC):
         try:
             async with self._command_lock:
                 await self._connection.send(command.encode("utf-8") + b"\r\n")
-                return await self._connection.read_until(terminator, timeout=budget)
+                response = await self._connection.read_until(terminator, timeout=budget)
         except (ConnectionError, TimeoutError) as e:
             raise CommandError(
                 f"Command execution failed: {str(e)}. Please check the device connection and try again."
@@ -138,3 +155,10 @@ class BlustreamDevice(ABC):
             raise CommandError(
                 f"An unexpected error occurred during command execution: {str(e)}. Please try again."
             ) from e
+
+        device_error = _device_error_message(response)
+        if device_error is not None:
+            raise CommandError(
+                f"Device rejected command {command!r}: {device_error or 'no message'}"
+            )
+        return response

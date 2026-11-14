@@ -39,8 +39,8 @@ assert the correct behaviour, so a fix makes them pass and the fix then removes
 the marker. Each reason names its issue:
 
 - **B1 ([#107](https://github.com/caidurbin/blustream/issues/107)):** an
-  `[ERROR]` reply is returned as a normal response, so a rejected command is
-  reported as a success. The test forces the rejection with `reject_next()`,
+  `[ERROR]` reply raises `CommandError` carrying the device's message. Its
+  tests carry no marker. They force the rejection with `reject_next()`,
   because no valid write command was recorded failing.
 - **B2 ([#108](https://github.com/caidurbin/blustream/issues/108)):** when the
   device closes the socket, `is_connected` stays True, so nothing reconnects

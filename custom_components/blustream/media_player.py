@@ -39,7 +39,7 @@ from blustream.devices.dmp168.models import (
 
 from .const import BUS_COUNT, INPUT_COUNT, OUTPUT_COUNT
 from .coordinator import BlustreamConfigEntry, BlustreamCoordinator
-from .device import build_device_info
+from .device import build_device_info, command_errors
 
 # The device steps output volume in 1% increments via its native relative
 # ``+``/``-`` commands; HA expresses the step as a 0-1 fraction.
@@ -155,7 +155,8 @@ class BlustreamOutputMediaPlayer(
     async def async_select_source(self, source: str) -> None:
         """Route ``source`` to this output, or clear it when ``None``."""
         target = label_to_source(source)
-        await self.coordinator.device.set_output_source(self._output, target)
+        with command_errors():
+            await self.coordinator.device.set_output_source(self._output, target)
         await self.coordinator.async_request_refresh()
 
     @property
@@ -211,22 +212,32 @@ class BlustreamOutputMediaPlayer(
 
     async def async_set_volume_level(self, volume: float) -> None:
         """Set both channels to the same absolute level (0-1 fraction)."""
-        await self.coordinator.device.set_output_volume(
-            self._output, round(volume * _VOLUME_SCALE), channel="LR"
-        )
+        with command_errors():
+            await self.coordinator.device.set_output_volume(
+                self._output, round(volume * _VOLUME_SCALE), channel="LR"
+            )
         await self.coordinator.async_request_refresh()
 
     async def async_volume_up(self) -> None:
         """Step both channels up via the device's native relative command."""
-        await self.coordinator.device.set_output_volume(self._output, "+", channel="LR")
+        with command_errors():
+            await self.coordinator.device.set_output_volume(
+                self._output, "+", channel="LR"
+            )
         await self.coordinator.async_request_refresh()
 
     async def async_volume_down(self) -> None:
         """Step both channels down via the device's native relative command."""
-        await self.coordinator.device.set_output_volume(self._output, "-", channel="LR")
+        with command_errors():
+            await self.coordinator.device.set_output_volume(
+                self._output, "-", channel="LR"
+            )
         await self.coordinator.async_request_refresh()
 
     async def async_mute_volume(self, mute: bool) -> None:
         """Mute or unmute both channels together."""
-        await self.coordinator.device.set_output_mute(self._output, mute, channel="LR")
+        with command_errors():
+            await self.coordinator.device.set_output_mute(
+                self._output, mute, channel="LR"
+            )
         await self.coordinator.async_request_refresh()

@@ -23,6 +23,9 @@ from homeassistant.helpers.service_info.zeroconf import (  # noqa: E402
 from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa: E402
 
 from blustream.base.exceptions import (  # noqa: E402
+    CommandError as BlustreamCommandError,
+)
+from blustream.base.exceptions import (  # noqa: E402
     ConnectionError as BlustreamConnectionError,
 )
 from blustream.base.exceptions import (  # noqa: E402
@@ -151,6 +154,24 @@ async def test_user_step_invalid_mac(hass: HomeAssistant) -> None:
 
 async def test_user_step_cannot_connect(hass: HomeAssistant) -> None:
     device = _patched_device(uptime_side_effect=BlustreamConnectionError("nope"))
+    with patch("custom_components.blustream.config_flow.DMP168", return_value=device):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], USER_INPUT_WITH_MAC
+        )
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "cannot_connect"}
+    device.disconnect.assert_awaited()
+
+
+async def test_user_step_cannot_connect_when_device_rejects_uptime(
+    hass: HomeAssistant,
+) -> None:
+    device = _patched_device(
+        uptime_side_effect=BlustreamCommandError("Device rejected command 'UPTIME'")
+    )
     with patch("custom_components.blustream.config_flow.DMP168", return_value=device):
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER}
@@ -612,6 +633,31 @@ async def test_reconfigure_cannot_connect(hass: HomeAssistant) -> None:
     entry.add_to_hass(hass)
 
     device = _patched_device(uptime_side_effect=BlustreamConnectionError("nope"))
+    with patch("custom_components.blustream.config_flow.DMP168", return_value=device):
+        result = await entry.start_reconfigure_flow(hass)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                CONF_HOST: "192.0.2.222",
+                CONF_PORT: 23,
+                CONF_MAC: "34:d0:b8:21:22:33",
+            },
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "cannot_connect"}
+    assert entry.data[CONF_HOST] == "192.0.2.10"
+
+
+async def test_reconfigure_cannot_connect_when_device_rejects_uptime(
+    hass: HomeAssistant,
+) -> None:
+    entry = _existing_mac_entry()
+    entry.add_to_hass(hass)
+
+    device = _patched_device(
+        uptime_side_effect=BlustreamCommandError("Device rejected command 'UPTIME'")
+    )
     with patch("custom_components.blustream.config_flow.DMP168", return_value=device):
         result = await entry.start_reconfigure_flow(hass)
         result = await hass.config_entries.flow.async_configure(

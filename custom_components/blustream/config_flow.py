@@ -14,6 +14,9 @@ from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 from blustream import DMP168
 from blustream.base.exceptions import (
+    CommandError as BlustreamCommandError,
+)
+from blustream.base.exceptions import (
     ConnectionError as BlustreamConnectionError,
 )
 from blustream.base.exceptions import (
@@ -185,7 +188,11 @@ class BlustreamConfigFlow(ConfigFlow, domain=DOMAIN):
                     await _validate_connectivity(
                         user_input[CONF_HOST], user_input[CONF_PORT]
                     )
-                except (BlustreamConnectionError, BlustreamTimeoutError):
+                except (
+                    BlustreamConnectionError,
+                    BlustreamTimeoutError,
+                    BlustreamCommandError,
+                ):
                     errors["base"] = "cannot_connect"
                 except Exception:
                     _LOGGER.exception("Unexpected error validating Blustream device")
@@ -288,7 +295,11 @@ class BlustreamConfigFlow(ConfigFlow, domain=DOMAIN):
                     await _validate_connectivity(
                         user_input[CONF_HOST], user_input[CONF_PORT]
                     )
-                except (BlustreamConnectionError, BlustreamTimeoutError):
+                except (
+                    BlustreamConnectionError,
+                    BlustreamTimeoutError,
+                    BlustreamCommandError,
+                ):
                     errors["base"] = "cannot_connect"
                 except Exception:
                     _LOGGER.exception("Unexpected error validating Blustream device")

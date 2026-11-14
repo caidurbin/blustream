@@ -26,6 +26,7 @@ from blustream.base.exceptions import ConnectionError as BlustreamConnectionErro
 
 from .const import DOMAIN
 from .coordinator import BlustreamConfigEntry, BlustreamCoordinator
+from .device import command_errors
 
 
 async def async_setup_entry(
@@ -72,10 +73,12 @@ class BlustreamRebootButton(CoordinatorEntity[BlustreamCoordinator], ButtonEntit
         the TCP channel reboot would use; mark the coordinator failed (so
         every entity greys out) and surface a translated
         :class:`HomeAssistantError` rather than letting the raw library
-        exception propagate.
+        exception propagate. A reboot the device rejects raises the same
+        error type with the device's message.
         """
         try:
-            await self.coordinator.device.reboot()
+            with command_errors():
+                await self.coordinator.device.reboot()
         except BlustreamConnectionError as err:
             self.coordinator.last_update_success = False
             self.coordinator.async_update_listeners()

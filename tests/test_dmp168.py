@@ -1,6 +1,7 @@
 """Tests for DMP168 device."""
 
 import asyncio
+import re
 from collections.abc import Callable
 from datetime import timedelta
 from pathlib import Path
@@ -477,6 +478,37 @@ class TestDMP168Device:
 
         with pytest.raises(CommandError):
             await device.execute_command("unknown_command")
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("call", "message"),
+        [
+            (lambda d: d.power_on(), "Command not found."),
+            (
+                lambda d: d.route_input_to_output(input_ch=1, output=2),
+                "Command not found.",
+            ),
+            (lambda d: d.get_preset_status(1), "Preset 1 config status null."),
+            (lambda d: d.get_uptime_raw(), "Command not found."),
+        ],
+    )
+    @patch("blustream.devices.dmp168.device.TCPConnection")
+    async def test_error_reply_raises_command_error(
+        self, mock_connection_class, call, message
+    ):
+        """A device [ERROR] reply raises CommandError with the device's text."""
+        mock_conn = MagicMock()
+        mock_connection_class.return_value = mock_conn
+        mock_conn.send = AsyncMock()
+        mock_conn.read_until = AsyncMock(return_value=f"[ERROR]{message}\r\n")
+        mock_conn.is_connected = MagicMock(return_value=True)
+        mock_conn.connect = AsyncMock()
+
+        device = DMP168(host="192.0.2.100")
+        await device.connect()
+
+        with pytest.raises(CommandError, match=re.escape(message)):
+            await call(device)
 
     @pytest.mark.asyncio
     @patch("blustream.devices.dmp168.device.TCPConnection")
