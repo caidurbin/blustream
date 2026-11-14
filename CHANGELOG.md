@@ -19,6 +19,14 @@ and the project follows the `v*` release lane published to PyPI (see
   footer. Defined in `spec/protocol.yaml` and covered by the shared formatter
   vectors like every other command.
 
+### Fixed
+
+- A command the device answers with an `[ERROR]` line now raises
+  `CommandError` carrying the device's message. The public methods used to
+  return that text as a normal response, so a rejected command looked like a
+  success. This includes `DMP168.get_preset_status()` on an empty preset,
+  which the device answers with `[ERROR]Preset N config status null.` (#107)
+
 ## [0.3.0] - 2026-06-07
 
 Typed output sources and output settings in `SystemStatus`, so a single
