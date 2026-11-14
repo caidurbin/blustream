@@ -212,6 +212,21 @@ async def test_restart_on_reboot_drops_clients_and_comes_back_with_uptime_reset(
     assert await back.ask("TEMP") == recording("p8000_A_TEMP_1.bin")
 
 
+async def test_set_uptime_counts_up_from_the_given_value(sim, connect):
+    client = await connect(telnet=False)
+    sim.set_uptime(3)
+    assert await client.ask("UPTIME") == UPTIME_REPLY.format(0, 0, 0, 3).encode()
+
+
+async def test_restart_on_reboot_comes_back_with_the_given_uptime(sim, connect):
+    sim.restart_on_reboot(downtime=0.05, uptime=8)
+    client = await connect(telnet=False)
+    assert await client.ask("REBOOT") == WRITE_SUCCESS
+    await asyncio.sleep(0.1)
+    back = await connect(telnet=False)
+    assert await back.ask("UPTIME") == UPTIME_REPLY.format(0, 0, 0, 8).encode()
+
+
 async def test_restart_on_reboot_without_acknowledge_sends_nothing(sim, connect):
     sim.restart_on_reboot(downtime=0.05, acknowledge=False)
     client = await connect(telnet=False)

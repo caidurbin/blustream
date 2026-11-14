@@ -26,13 +26,15 @@ and the project follows the `v*` release lane published to PyPI (see
 
 ### Changed
 
-- **Breaking:** `DMP168.reboot()` confirms the restart (#78). It reads the uptime, sends
-  `REBOOT`, and checks every 2 s, reconnecting if the device dropped the
-  link. It returns once the device reports a lower uptime. It raises
-  `RebootNotConfirmedError` when the uptime has not reset 6 s after
-  `REBOOT`, and `TimeoutError` when the device does not report its uptime
-  within `timeout`. A call therefore takes from a few seconds up to about
-  the timeout, and can raise where it used to return.
+- **Breaking:** `DMP168.reboot()` confirms the restart (#78). It reads the
+  uptime, sends `REBOOT`, and checks every 2 s, reconnecting if the device
+  dropped the link. It returns once the device reports an uptime more than
+  2 s below the one it would show had it kept running (the uptime before
+  plus the time from reading it to asking again). It raises
+  `RebootNotConfirmedError` when the uptime still matches a running device
+  6 s after `REBOOT`, and `TimeoutError` when the device does not report its
+  uptime within `timeout`. A call therefore takes from a few seconds up to
+  about the timeout, and can raise where it used to return.
   `execute_command("reboot")` and the `reboot` CLI command go through it;
   `execute_command("reboot")` returns `None`, and the CLI prints
   `Device restarted.` (`{"restarted": true}` with `--json`).

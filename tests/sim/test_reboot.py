@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import time
 from datetime import timedelta
 
 import pytest
@@ -36,8 +37,52 @@ async def test_acknowledged_reboot_without_restart_raises(sim, device):
     assert await device.get_uptime() == RECORDED_UPTIME
 
 
-async def test_unreset_uptime_within_the_grace_keeps_checking(sim, device, monkeypatch):
+async def test_short_uptime_without_restart_raises(sim, device, monkeypatch):
+    # A device up for only 3 s that keeps running reads about 3 s plus the
+    # time since the press, which is no restart.
     monkeypatch.setattr(device_module, "REBOOT_GRACE", 0.1)
+    sim.set_uptime(3)
+
+    with pytest.raises(RebootNotConfirmedError, match="did not restart"):
+        await device.reboot(timeout=5)
+
+    assert device.is_connected
+
+
+async def test_restart_from_a_short_uptime_is_confirmed(sim, device, monkeypatch):
+    # Up for 3 s at the press; the restart and the boot take 10 s, and the
+    # device comes back reporting 8 s, higher than before but well below the
+    # 13 s a device that kept running would show. The clock jumps those 10 s
+    # once the device has received REBOOT, instead of sleeping them.
+    monkeypatch.setattr(
+        device_module,
+        "monotonic",
+        lambda: time.monotonic() + (10 if "REBOOT" in sim.received else 0),
+    )
+    sim.set_uptime(3)
+    sim.restart_on_reboot(downtime=0.05, uptime=8)
+
+    await device.reboot(timeout=60)
+
+    assert await device.get_uptime() > timedelta(seconds=3)
+
+
+async def test_slow_uptime_reply_from_a_running_device_raises(sim, device, monkeypatch):
+    # The device samples its uptime when UPTIME arrives, and the reply takes
+    # 10 s to come back. The latency must not pass for a restart.
+    monkeypatch.setattr(
+        device_module,
+        "monotonic",
+        lambda: time.monotonic() + (10 if sim.received.count("UPTIME") > 1 else 0),
+    )
+
+    with pytest.raises(RebootNotConfirmedError, match="did not restart"):
+        await device.reboot(timeout=60)
+
+
+async def test_running_uptime_within_the_grace_keeps_checking(sim, device, monkeypatch):
+    # A grace 30 times the poll interval leaves room for slow checks.
+    monkeypatch.setattr(device_module, "REBOOT_GRACE", 0.3)
 
     with pytest.raises(RebootNotConfirmedError):
         await device.reboot(timeout=5)
@@ -60,7 +105,7 @@ async def test_restart_shortly_after_the_acknowledgement_is_confirmed(
     assert await device.get_uptime() < timedelta(seconds=5)
 
 
-async def test_unreset_uptime_at_the_deadline_is_not_a_timeout(
+async def test_running_uptime_at_the_deadline_is_not_a_timeout(
     sim, device, monkeypatch
 ):
     monkeypatch.setattr(device_module, "REBOOT_GRACE", 60)

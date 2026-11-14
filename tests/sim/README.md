@@ -27,17 +27,18 @@ Fault switches:
 | `drop_connections()` | Abort every client socket; the listeners stay up |
 | `stop()`, then `start()` | Abort every client socket and stop listening, then listen again on the same ports |
 | `silent = True` | Accept connections and read commands, but send nothing |
-| `restart_on_reboot(downtime, acknowledge=True, delay=0)` | Make the next REBOOT restart the device: acknowledge it (unless `acknowledge=False`), keep answering for `delay` seconds, abort every client socket, stop listening for `downtime` seconds (`math.inf`: never come back), then listen again with UPTIME counting from zero |
+| `restart_on_reboot(downtime, acknowledge=True, delay=0, uptime=0)` | Make the next REBOOT restart the device: acknowledge it (unless `acknowledge=False`), keep answering for `delay` seconds, abort every client socket, stop listening for `downtime` seconds (`math.inf`: never come back), then listen again with UPTIME counting from `uptime` seconds |
+| `set_uptime(seconds)` | Make UPTIME report `seconds` now and count up from there, instead of the recorded value |
 | `chunk_delay`, `chunk_size` | Stream replies in `chunk_size` pieces with a pause between them |
 
 Only recorded replies are exact. Write commands were never sent to the real
 device, so the simulator answers them with a guessed `[SUCCESS]` and changes no
 state; STATUS, UPTIME and TEMP return the recorded values. REBOOT is a write
 too: by default the simulator acknowledges it and keeps running, as the live
-unit on firmware MCU V1.5.0 does. After a `restart_on_reboot()` restart, UPTIME
-counts from the restart in the recorded reply's format. No restart of a real
-DMP168 was recorded, so how one looks on the wire (acknowledged or not, how
-long the device is down) is a guess.
+unit on firmware MCU V1.5.0 does. After a `restart_on_reboot()` restart or a
+`set_uptime()` call, UPTIME counts up in the recorded reply's format. No
+restart of a real DMP168 was recorded, so how one looks on the wire
+(acknowledged or not, how long the device is down) is a guess.
 
 `test_fidelity.py` checks the simulator against the captures.
 `test_known_bugs.py` and `tests/components/blustream/test_sim_reconnect.py` (for

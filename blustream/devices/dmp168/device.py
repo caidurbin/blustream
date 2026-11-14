@@ -4,6 +4,7 @@ import asyncio
 import logging
 import re
 from datetime import timedelta
+from time import monotonic
 from typing import Any, Callable, Optional, Union
 
 from blustream.base.commands import Command, CommandRegistry
@@ -41,6 +42,13 @@ REBOOT_POLL_INTERVAL = 2.0
 # restarts a moment later time to go down, and keeps the failure early when
 # the device ignores REBOOT.
 REBOOT_GRACE = 6.0
+# How far below the uptime a still-running device would show an uptime must
+# be to prove a restart. The expected uptime is taken when the UPTIME command
+# goes out, and the device samples its uptime after that, so the command's
+# latency can only raise the reading. The device reports whole seconds, so a
+# device that kept running reads less than 1 s below the expected uptime; the
+# second second is margin for an unevenly ticking counter.
+REBOOT_UPTIME_TOLERANCE = 2.0
 
 
 def _status_terminator() -> Callable[[str], bool]:
@@ -594,13 +602,20 @@ class DMP168(BlustreamDevice):
 
         Reads the uptime, sends REBOOT, then checks every
         ``REBOOT_POLL_INTERVAL`` seconds. Each check reconnects if the device
-        dropped the link, then reads the uptime. An uptime lower than before
-        means the device restarted, and this returns. An uptime that is not
-        lower once ``REBOOT_GRACE`` seconds have passed means it did not
-        restart, and this raises then instead of waiting out ``timeout``.
-        Firmware MCU V1.5.0 acknowledges REBOOT on the TCP control channel
-        and keeps running, so the acknowledgement alone is no proof of a
-        restart.
+        dropped the link, then reads the uptime and compares it with the
+        uptime a device that kept running would show: the uptime before plus
+        the time from reading it to asking again. An uptime more than
+        ``REBOOT_UPTIME_TOLERANCE`` below that means the device restarted,
+        and this returns. Any other uptime once ``REBOOT_GRACE`` seconds have
+        passed means it did not restart, and this raises then instead of
+        waiting out ``timeout``. Firmware MCU V1.5.0 acknowledges REBOOT on
+        the TCP control channel and keeps running, so the acknowledgement
+        alone is no proof of a restart.
+
+        One case stays undecidable: a device whose uptime at the press is
+        below ``REBOOT_UPTIME_TOLERANCE`` and whose restart takes no time
+        reads the same as one that kept running. This raises
+        ``RebootNotConfirmedError`` then.
 
         Args:
             confirm: False sends REBOOT and returns once the device
@@ -610,8 +625,9 @@ class DMP168(BlustreamDevice):
                 the call can overrun it by one connect and one command.
 
         Raises:
-            RebootNotConfirmedError: The device's uptime had not reset once
-                ``REBOOT_GRACE`` had passed, or at the deadline.
+            RebootNotConfirmedError: The device's uptime matched a device that
+                kept running once ``REBOOT_GRACE`` had passed, or at the
+                deadline.
             TimeoutError: The device did not report its uptime within
                 ``timeout``.
             CommandError: The device rejected REBOOT, or the uptime read
@@ -623,6 +639,7 @@ class DMP168(BlustreamDevice):
             return
 
         before = await self.get_uptime()
+        before_read_at = monotonic()
         try:
             await self._send_reboot()
         except CommandError as err:
@@ -632,21 +649,25 @@ class DMP168(BlustreamDevice):
             # which a restarting device can do. The checks below decide.
             logger.debug("No acknowledgement of REBOOT: %s", err)
 
-        loop = asyncio.get_running_loop()
-        sent_at = loop.time()
+        sent_at = monotonic()
         deadline = sent_at + timeout
+        tolerance = timedelta(seconds=REBOOT_UPTIME_TOLERANCE)
         while True:
             await asyncio.sleep(REBOOT_POLL_INTERVAL)
-            after = await self._uptime_if_answering()
-            now = loop.time()
-            if after is not None:
-                if after < before:
+            answer = await self._uptime_if_answering()
+            now = monotonic()
+            if answer is not None:
+                asked_at, after = answer
+                running_uptime = before + timedelta(seconds=asked_at - before_read_at)
+                if after < running_uptime - tolerance:
                     logger.info("Device restarted; uptime is now %s", after)
                     return
                 if now - sent_at >= REBOOT_GRACE or now >= deadline:
+                    expected = timedelta(seconds=round(running_uptime.total_seconds()))
                     raise RebootNotConfirmedError(
                         "Device acknowledged REBOOT but did not restart: its "
-                        f"uptime went from {before} to {after} without a reset."
+                        f"uptime went from {before} to {after}, about the "
+                        f"{expected} it would show had it kept running."
                     )
             elif now >= deadline:
                 raise TimeoutError(
@@ -658,11 +679,16 @@ class DMP168(BlustreamDevice):
         """Send REBOOT and wait for the device's acknowledgement."""
         await self.send_command(self._registry.get("reboot").handler())
 
-    async def _uptime_if_answering(self) -> Optional[timedelta]:
-        """Reconnect if needed and read the uptime; None while the device is silent."""
+    async def _uptime_if_answering(self) -> Optional[tuple[float, timedelta]]:
+        """Reconnect if needed and read the uptime; None while the device is silent.
+
+        Returns the ``monotonic()`` time just before UPTIME was sent, and the
+        uptime the device reported.
+        """
         try:
             await self.connect()
-            return await self.get_uptime()
+            asked_at = monotonic()
+            return asked_at, await self.get_uptime()
         except (ConnectionError, TimeoutError, CommandError, ParseError) as err:
             logger.debug("Device not answering after REBOOT yet: %s", err)
             return None

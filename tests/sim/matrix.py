@@ -21,12 +21,13 @@ has to survive.
 
 REBOOT: by default the simulator acknowledges it and keeps running, as the
 live unit on firmware MCU V1.5.0 does. ``restart_on_reboot()`` makes the next
-REBOOT restart it instead.
+REBOOT restart it instead. ``set_uptime()`` makes UPTIME count from a chosen
+value instead of answering with the recorded one.
 
 Fidelity limit: only what was recorded is exact. Write commands were never
 sent to the real device, so their ``[SUCCESS]`` reply here is a guess and they
 change no state. STATUS, UPTIME and TEMP return the recorded values until a
-simulated restart, after which UPTIME counts from the restart. How a restart
+simulated restart or ``set_uptime()``, after which UPTIME counts up. How a restart
 looks on the wire was never recorded either.
 """
 
@@ -148,6 +149,7 @@ class _Restart:
     downtime: float
     acknowledge: bool
     delay: float
+    uptime: float
 
 
 @dataclass(eq=False)
@@ -192,7 +194,8 @@ class SimulatedMatrix:
         # How the next REBOOT restarts the device; None: REBOOT is ignored.
         self._pending_restart: _Restart | None = None
         self._restart_task: asyncio.Task[None] | None = None
-        # Loop time of the last simulated restart; None: never restarted.
+        # Loop time at which the uptime was zero; None: UPTIME answers with the
+        # recorded value.
         self._booted_at: float | None = None
 
     async def __aenter__(self) -> SimulatedMatrix:
@@ -251,8 +254,17 @@ class SimulatedMatrix:
         """Broadcast the reply to ``command`` as if an unseen client sent it."""
         await self._broadcast(command, self._respond(command))
 
+    def set_uptime(self, seconds: float) -> None:
+        """Make UPTIME report ``seconds`` now and count up from there."""
+        self._booted_at = asyncio.get_running_loop().time() - seconds
+
     def restart_on_reboot(
-        self, downtime: float = 0.0, *, acknowledge: bool = True, delay: float = 0.0
+        self,
+        downtime: float = 0.0,
+        *,
+        acknowledge: bool = True,
+        delay: float = 0.0,
+        uptime: float = 0.0,
     ) -> None:
         """Make the next REBOOT restart the device instead of being ignored.
 
@@ -260,16 +272,16 @@ class SimulatedMatrix:
         device keeps answering for ``delay`` seconds, then aborts every client
         socket and stops listening for ``downtime`` seconds (``math.inf``: it
         never comes back), then listens again on the same ports with its
-        uptime counting from zero.
+        uptime counting from ``uptime`` seconds.
         """
-        self._pending_restart = _Restart(downtime, acknowledge, delay)
+        self._pending_restart = _Restart(downtime, acknowledge, delay, uptime)
 
     async def _restart(self, restart: _Restart) -> None:
         await asyncio.sleep(restart.delay)
         await self._stop_listening()
         await asyncio.sleep(restart.downtime)
         await self.start()
-        self._booted_at = asyncio.get_running_loop().time()
+        self.set_uptime(restart.uptime)
 
     async def drop_connections(self) -> None:
         """Abort every open client socket. The listeners stay up."""
@@ -331,7 +343,7 @@ class SimulatedMatrix:
             return recording("p8000_A_STATUS_2.bin")
         if words == ["UPTIME"]:
             if self._booted_at is not None:
-                return self._uptime_since_restart()
+                return self._counted_uptime()
             return recording("p8000_A_UPTIME_1.bin")
         if words == ["TEMP"]:
             return recording("p8000_A_TEMP_1.bin")
@@ -345,7 +357,7 @@ class SimulatedMatrix:
             return WRITE_SUCCESS
         return ERR_NOT_FOUND
 
-    def _uptime_since_restart(self) -> bytes:
+    def _counted_uptime(self) -> bytes:
         seconds = int(asyncio.get_running_loop().time() - self._booted_at)
         minutes, secs = divmod(seconds, 60)
         hours, mins = divmod(minutes, 60)
