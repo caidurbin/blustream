@@ -26,7 +26,7 @@ and the project follows the `v*` release lane published to PyPI (see
 
 ### Changed
 
-- `DMP168.reboot()` confirms the restart (#78). It reads the uptime, sends
+- **Breaking:** `DMP168.reboot()` confirms the restart (#78). It reads the uptime, sends
   `REBOOT`, and checks every 2 s, reconnecting if the device dropped the
   link. It returns once the device reports a lower uptime. It raises
   `RebootNotConfirmedError` when the uptime has not reset 6 s after
