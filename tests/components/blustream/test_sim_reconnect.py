@@ -19,7 +19,7 @@ MAC = "34:d0:b8:21:22:33"
 
 @pytest.mark.xfail(
     strict=True,
-    reason="B2: after the device drops the link the coordinator keeps "
+    reason="B2 (#108): after the device drops the link the coordinator keeps "
     "polling the dead socket and never reconnects",
 )
 async def test_coordinator_reconnects_after_link_drop(

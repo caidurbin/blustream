@@ -46,7 +46,7 @@ async def device(sim, port):
 
 @pytest.mark.xfail(
     strict=True,
-    reason="B1: send_command returns an [ERROR] reply as a normal response, "
+    reason="B1 (#107): send_command returns an [ERROR] reply as a normal response, "
     "so a command the device rejects is reported as a success",
 )
 async def test_rejected_command_raises(sim, device):
@@ -60,7 +60,7 @@ async def test_rejected_command_raises(sim, device):
 
 @pytest.mark.xfail(
     strict=True,
-    reason="B2: when the device closes the socket, is_connected stays True, "
+    reason="B2 (#108): when the device closes the socket, is_connected stays True, "
     "so the poll never calls connect() again and fails until a restart",
 )
 async def test_poll_recovers_after_link_drop(sim, device):
@@ -81,7 +81,7 @@ async def test_poll_recovers_after_link_drop(sim, device):
 
 @pytest.mark.xfail(
     strict=True,
-    reason="Every reply is broadcast to every client, so a reader takes "
+    reason="#109: every reply is broadcast to every client, so a reader takes "
     "another client's reply that lands first as its own",
 )
 async def test_foreign_reply_is_not_taken_as_ours(sim, device):
@@ -91,7 +91,7 @@ async def test_foreign_reply_is_not_taken_as_ours(sim, device):
 
 @pytest.mark.xfail(
     strict=True,
-    reason="A STATUS dump with binary frames mixed in and bytes missing is "
+    reason="#110: a STATUS dump with binary frames mixed in and bytes missing is "
     "parsed as valid instead of being rejected",
 )
 async def test_corrupted_status_is_rejected(sim, device):
@@ -102,7 +102,7 @@ async def test_corrupted_status_is_rejected(sim, device):
 
 @pytest.mark.xfail(
     strict=True,
-    reason="DMP168Parser.parse_status accepts the corrupted STATUS capture",
+    reason="#110: DMP168Parser.parse_status accepts the corrupted STATUS capture",
 )
 def test_dmp168_parser_rejects_corrupted_status():
     with pytest.raises(ParseError):
@@ -111,7 +111,7 @@ def test_dmp168_parser_rejects_corrupted_status():
 
 @pytest.mark.xfail(
     strict=True,
-    reason="status_parser.parse accepts the corrupted STATUS capture",
+    reason="#110: status_parser.parse accepts the corrupted STATUS capture",
 )
 def test_status_parser_rejects_corrupted_status():
     with pytest.raises(ParseError):
