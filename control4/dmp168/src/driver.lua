@@ -33,6 +33,13 @@ local DEFAULT_PORT = 8000
 local DEFAULT_POLL_INTERVAL_S = 15
 local DEFAULT_DEBUG_MODE = false
 
+-- Upper bound on the bytes status_buffer retains. The largest single STATUS
+-- response captured from a live device is 11,712 bytes (port 23, with echo
+-- and prompt); two full dumps back to back, as the broadcast quirk produces,
+-- are 23,424 bytes. 64 KiB leaves room for both, so a legitimate response is
+-- never truncated, even one arriving after junk.
+local STATUS_BUFFER_MAX_BYTES = 65536
+
 local cs = nil
 local ph = nil
 local tracker = nil
@@ -233,12 +240,18 @@ end
 -- response can be parsed and handed to the polling coordinator. The
 -- parser tolerates trailing junk, so we attempt a parse on every chunk
 -- and clear the buffer once a valid (non-empty routing) response lands.
+-- A device that never completes a valid response cannot grow the buffer
+-- past STATUS_BUFFER_MAX_BYTES: the oldest bytes are shed and the most
+-- recent ones kept.
 function ReceivedFromNetwork(idBinding, nPort, strData)  -- luacheck: no unused args
     if cs == nil then return end
     if idBinding ~= NETWORK_BINDING then return end
     cs:on_received(strData)
 
     status_buffer = status_buffer .. strData
+    if #status_buffer > STATUS_BUFFER_MAX_BYTES then
+        status_buffer = status_buffer:sub(-STATUS_BUFFER_MAX_BYTES)
+    end
     local ok, parsed = pcall(status_parser.parse, status_buffer)
     if ok and parsed.routing and #parsed.routing > 0 then
         if pc ~= nil then pc:on_status(parsed) end
