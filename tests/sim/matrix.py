@@ -72,6 +72,18 @@ def banner() -> bytes:
     return recording("p23_A_after-B-connect.bin")
 
 
+def status_dumps(name: str) -> list[bytes]:
+    """Split one capture into STATUS dumps, each from its header to the next."""
+    data = recording(name)
+    starts = [m.start() for m in re.finditer(re.escape(_STATUS_HEADER), data)]
+    return [data[start:end] for start, end in zip(starts, starts[1:] + [len(data)])]
+
+
+def has_binary_frame(dump: bytes) -> bool:
+    """Whether a dump carries one of the device's ``AA 54 …`` binary frames."""
+    return _BINARY_FRAME_START in dump
+
+
 @cache
 def corrupted_status() -> bytes:
     """A broadcast STATUS from the passive capture with binary frames mixed in.
@@ -80,12 +92,9 @@ def corrupted_status() -> bytes:
     ``AA 54 …`` frames and still ends on a clean footer, so a reader framing on
     the footer accepts it as one complete reply.
     """
-    data = recording("passive_p8000_180s.bin")
-    starts = [m.start() for m in re.finditer(re.escape(_STATUS_HEADER), data)]
-    for start, end in zip(starts, starts[1:] + [len(data)]):
-        dump = data[start:end]
+    for dump in status_dumps("passive_p8000_180s.bin"):
         footer = dump.rfind(_STATUS_FOOTER)
-        if _BINARY_FRAME_START in dump and footer >= 0:
+        if has_binary_frame(dump) and footer >= 0:
             return b"\r\n" + dump[: footer + len(_STATUS_FOOTER)]
     raise LookupError("no corrupted STATUS with a clean footer in the capture")
 

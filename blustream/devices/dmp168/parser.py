@@ -5,6 +5,7 @@ import re
 from typing import Optional
 
 from blustream.base.exceptions import ParseError
+from blustream.devices.dmp168 import status_integrity
 from blustream.devices.dmp168.models import (
     InputSettings,
     OutputRouting,
@@ -51,12 +52,14 @@ class DMP168Parser:
             Parsed SystemStatus object
 
         Raises:
-            ParseError: If parsing fails
+            ParseError: If parsing fails, or the dump is corrupted (see
+                :func:`blustream.devices.dmp168.status_integrity.check`)
         """
         try:
             logger.debug(
                 f"Parsing STATUS response ({len(response)} chars):\n{response[:500]}"
             )
+            status_integrity.check(response)
             lines = response.split("\n")
 
             # Find system status line (header)

@@ -33,6 +33,14 @@ and the project follows the `v*` release lane published to PyPI (see
   Home Assistant coordinator calls on its next poll) opens a new link. A
   connect the device closes during the welcome banner now fails with
   `ConnectionError` instead of reporting success on a dead link.
+- `DMP168.get_status()`, `DMP168Parser.parse_status()` and
+  `status_parser.parse()` raise `ParseError` on a corrupted STATUS dump
+  instead of returning its values (#110). A dump is corrupted when it holds a
+  character outside printable ASCII, tab, CR and LF (the device's interleaved
+  `AA 54 …` binary frames), or an `In<n>`/`Out<n>` row that doesn't match a
+  clean row shape, so truncated rows such as `In1 On 50`, or `Out1 L` with no
+  source, raise too. The Home Assistant coordinator treats the error as a
+  failed poll.
 
 ## [0.3.0] - 2026-06-07
 
