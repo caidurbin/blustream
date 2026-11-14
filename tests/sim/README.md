@@ -34,8 +34,8 @@ device, so the simulator answers them with a guessed `[SUCCESS]` and changes no
 state; STATUS, UPTIME and TEMP always return the recorded values.
 
 `test_fidelity.py` checks the simulator against the captures.
-`test_known_bugs.py` reproduces known client bugs as strict `xfail` tests, as
-`tests/components/blustream/test_sim_reconnect.py` does for Home Assistant. They
+`test_known_bugs.py` and `tests/components/blustream/test_sim_reconnect.py` (for
+Home Assistant) hold the known-bug tests. Open bugs are strict `xfail` tests: they
 assert the correct behaviour, so a fix makes them pass and the fix then removes
 the marker. Each reason names its issue:
 
