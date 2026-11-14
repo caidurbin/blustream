@@ -34,8 +34,8 @@ device, so the simulator answers them with a guessed `[SUCCESS]` and changes no
 state; STATUS, UPTIME and TEMP always return the recorded values.
 
 `test_fidelity.py` checks the simulator against the captures.
-`test_known_bugs.py` (and `tests/components/blustream/test_sim_reconnect.py`
-for Home Assistant) reproduce known client bugs as strict `xfail` tests: they
+`test_known_bugs.py` reproduces known client bugs as strict `xfail` tests, as
+`tests/components/blustream/test_sim_reconnect.py` does for Home Assistant. They
 assert the correct behaviour, so a fix makes them pass and the fix then removes
 the marker. Each reason names its issue:
 
@@ -43,11 +43,10 @@ the marker. Each reason names its issue:
   `[ERROR]` reply raises `CommandError` carrying the device's message. Its
   tests carry no marker. They force the rejection with `reject_next()`,
   because no valid write command was recorded failing.
-- **B2 ([#108](https://github.com/caidurbin/blustream/issues/108), fixed):**
-  when the device closes or resets the socket, the client marks itself
-  disconnected and the next `connect()` opens a new link. The B2 tests pin
-  this as regression tests, with no marker, in the library and in Home
-  Assistant.
+- **B2 ([#108](https://github.com/caidurbin/blustream/issues/108)):** when the
+  device closes or resets the socket, the client marks itself disconnected and
+  the next `connect()` opens a new link. The B2 tests, in the library and in
+  Home Assistant, carry no marker.
 - **[#109](https://github.com/caidurbin/blustream/issues/109):** every reply is
   broadcast to every client, so a reader takes another client's reply that
   lands first as its own.

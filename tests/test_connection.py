@@ -166,9 +166,8 @@ class TestTCPConnection:
 
         _assert_link_dropped(conn, mock_writer)
 
-    @pytest.mark.asyncio
     @patch("telnetlib3.open_connection")
-    async def test_read_until_reset(self, mock_open_connection):
+    async def test_read_until_reset_drops_link(self, mock_open_connection):
         """A reset while reading drops the link."""
         mock_reader, mock_writer = _mock_link(
             [BANNER, ConnectionResetError("Connection reset by peer")]
@@ -183,9 +182,10 @@ class TestTCPConnection:
 
         _assert_link_dropped(conn, mock_writer)
 
-    @pytest.mark.asyncio
     @patch("telnetlib3.open_connection")
-    async def test_send_after_remote_close(self, mock_open_connection):
+    async def test_send_after_remote_close_drops_link_and_writes_nothing(
+        self, mock_open_connection
+    ):
         """EOF found by the pre-send drain drops the link and writes nothing."""
         mock_reader, mock_writer = _mock_link([BANNER, ""])
         mock_open_connection.return_value = (mock_reader, mock_writer)
@@ -199,7 +199,6 @@ class TestTCPConnection:
         mock_writer.write.assert_not_called()
         _assert_link_dropped(conn, mock_writer)
 
-    @pytest.mark.asyncio
     @patch("telnetlib3.open_connection")
     async def test_connect_after_drop_opens_new_link(self, mock_open_connection):
         old_reader, old_writer = _mock_link([BANNER, ""])
@@ -221,7 +220,6 @@ class TestTCPConnection:
         assert conn._reader is new_reader
         assert conn._writer is new_writer
 
-    @pytest.mark.asyncio
     @patch("telnetlib3.open_connection")
     async def test_connect_failure_after_open_leaves_no_stream(
         self, mock_open_connection
@@ -232,6 +230,18 @@ class TestTCPConnection:
 
         conn = TCPConnection(host="192.0.2.100", port=23)
         with pytest.raises(ConnectionError):
+            await conn.connect()
+
+        _assert_link_dropped(conn, mock_writer)
+
+    @patch("telnetlib3.open_connection")
+    async def test_connect_closed_during_banner_fails(self, mock_open_connection):
+        """A device that closes the socket it just accepted fails the connect."""
+        mock_reader, mock_writer = _mock_link(["=" * 64 + "\r\n", ""])
+        mock_open_connection.return_value = (mock_reader, mock_writer)
+
+        conn = TCPConnection(host="192.0.2.100", port=23)
+        with pytest.raises(ConnectionError, match="closed"):
             await conn.connect()
 
         _assert_link_dropped(conn, mock_writer)

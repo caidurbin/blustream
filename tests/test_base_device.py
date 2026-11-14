@@ -272,7 +272,6 @@ class TestBlustreamDevice:
         conn._connected = False
         assert not device.is_connected
 
-    @pytest.mark.asyncio
     async def test_connect_after_connection_lost_reconnects(self):
         conn = MockConnection()
         device = ConcreteDevice(conn)
@@ -284,7 +283,6 @@ class TestBlustreamDevice:
         assert conn.connect_calls == 2
         assert device.is_connected
 
-    @pytest.mark.asyncio
     async def test_connect_while_connected_is_noop(self):
         conn = MockConnection()
         device = ConcreteDevice(conn)
@@ -292,7 +290,6 @@ class TestBlustreamDevice:
         await device.connect()
         assert conn.connect_calls == 1
 
-    @pytest.mark.asyncio
     async def test_concurrent_reconnects_open_one_link(self):
         conn = MockConnection()
         device = ConcreteDevice(conn)

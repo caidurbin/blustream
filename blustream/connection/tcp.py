@@ -147,6 +147,9 @@ class TCPConnection(Connection):
         does not depend on banner discard for correctness, and the
         per-send drain in ``send()`` cleans up any banner-shaped noise
         that arrives later.
+
+        End of stream is not fine: the device closed the socket it just
+        accepted, so ``ConnectionError`` is raised and the connect fails.
         """
         if not self._reader:
             return
@@ -175,10 +178,9 @@ class TCPConnection(Connection):
                 return
 
             if not chunk:
-                logger.debug(
-                    f"Remote closed during banner discard; got {len(buffer)} chars"
+                raise ConnectionError(
+                    f"Connection closed by {self.host}:{self.port} while connecting."
                 )
-                return
 
             buffer += chunk
 
@@ -200,10 +202,10 @@ class TCPConnection(Connection):
                 if "feed_data after feed_eof" not in error_msg:
                     logger.warning(f"Error closing connection: {e}")
             finally:
-                self._forget_link()
+                self._clear_link_state()
                 logger.info(f"Disconnected from {self.host}:{self.port}")
 
-    def _forget_link(self) -> None:
+    def _clear_link_state(self) -> None:
         """Clear the per-link state, so ``connect()`` starts from a clean slate."""
         self._reader = None
         self._writer = None
@@ -218,7 +220,7 @@ class TCPConnection(Connection):
         Safe to call when there is no link.
         """
         writer = self._writer
-        self._forget_link()
+        self._clear_link_state()
         if writer is None:
             return
         try:
