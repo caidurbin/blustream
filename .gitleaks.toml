@@ -14,8 +14,9 @@
 # addresses in test fixtures and spec vectors. Every example
 # identifier in the repo lives in an IETF documentation range, so the allowlists
 # below permit ONLY those ranges (RFC 5737 / 3849 / 7042) plus the vendor OUI that
-# is required to be public. Any *real* (non-documentation) IP or MAC therefore
-# fails the scan by design.
+# is required to be public. They also permit IPv4 loopback (127.0.0.0/8), which
+# test servers bind to and which names no device. Any *real* (non-documentation)
+# IP or MAC therefore fails the scan by design.
 #
 # See docs/secret-scanning-allowlist.md for the human-readable rationale.
 
@@ -64,6 +65,9 @@ regex = '''\b[0-9]{1,3}(?:\.[0-9]{1,3}){3}\b'''
     # Netmask / broadcast and the unspecified address — not host identifiers.
     '''\b255\.255\.255\.[0-9]{1,3}\b''',
     '''\b0+\.0+\.0+\.0+\b''',
+    # IPv4 loopback 127.0.0.0/8 (RFC 1122), padded octets included. Test
+    # servers such as tests/sim bind to it.
+    '''\b127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\b''',
   ]
 
   # Four-part dotted version strings (e.g. `v1.2.3.4`, `__version__ = "1.2.3.4"`)

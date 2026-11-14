@@ -10,7 +10,8 @@ Every example IP or MAC committed to this repo must use an IETF documentation ra
 and as a CI gate — with custom IPv4/IPv6/MAC rules in the shared `.gitleaks.toml`
 that block any real device identifier. The one allowed real value is the Blustream
 OUI prefix (`34:D0:B8`), which is manufacturer-assigned, required to be public for HA
-discovery, and kept in synthetic test MACs whose host octets are fabricated. When a
-scan flags a value, the fix is to move it into a documentation range — not to widen
-the allowlist. Operational mechanics and the current allowlist live in
-[`docs/secret-scanning-allowlist.md`](../secret-scanning-allowlist.md).
+discovery, and kept in synthetic test MACs whose host octets are fabricated. The IPv4
+loopback range (`127.0.0.0/8`) is also allowed: test servers bind to it, and it names
+no real device. When a scan flags a value, the fix is to move it into a documentation
+range — not to widen the allowlist. Operational mechanics and the current allowlist
+live in [`docs/secret-scanning-allowlist.md`](../secret-scanning-allowlist.md).

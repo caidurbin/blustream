@@ -17,10 +17,13 @@ block a real device identifier planted anywhere:
 - IPv6 → **RFC 3849**: `2001:db8::/32`
 - MAC  → **RFC 7042**: `00:00:5E:00:53:00`–`FF`
 
-The one unavoidable exception is the Blustream OUI: a MAC's first 24 bits are
-manufacturer-assigned and **required** to be public (the HA manifest declares
-`dhcp: 34D0B82*` so discovery works). Synthetic test MACs therefore keep the real
-`34:D0:B8` prefix and fabricate only the host octets.
+The one unavoidable exception among example identifiers is the Blustream OUI: a
+MAC's first 24 bits are manufacturer-assigned and **required** to be public (the
+HA manifest declares `dhcp: 34D0B82*` so discovery works). Synthetic test MACs
+therefore keep the real `34:D0:B8` prefix and fabricate only the host octets.
+
+The IPv4 loopback range `127.0.0.0/8` is also allowed. It is not an example
+identifier: it is the address test servers bind to (see the table below).
 
 When a scan flags a value, the fix is almost always to move it into a
 documentation range — **not** to widen the allowlist. Extend the table below only
@@ -33,6 +36,7 @@ for a genuinely-new public value (e.g. another vendor-published identifier).
 | `34:D0:B8:27:2D:96` | MAC printed in Blustream's published User Manual (p. 24) | Published by the vendor; a documentation example, not a private device |
 | `00:00:5E:00:53:00`–`FF` | RFC 7042 documentation MAC range | Reserved by RFC for documentation examples |
 | `192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24` | RFC 5737 documentation IPv4 ranges | Reserved by RFC for documentation; never routable. Includes the zero-padded form the device prints in its status table (e.g. `192.000.002.176`) |
+| `127.0.0.0/8` | IPv4 loopback range (RFC 1122) | Never leaves the host, so it names no real device. Test servers such as the simulated DMP168 in `tests/sim/` bind to `127.0.0.1` |
 | `2001:db8::/32` | RFC 3849 documentation IPv6 range | Reserved by RFC for documentation |
 | `255.255.255.x` | Subnet mask / broadcast address | Network parameter, not a host identifier |
 | `0000::57:01` | A `DDDD:HH:MM:SS` uptime duration that happens to parse as a compressed IPv6 literal | Time value in `tests/test_uptime_parser.py`, not an address |

@@ -16,6 +16,8 @@ on:
       - "custom_components/blustream/**"
       - "blustream/**"
       - "tests/components/blustream/**"
+      - "tests/sim/**"
+      - "tests/fixtures/live/**"
       - ".github/workflows/test-ha.yml"
   push:
     branches:
@@ -24,6 +26,8 @@ on:
       - "custom_components/blustream/**"
       - "blustream/**"
       - "tests/components/blustream/**"
+      - "tests/sim/**"
+      - "tests/fixtures/live/**"
       - ".github/workflows/test-ha.yml"
 
 permissions:
