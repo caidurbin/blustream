@@ -34,11 +34,13 @@ STATUS_FOOTER_MIN_WIDTH = 16
 # No restart of a real DMP168 has been timed. 60 s leaves room for an
 # embedded boot and bounds the wait when the device does not come back.
 REBOOT_CONFIRM_TIMEOUT = 60.0
-# Pause before each check while ``reboot()`` waits. The first check runs
-# one interval after REBOOT, so the device has that long to start its
-# restart before a live link with an unreset uptime counts as "did not
-# restart".
+# Pause before each check while ``reboot()`` waits.
 REBOOT_POLL_INTERVAL = 2.0
+# How long after REBOOT an unreset uptime still means "not down yet" rather
+# than "did not restart". It gives a device that acknowledges first and
+# restarts a moment later time to go down, and keeps the failure early when
+# the device ignores REBOOT.
+REBOOT_GRACE = 6.0
 
 
 def _status_terminator() -> Callable[[str], bool]:
@@ -592,12 +594,13 @@ class DMP168(BlustreamDevice):
 
         Reads the uptime, sends REBOOT, then checks every
         ``REBOOT_POLL_INTERVAL`` seconds. Each check reconnects if the device
-        dropped the link, then reads the uptime. The first uptime the device
-        answers decides: lower than before means the device restarted, and
-        this returns. Not lower means it did not restart, and this raises at
-        once instead of waiting out ``timeout``. Firmware MCU V1.5.0
-        acknowledges REBOOT on the TCP control channel and keeps running, so
-        the acknowledgement alone is no proof of a restart.
+        dropped the link, then reads the uptime. An uptime lower than before
+        means the device restarted, and this returns. An uptime that is not
+        lower once ``REBOOT_GRACE`` seconds have passed means it did not
+        restart, and this raises then instead of waiting out ``timeout``.
+        Firmware MCU V1.5.0 acknowledges REBOOT on the TCP control channel
+        and keeps running, so the acknowledgement alone is no proof of a
+        restart.
 
         Args:
             confirm: False sends REBOOT and returns once the device
@@ -609,7 +612,8 @@ class DMP168(BlustreamDevice):
         Raises:
             RebootNotConfirmedError: The device answered after REBOOT and
                 its uptime had not reset.
-            TimeoutError: The device did not answer within ``timeout``.
+            TimeoutError: The device did not report its uptime within
+                ``timeout``.
             CommandError: The device rejected REBOOT, or the uptime read
                 before it failed.
             ConnectionError: The device is not connected.
@@ -629,27 +633,29 @@ class DMP168(BlustreamDevice):
             logger.debug("No acknowledgement of REBOOT: %s", err)
 
         loop = asyncio.get_running_loop()
-        deadline = loop.time() + timeout
+        sent_at = loop.time()
+        deadline = sent_at + timeout
         while True:
             await asyncio.sleep(REBOOT_POLL_INTERVAL)
             after = await self._uptime_if_answering()
-            if after is not None:
-                if after < before:
-                    logger.info("Device restarted; uptime is now %s", after)
-                    return
+            now = loop.time()
+            if after is not None and after < before:
+                logger.info("Device restarted; uptime is now %s", after)
+                return
+            if after is not None and (now - sent_at >= REBOOT_GRACE or now >= deadline):
                 raise RebootNotConfirmedError(
                     "Device acknowledged REBOOT but did not restart: its uptime "
                     f"went from {before} to {after} without a reset."
                 )
-            if loop.time() >= deadline:
+            if now >= deadline:
                 raise TimeoutError(
-                    f"Device did not answer within {timeout:g} s of REBOOT. "
-                    "It may still be restarting, or it may be unreachable."
+                    f"Device did not report its uptime within {timeout:g} s of "
+                    "REBOOT. It may still be restarting, or it may be unreachable."
                 )
 
     async def _send_reboot(self) -> None:
         """Send REBOOT and wait for the device's acknowledgement."""
-        await self.send_command(cmd_module.build_reboot_command())
+        await self.send_command(self._registry.get("reboot").handler())
 
     async def _uptime_if_answering(self) -> Optional[timedelta]:
         """Reconnect if needed and read the uptime; None while the device is silent."""

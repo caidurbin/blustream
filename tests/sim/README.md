@@ -53,8 +53,8 @@ the marker. Each reason names its issue:
   device closes or resets the socket, the client marks itself disconnected and
   the next `connect()` opens a new link. The B2 tests, in the library and in
   Home Assistant, carry no marker.
-- **[#78](https://github.com/caidurbin/blustream/issues/78):** the device
-  acknowledges REBOOT and does not restart, so a reboot that trusts the
+- **[#78](https://github.com/caidurbin/blustream/issues/78), resolved:** the
+  device acknowledges REBOOT and does not restart, so a reboot that trusts the
   acknowledgement reports a silent success. `DMP168.reboot()` confirms the
   restart by the uptime instead. Its tests, in `test_reboot.py` and (for Home
   Assistant) `tests/components/blustream/test_sim_reboot.py`, carry no marker.

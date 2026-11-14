@@ -10,7 +10,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from blustream.base.connection import Connection
-from blustream.base.exceptions import CommandError, ConnectionError, ValidationError
+from blustream.base.exceptions import (
+    CommandError,
+    ConnectionError,
+    RebootNotConfirmedError,
+    ValidationError,
+)
 from blustream.devices.dmp168.commands import (
     build_help_command,
     build_output_volume_command,
@@ -997,8 +1002,6 @@ class TestDMP168Device:
 
         device = DMP168(host="192.0.2.100")
         await device.connect()
-
-        from blustream.base.exceptions import RebootNotConfirmedError
 
         with pytest.raises(CommandError, match="Command not found") as exc_info:
             await device.reboot()

@@ -91,29 +91,24 @@ class BlustreamRebootButton(CoordinatorEntity[BlustreamCoordinator], ButtonEntit
         After a confirmed restart the coordinator refreshes, so the entities
         recover without waiting for the next poll.
         """
-        try:
-            with command_errors():
-                try:
-                    await self.coordinator.device.reboot()
-                except RebootNotConfirmedError as err:
-                    raise HomeAssistantError(
-                        translation_domain=DOMAIN,
-                        translation_key="reboot_not_restarted",
-                    ) from err
-        except BlustreamConnectionError as err:
-            self._mark_unreachable()
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="reboot_failed",
-            ) from err
-        except BlustreamTimeoutError as err:
-            self._mark_unreachable()
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="reboot_no_return",
-            ) from err
+        # RebootNotConfirmedError is a CommandError, so it is caught here
+        # before command_errors() turns it into the generic command_failed.
+        with command_errors():
+            try:
+                await self.coordinator.device.reboot()
+            except RebootNotConfirmedError as err:
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="reboot_not_restarted",
+                ) from err
+            except (BlustreamConnectionError, BlustreamTimeoutError) as err:
+                self.coordinator.async_set_update_error(err)
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key=(
+                        "reboot_no_return"
+                        if isinstance(err, BlustreamTimeoutError)
+                        else "reboot_failed"
+                    ),
+                ) from err
         await self.coordinator.async_request_refresh()
-
-    def _mark_unreachable(self) -> None:
-        self.coordinator.last_update_success = False
-        self.coordinator.async_update_listeners()

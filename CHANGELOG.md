@@ -18,6 +18,24 @@ and the project follows the `v*` release lane published to PyPI (see
   no `[SUCCESS]`/`[ERROR]` marker, so it is framed on the listing's `=`-only
   footer. Defined in `spec/protocol.yaml` and covered by the shared formatter
   vectors like every other command.
+- `RebootNotConfirmedError`, a `CommandError` that `DMP168.reboot()` raises
+  when the device acknowledges `REBOOT` but does not restart (#78).
+- Keyword-only arguments on `DMP168.reboot()`: `timeout` (seconds to wait
+  for the device after `REBOOT`, 60 by default) and `confirm` (`False` sends
+  `REBOOT` and returns on the acknowledgement, without the checks) (#78).
+
+### Changed
+
+- `DMP168.reboot()` confirms the restart (#78). It reads the uptime, sends
+  `REBOOT`, and checks every 2 s, reconnecting if the device dropped the
+  link. It returns once the device reports a lower uptime. It raises
+  `RebootNotConfirmedError` when the uptime has not reset 6 s after
+  `REBOOT`, and `TimeoutError` when the device does not report its uptime
+  within `timeout`. A call therefore takes from a few seconds up to about
+  the timeout, and can raise where it used to return.
+  `execute_command("reboot")` and the `reboot` CLI command go through it;
+  `execute_command("reboot")` returns `None`, and the CLI prints
+  `Device restarted.` (`{"restarted": true}` with `--json`).
 
 ### Fixed
 
@@ -41,17 +59,10 @@ and the project follows the `v*` release lane published to PyPI (see
   clean row shape, so truncated rows such as `In1 On 50`, or `Out1 L` with no
   source, raise too. The Home Assistant coordinator treats the error as a
   failed poll.
-- `DMP168.reboot()` and the `reboot` CLI command confirm that the device
-  restarted instead of reporting success on the acknowledgement alone
-  (#78). Firmware MCU V1.5.0 acknowledges `REBOOT` on the TCP control
-  channel and keeps running. `reboot()` now reads the uptime, sends
-  `REBOOT`, reconnects if the device dropped the link, and returns once the
-  device answers with its uptime reset. It raises the new
-  `RebootNotConfirmedError` (a `CommandError`) when the device answers and
-  its uptime did not reset, and `TimeoutError` when the device does not
-  answer within `timeout` (60 s by default). `reboot(confirm=False)` sends
-  `REBOOT` and returns on the acknowledgement. `execute_command("reboot")`
-  confirms the same way and returns `None`.
+- `DMP168.reboot()` and the `reboot` CLI command no longer report success
+  on the device's acknowledgement alone (#78). Firmware MCU V1.5.0
+  acknowledges `REBOOT` on the TCP control channel and keeps running; the
+  call and the command fail in that case.
 
 ## [0.3.0] - 2026-06-07
 

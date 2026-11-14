@@ -10,10 +10,10 @@ import pytest
 from blustream.devices.dmp168 import status_parser
 from blustream.devices.dmp168.parser import DMP168Parser
 from tests.sim.matrix import (
-    _UPTIME_REPLY,
     ERR_NOT_FOUND,
     IAC_NEGOTIATION,
     PROMPT,
+    UPTIME_REPLY,
     WRITE_SUCCESS,
     SimulatedMatrix,
     banner,
@@ -189,7 +189,7 @@ async def test_reboot_is_acknowledged_and_ignored_by_default(sim, connect):
 
 
 def test_uptime_after_a_restart_has_the_recorded_shape():
-    assert _UPTIME_REPLY.format(149, 4, 17, 56).encode() == recording(
+    assert UPTIME_REPLY.format(149, 4, 17, 56).encode() == recording(
         "p8000_A_UPTIME_1.bin"
     )
 
@@ -197,23 +197,23 @@ def test_uptime_after_a_restart_has_the_recorded_shape():
 async def test_restart_on_reboot_drops_clients_and_comes_back_with_uptime_reset(
     sim, connect
 ):
-    sim.restart_on_reboot(downtime=0.2)
+    sim.restart_on_reboot(downtime=0.05)
     client = await connect(telnet=False)
     assert await client.ask("REBOOT") == WRITE_SUCCESS
     assert await client.reader.read(1) == b""
     with pytest.raises(OSError):
         await connect(telnet=False)
 
-    await asyncio.sleep(0.3)
+    await asyncio.sleep(0.1)
     back = await connect(telnet=False)
-    assert await back.ask("UPTIME") == _UPTIME_REPLY.format(0, 0, 0, 0).encode()
+    assert await back.ask("UPTIME") == UPTIME_REPLY.format(0, 0, 0, 0).encode()
     # Only the next REBOOT restarts; the one after is ignored again.
     assert await back.ask("REBOOT") == WRITE_SUCCESS
     assert await back.ask("TEMP") == recording("p8000_A_TEMP_1.bin")
 
 
 async def test_restart_on_reboot_without_acknowledge_sends_nothing(sim, connect):
-    sim.restart_on_reboot(downtime=0.2, acknowledge=False)
+    sim.restart_on_reboot(downtime=0.05, acknowledge=False)
     client = await connect(telnet=False)
     client.writer.write(b"REBOOT\r\n")
     await client.writer.drain()

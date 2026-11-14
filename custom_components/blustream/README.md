@@ -96,9 +96,9 @@ logger namespace so HA's debug toggle reaches the wire layer).
 
 A reboot press succeeds only once the device answers again with its uptime reset.
 Firmware MCU V1.5.0 acknowledges the reboot command and keeps running; the press then
-fails with "acknowledged the reboot but did not restart", and the entities stay
-available. A device that goes offline and does not come back within 60 seconds fails
-the press too, and the entities grey out until it answers again.
+fails after about 6 seconds with "acknowledged the reboot but did not restart", and the
+entities stay available. A device that goes offline and does not come back within
+about a minute fails the press too, and the entities grey out until it answers again.
 
 Each output is a single-source `media_player` (ADR 0014). Its source list is `None`
 (unrouted) plus `Input 1`–`Input 16` and `Bus 1`–`Bus 8`; `select_source` routes the

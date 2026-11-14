@@ -40,6 +40,7 @@ async def sim_setup(
     not wait out the banner timeout as it would on the raw port.
     """
     monkeypatch.setattr(device_module, "REBOOT_POLL_INTERVAL", 0.01)
+    monkeypatch.setattr(device_module, "REBOOT_GRACE", 0)
     async with SimulatedMatrix() as sim:
         entry = MockConfigEntry(
             domain=DOMAIN,
@@ -101,7 +102,7 @@ async def test_confirmed_restart_recovers_the_entities(
 ) -> None:
     sim, coordinator = sim_setup
     button = _entity_id(hass, "button", "reboot")
-    sim.restart_on_reboot(downtime=0.5)
+    sim.restart_on_reboot(downtime=0.3)
 
     press = asyncio.create_task(_press(hass))
     while "REBOOT" not in sim.received:

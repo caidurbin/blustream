@@ -198,8 +198,8 @@ blustream --host 192.0.2.100 --yes reboot
 ```
 
 `reboot` exits non-zero when the device acknowledges the command but does not
-restart (firmware MCU V1.5.0 does this), or does not answer again within 60
-seconds. In the library, `DMP168.reboot()` raises `RebootNotConfirmedError` or
+restart (firmware MCU V1.5.0 does this), or does not answer again within about
+a minute. In the library, `DMP168.reboot()` raises `RebootNotConfirmedError` or
 `TimeoutError` in those cases; `reboot(confirm=False)` only sends the command.
 
 ### JSON Output

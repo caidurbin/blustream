@@ -262,6 +262,7 @@ class TestE2EReboot:
     @pytest.fixture(autouse=True)
     def fast_polls(self, monkeypatch):
         monkeypatch.setattr(device_module, "REBOOT_POLL_INTERVAL", 0)
+        monkeypatch.setattr(device_module, "REBOOT_GRACE", 0)
 
     @pytest.mark.asyncio
     async def test_reboot_confirmed(self, capsys):
