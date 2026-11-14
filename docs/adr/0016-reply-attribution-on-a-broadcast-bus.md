@@ -58,15 +58,15 @@ from. Such a write is best-effort; an `[ERROR]` read that way still raises
 The captured write replies restate the output and value, so port-8000 write shapes
 are possible later. On port 8000, a torn foreign `STATUS` that ends with no footer
 just ahead of ours is still returned in place of ours: our dump's top `=` rule ends
-the read one line before our title can restart it. A query reply that stalls past
-its timeout fits its own shape, so on port 8000 it is taken as the reply to the next
-query of the same command; `DMP168.reboot()` can then read an old uptime as a
-restart. On port 23 an echo glued onto a torn line that ends in a letter or digit is
-not recognised, and the command times out. A foreign reply to the same command text
-is accepted as ours; for queries it is equally fresh and for writes it has the same
-effect. Port 23 is the recommended port when other clients share the matrix. The
-Control4 driver, which uses port 8000 (ADR 0005), faces the same broadcast; that is
-#117.
+the read one line before our title can restart it (#119). A query reply that stalls
+past its timeout fits its own shape, so on port 8000 it is taken as the reply to the
+next query of the same command; `DMP168.reboot()` can then read an old uptime as a
+restart (#119). On port 23 an echo glued onto a torn line that ends in a letter or
+digit is not recognised, and the command times out. A foreign reply to the same
+command text is accepted as ours; for queries it is equally fresh and for writes it
+has the same effect. Port 23 is the recommended port when other clients share the
+matrix. The Control4 driver, which uses port 8000 (ADR 0005), faces the same
+broadcast; that is #117.
 
 **Rejected alternatives.**
 

@@ -194,7 +194,7 @@ async def test_stale_uptime_reply_is_not_taken_for_a_restart(
         with pytest.raises(RebootNotConfirmedError, match="did not restart"):
             await device.reboot(timeout=60)
     else:
-        # Limit: port 8000 has no echo, and the stale reply fits the UPTIME
-        # shape, so it is taken as the next check's answer.
+        # Limit (#119): port 8000 has no echo, and the stale reply fits the
+        # UPTIME shape, so it is taken as the next check's answer.
         await device.reboot(timeout=60)
     assert sim.received.count("UPTIME") == 3

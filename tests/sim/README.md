@@ -70,8 +70,8 @@ the marker. Each reason names its issue:
   both ports. Writes on port 8000 have no reply shape: their tests pin the
   best-effort behaviour. One case is open there, as a strict `xfail`:
   a torn foreign STATUS ahead of ours on port 8000 is returned in place of
-  ours. On port 8000 a stalled UPTIME reply is also taken as the next
-  UPTIME's answer, which `test_reboot.py` pins as a limit of `reboot()`.
+  ours (#119). On port 8000 a stalled UPTIME reply is also taken as the next
+  UPTIME's answer, which `test_reboot.py` pins as a limit of `reboot()` (#119).
 - **[#110](https://github.com/caidurbin/blustream/issues/110), resolved:** a
   corrupted STATUS dump (binary frames mixed in, bytes missing) raises
   `ParseError` from both STATUS parsers and from `get_status`. Its tests run

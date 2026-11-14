@@ -188,7 +188,7 @@ async def test_torn_foreign_status_ahead_of_our_status(
         request.applymarker(
             pytest.mark.xfail(
                 strict=True,
-                reason="On port 8000 the torn dump armed the STATUS terminator, "
+                reason="#119: on port 8000 the torn dump armed the STATUS terminator, "
                 "and our dump's top = rule ends the read one line before our "
                 "title can restart it, so the torn dump is returned",
             )
