@@ -109,30 +109,20 @@ async def test_foreign_reply_is_not_taken_as_ours(sim, device):
     assert await device.execute_command("uptime") == RECORDED_UPTIME
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="#110: a STATUS dump with binary frames mixed in and bytes missing is "
-    "parsed as valid instead of being rejected",
-)
 async def test_corrupted_status_is_rejected(sim, device):
+    """#110: a STATUS dump with binary frames mixed in raises, so a poll retries."""
     sim.corrupt_next_status()
-    with pytest.raises(CommandError):
+    with pytest.raises(ParseError):
         await device.get_status()
+    status = await device.get_status()
+    assert status.power == "On"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="#110: DMP168Parser.parse_status accepts the corrupted STATUS capture",
-)
 def test_dmp168_parser_rejects_corrupted_status():
     with pytest.raises(ParseError):
         DMP168Parser.parse_status(corrupted_status().decode("utf-8", "replace"))
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="#110: status_parser.parse accepts the corrupted STATUS capture",
-)
 def test_status_parser_rejects_corrupted_status():
     with pytest.raises(ParseError):
         status_parser.parse(corrupted_status().decode("utf-8", "replace"))

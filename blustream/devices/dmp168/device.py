@@ -161,6 +161,7 @@ class DMP168(BlustreamDevice):
         Raises:
             CommandError: If command execution fails, or the device answers
                 with an ``[ERROR]`` line (the message carries its text)
+            ParseError: If a STATUS or PRESET STATUS reply can't be parsed
             ValidationError: If parameters are invalid
         """
         validate(self._registry, name, kwargs)
@@ -252,6 +253,11 @@ class DMP168(BlustreamDevice):
 
         Returns:
             SystemStatus object
+
+        Raises:
+            CommandError: If the command fails or the link drops
+            ParseError: If the STATUS dump is corrupted or malformed, so the
+                caller can retry on its next poll
         """
         return await self.execute_command("status")
 

@@ -16,6 +16,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from blustream.devices.dmp168 import status_integrity
+
 _INPUT_LINE_RE = re.compile(r"^In(\d+)\b")
 _OUTPUT_LINE_RE = re.compile(r"^Out(\d+)\b")
 _FROM_INPUT_RE = re.compile(r"^In(\d+)$")
@@ -29,7 +31,14 @@ def parse(response_text: str) -> dict[str, Any]:
     system-status header + data line yields ``inputs: []`` and ``routing: []``
     rather than raising. This mirrors the partial-response fixture under
     ``spec/vectors/fixtures/status_partial.txt``.
+
+    Raises:
+        ParseError: If the dump is corrupted (see
+            :func:`blustream.devices.dmp168.status_integrity.check`).
+        ValueError: If the Power/Baud header or its data line is missing or
+            short, or a numeric field does not parse.
     """
+    status_integrity.check(response_text)
     lines = response_text.splitlines()
     return {
         **_parse_system(lines),

@@ -242,34 +242,30 @@ On           invalid %             0                         10        Off     2
         # Should use default baud if not numeric
         assert status.baud == 57600
 
-    def test_parse_status_input_section_partial(self):
-        """Test parsing STATUS with partial input section."""
+    def test_parse_status_rejects_truncated_input_row(self):
+        """A truncated Input Settings row marks the dump as corrupted."""
         response = """Power         Baud    Level Unit    Auto Standby Time(mins)    DSP(%)    Fade    Temp(C)   Uptime(Day:Hour:Min:Sec)
 On           57600   %             0                         10        Off     25.0C     0000:01:00:00
 
 Input Settings Status
 In1     On   50
 """
-        parser = DMP168Parser()
-        status = parser.parse_status(response)
-        # Should handle partial input line gracefully
-        assert len(status.inputs) == 0  # Incomplete line should be skipped
+        with pytest.raises(ParseError, match="malformed row"):
+            DMP168Parser().parse_status(response)
 
-    def test_parse_status_routing_section_partial(self):
-        """Test parsing STATUS with partial routing section."""
+    def test_parse_status_rejects_bare_output_row(self):
+        """A Matrix Config row with no channel marks the dump as corrupted."""
         response = """Power         Baud    Level Unit    Auto Standby Time(mins)    DSP(%)    Fade    Temp(C)   Uptime(Day:Hour:Min:Sec)
 On           57600   %             0                         10        Off     25.0C     0000:01:00:00
 
 Matrix Config Status
 Out1
 """
-        parser = DMP168Parser()
-        status = parser.parse_status(response)
-        # Should handle partial routing line gracefully
-        assert len(status.routing) == 0  # Incomplete line should be skipped
+        with pytest.raises(ParseError, match="malformed row"):
+            DMP168Parser().parse_status(response)
 
-    def test_parse_status_routing_no_input(self):
-        """Test parsing STATUS with routing but no input."""
+    def test_parse_status_rejects_routing_row_without_source(self):
+        """A Matrix Config row needs a source; the device prints None, not blank."""
         response = """Power         Baud    Level Unit    Auto Standby Time(mins)    DSP(%)    Fade    Temp(C)   Uptime(Day:Hour:Min:Sec)
 On           57600   %             0                         10        Off     25.0C     0000:01:00:00
 
@@ -277,12 +273,8 @@ Matrix Config Status
 Output        FromIn
 Out1 L
 """
-        parser = DMP168Parser()
-        status = parser.parse_status(response)
-        assert len(status.routing) == 1
-        assert status.routing[0].output == 1
-        assert status.routing[0].channel == "L"
-        assert status.routing[0].source is None  # No source routed
+        with pytest.raises(ParseError, match="malformed row"):
+            DMP168Parser().parse_status(response)
 
     def test_parse_status_dsp_with_percent(self):
         """Test parsing STATUS with DSP usage that includes %."""
