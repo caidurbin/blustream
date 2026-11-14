@@ -1,4 +1,4 @@
-"""Tests for the device reboot button (issue #67)."""
+"""Tests for the device reboot button (issues #67 and #78)."""
 
 from __future__ import annotations
 
@@ -27,6 +27,12 @@ from blustream.base.exceptions import (  # noqa: E402
 )
 from blustream.base.exceptions import (  # noqa: E402
     ConnectionError as BlustreamConnectionError,
+)
+from blustream.base.exceptions import (  # noqa: E402
+    RebootNotConfirmedError,
+)
+from blustream.base.exceptions import (  # noqa: E402
+    TimeoutError as BlustreamTimeoutError,
 )
 from custom_components.blustream.const import DOMAIN  # noqa: E402
 
@@ -97,6 +103,55 @@ async def test_press_calls_library_reboot(hass: HomeAssistant) -> None:
 
     await _press(hass, _entity_id(hass))
     device.reboot.assert_awaited_once_with()
+
+
+async def test_confirmed_reboot_refreshes_the_coordinator(hass: HomeAssistant) -> None:
+    device = _setup_device()
+    await _install(hass, device)
+    polls = device.get_status.await_count
+
+    await _press(hass, _entity_id(hass))
+    await hass.async_block_till_done()
+
+    assert device.get_status.await_count == polls + 1
+
+
+async def test_reboot_without_restart_raises_translated_error_and_stays_available(
+    hass: HomeAssistant,
+) -> None:
+    device = _setup_device()
+    device.reboot = AsyncMock(
+        side_effect=RebootNotConfirmedError(
+            "Device acknowledged REBOOT but did not restart"
+        )
+    )
+    entry = await _install(hass, device)
+    entity_id = _entity_id(hass)
+
+    with pytest.raises(HomeAssistantError) as exc_info:
+        await _press(hass, entity_id)
+    assert exc_info.value.translation_key == "reboot_not_restarted"
+
+    assert entry.runtime_data.last_update_success is True
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id).state != STATE_UNAVAILABLE
+
+
+async def test_device_not_back_after_reboot_raises_and_marks_unavailable(
+    hass: HomeAssistant,
+) -> None:
+    device = _setup_device()
+    device.reboot = AsyncMock(side_effect=BlustreamTimeoutError("gone"))
+    entry = await _install(hass, device)
+    entity_id = _entity_id(hass)
+
+    with pytest.raises(HomeAssistantError) as exc_info:
+        await _press(hass, entity_id)
+    assert exc_info.value.translation_key == "reboot_no_return"
+
+    assert entry.runtime_data.last_update_success is False
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id).state == STATE_UNAVAILABLE
 
 
 async def test_reboot_failure_raises_translated_error_and_marks_unavailable(

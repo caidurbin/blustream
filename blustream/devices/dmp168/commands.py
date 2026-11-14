@@ -13,7 +13,11 @@ from typing import Any
 
 from blustream.base.commands import Command, CommandRegistry, Dependency, Parameter
 from blustream.devices.dmp168 import _generated as gen
-from blustream.devices.dmp168.formatters import format_preset_status, format_status
+from blustream.devices.dmp168.formatters import (
+    format_preset_status,
+    format_reboot,
+    format_status,
+)
 from blustream.devices.dmp168.models import PresetStatus, SystemStatus
 
 # ---------- Generated wire-formatter aliases ----------
@@ -607,10 +611,11 @@ def _register_commands(registry: CommandRegistry) -> None:
     registry.register(
         Command(
             name="reboot",
-            description="Reboot system",
+            description="Reboot system and confirm that it restarted",
             parameters=[],
             handler=lambda **kwargs: gen.format_reboot(),
             requires_confirmation=True,
+            format_result=format_reboot,
             confirmation_message="Reboot the device?",
         )
     )

@@ -41,6 +41,17 @@ and the project follows the `v*` release lane published to PyPI (see
   clean row shape, so truncated rows such as `In1 On 50`, or `Out1 L` with no
   source, raise too. The Home Assistant coordinator treats the error as a
   failed poll.
+- `DMP168.reboot()` and the `reboot` CLI command confirm that the device
+  restarted instead of reporting success on the acknowledgement alone
+  (#78). Firmware MCU V1.5.0 acknowledges `REBOOT` on the TCP control
+  channel and keeps running. `reboot()` now reads the uptime, sends
+  `REBOOT`, reconnects if the device dropped the link, and returns once the
+  device answers with its uptime reset. It raises the new
+  `RebootNotConfirmedError` (a `CommandError`) when the device answers and
+  its uptime did not reset, and `TimeoutError` when the device does not
+  answer within `timeout` (60 s by default). `reboot(confirm=False)` sends
+  `REBOOT` and returns on the acknowledgement. `execute_command("reboot")`
+  confirms the same way and returns `None`.
 
 ## [0.3.0] - 2026-06-07
 

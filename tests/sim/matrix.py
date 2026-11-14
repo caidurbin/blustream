@@ -16,11 +16,18 @@ there). It reproduces the device quirks the captures showed:
 
 Fault switches (``reject_next``, ``corrupt_next_status``,
 ``interleave_foreign``, ``broadcast_foreign``, ``drop_connections``,
-``silent``) inject the failure modes the client code has to survive.
+``silent``, ``restart_on_reboot``) inject the failure modes the client code
+has to survive.
+
+REBOOT: by default the simulator acknowledges it and keeps running, as the
+live unit on firmware MCU V1.5.0 does. ``restart_on_reboot()`` makes the next
+REBOOT restart it instead.
 
 Fidelity limit: only what was recorded is exact. Write commands were never
 sent to the real device, so their ``[SUCCESS]`` reply here is a guess and they
-change no state. STATUS, UPTIME and TEMP always return the recorded values.
+change no state. STATUS, UPTIME and TEMP return the recorded values until a
+simulated restart, after which UPTIME counts from the restart. How a restart
+looks on the wire was never recorded either.
 """
 
 from __future__ import annotations
@@ -50,6 +57,8 @@ ERR_PRESET_RANGE = (
 )
 # Not recorded: no write command was sent to the real device.
 WRITE_SUCCESS = b"[SUCCESS]\r\n"
+
+_UPTIME_REPLY = "[SUCCESS]The uptime of the system is {:04d}:{:02d}:{:02d}:{:02d}\r\n"
 
 # Presets 1-8, the range spec/protocol.yaml gives the preset commands.
 PRESET_COUNT = 8
@@ -173,6 +182,12 @@ class SimulatedMatrix:
         self._rejects: deque[bytes] = deque()
         self._corrupt_status = 0
         self._foreign: deque[str] = deque()
+        # Seconds the next REBOOT keeps the device down; None: REBOOT is ignored.
+        self._restart_downtime: float | None = None
+        self._restart_acknowledge = True
+        self._restart_task: asyncio.Task[None] | None = None
+        # Loop time of the last simulated restart; None: never restarted.
+        self._booted_at: float | None = None
 
     async def __aenter__(self) -> SimulatedMatrix:
         await self.start()
@@ -194,6 +209,12 @@ class SimulatedMatrix:
             self._servers.append(server)
 
     async def stop(self) -> None:
+        if self._restart_task is not None and self._restart_task is not (
+            asyncio.current_task()
+        ):
+            self._restart_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._restart_task
         for server in self._servers:
             server.close()
         await self.drop_connections()
@@ -222,6 +243,25 @@ class SimulatedMatrix:
     async def broadcast_foreign(self, command: str) -> None:
         """Broadcast the reply to ``command`` as if an unseen client sent it."""
         await self._broadcast(command, self._respond(command))
+
+    def restart_on_reboot(
+        self, downtime: float = 0.0, *, acknowledge: bool = True
+    ) -> None:
+        """Make the next REBOOT restart the device instead of being ignored.
+
+        After acknowledging REBOOT (or not, with ``acknowledge=False``) the
+        device aborts every client socket and stops listening for
+        ``downtime`` seconds (``math.inf``: it never comes back), then
+        listens again on the same ports with its uptime counting from zero.
+        """
+        self._restart_downtime = downtime
+        self._restart_acknowledge = acknowledge
+
+    async def _restart(self, downtime: float) -> None:
+        await self.stop()
+        await asyncio.sleep(downtime)
+        await self.start()
+        self._booted_at = asyncio.get_running_loop().time()
 
     async def drop_connections(self) -> None:
         """Abort every open client socket. The listeners stay up."""
@@ -266,7 +306,14 @@ class SimulatedMatrix:
         while self._foreign:
             await self.broadcast_foreign(self._foreign.popleft())
         reply = self._rejects.popleft() if self._rejects else self._respond(command)
-        await self._broadcast(command, reply)
+        restart = (
+            command.upper().split() == ["REBOOT"] and self._restart_downtime is not None
+        )
+        if not restart or self._restart_acknowledge:
+            await self._broadcast(command, reply)
+        if restart:
+            downtime, self._restart_downtime = self._restart_downtime, None
+            self._restart_task = asyncio.create_task(self._restart(downtime))
 
     def _respond(self, command: str) -> bytes:
         words = command.upper().split()
@@ -276,6 +323,8 @@ class SimulatedMatrix:
                 return corrupted_status()
             return recording("p8000_A_STATUS_2.bin")
         if words == ["UPTIME"]:
+            if self._booted_at is not None:
+                return self._uptime_since_restart()
             return recording("p8000_A_UPTIME_1.bin")
         if words == ["TEMP"]:
             return recording("p8000_A_TEMP_1.bin")
@@ -288,6 +337,13 @@ class SimulatedMatrix:
         if words[0] in _known_verbs():
             return WRITE_SUCCESS
         return ERR_NOT_FOUND
+
+    def _uptime_since_restart(self) -> bytes:
+        seconds = int(asyncio.get_running_loop().time() - self._booted_at)
+        minutes, secs = divmod(seconds, 60)
+        hours, mins = divmod(minutes, 60)
+        days, hrs = divmod(hours, 24)
+        return _UPTIME_REPLY.format(days, hrs, mins, secs).encode("ascii")
 
     async def _broadcast(self, command: str, reply: bytes) -> None:
         echo = command.encode("ascii", "replace") + b"\r\n"

@@ -92,7 +92,13 @@ logger namespace so HA's debug toggle reaches the wire layer).
 | Temperature    | `SensorDeviceClass.TEMPERATURE` | Device temperature in °C.                                    |
 | DSP usage      | `SensorStateClass.MEASUREMENT` | DSP utilization as a percentage.                              |
 | Output 1–8     | `MediaPlayerDeviceClass.RECEIVER` | One per output; `select_source` routes a source, plus volume and mute. |
-| Reboot         | `ButtonDeviceClass.RESTART`    | Reboots the device over its TCP control channel (CONFIG-category). |
+| Reboot         | `ButtonDeviceClass.RESTART`    | Reboots the device over its TCP control channel and confirms the restart (CONFIG-category). |
+
+A reboot press succeeds only once the device answers again with its uptime reset.
+Firmware MCU V1.5.0 acknowledges the reboot command and keeps running; the press then
+fails with "acknowledged the reboot but did not restart", and the entities stay
+available. A device that goes offline and does not come back within 60 seconds fails
+the press too, and the entities grey out until it answers again.
 
 Each output is a single-source `media_player` (ADR 0014). Its source list is `None`
 (unrouted) plus `Input 1`–`Input 16` and `Bus 1`–`Bus 8`; `select_source` routes the

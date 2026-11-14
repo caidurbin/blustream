@@ -1,5 +1,6 @@
 """End-to-end CLI tests via MockConnection-backed device factory."""
 
+import json
 from typing import Callable
 from unittest.mock import MagicMock, patch
 
@@ -9,6 +10,7 @@ from blustream.base.connection import Connection
 from blustream.base.exceptions import ConnectionError
 from blustream.cli.dispatcher import dispatch
 from blustream.cli.parser import build_parser
+from blustream.devices.dmp168 import device as device_module
 from blustream.devices.dmp168.device import DMP168
 
 
@@ -95,6 +97,32 @@ def _factory(response: str = "[SUCCESS]ok\r\n"):
     """Create a MockConnection-backed DMP168 factory."""
     conn = MockConnection()
     conn._response = response
+
+    def factory():
+        return DMP168(host="test", connection=conn)
+
+    return factory, conn
+
+
+class RebootingConnection(MockConnection):
+    """Answers each UPTIME with the next of ``uptimes`` and anything else with
+    ``[SUCCESS]``, so a reboot can be shown to restart the device or not."""
+
+    def __init__(self, uptimes: list[str]):
+        super().__init__()
+        self._uptimes = list(uptimes)
+
+    async def send(self, data: bytes) -> None:
+        await super().send(data)
+        if data.startswith(b"UPTIME"):
+            uptime = self._uptimes.pop(0)
+            self._response = f"[SUCCESS]The uptime of the system is {uptime}\r\n"
+        else:
+            self._response = "[SUCCESS]\r\n"
+
+
+def _reboot_factory(*uptimes: str):
+    conn = RebootingConnection(list(uptimes))
 
     def factory():
         return DMP168(host="test", connection=conn)
@@ -231,9 +259,13 @@ class TestE2EReboot:
         assert exit_code == 0
         assert len(conn._send_calls) == 0
 
+    @pytest.fixture(autouse=True)
+    def fast_polls(self, monkeypatch):
+        monkeypatch.setattr(device_module, "REBOOT_POLL_INTERVAL", 0)
+
     @pytest.mark.asyncio
-    async def test_reboot_confirmed(self):
-        factory, conn = _factory()
+    async def test_reboot_confirmed(self, capsys):
+        factory, conn = _reboot_factory("0149:04:17:56", "0000:00:00:05")
         registry = DMP168.commands
 
         args = _parse(registry, ["reboot"])
@@ -242,8 +274,40 @@ class TestE2EReboot:
 
         exit_code = await dispatch(args, registry, factory)
         assert exit_code == 0
-        sent = conn._send_calls[-1].decode()
-        assert "REBOOT" in sent
+        assert [c.decode() for c in conn._send_calls] == [
+            "UPTIME\r\n",
+            "REBOOT\r\n",
+            "UPTIME\r\n",
+        ]
+        assert capsys.readouterr().out == "Device restarted.\n"
+
+    @pytest.mark.asyncio
+    async def test_reboot_confirmed_json(self, capsys):
+        factory, _conn = _reboot_factory("0149:04:17:56", "0000:00:00:05")
+        registry = DMP168.commands
+
+        args = _parse(registry, ["reboot"])
+        args.yes = True
+        args.json = True
+
+        assert await dispatch(args, registry, factory) == 0
+        assert json.loads(capsys.readouterr().out) == {"restarted": True}
+
+    @pytest.mark.asyncio
+    async def test_reboot_without_restart_fails(self, capsys):
+        factory, _conn = _reboot_factory("0149:04:17:56", "0149:04:17:58")
+        registry = DMP168.commands
+
+        args = _parse(registry, ["reboot"])
+        args.yes = True
+        args.json = False
+
+        exit_code = await dispatch(args, registry, factory)
+
+        captured = capsys.readouterr()
+        assert exit_code == 1
+        assert "did not restart" in captured.err
+        assert captured.out == ""
 
 
 class TestE2EDeviceRejection:
