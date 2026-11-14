@@ -56,10 +56,12 @@ Once published, the library installs from PyPI:
 pip install blustream
 ```
 
-For local development from a checkout:
+For local development from a checkout, install every test extra so the full
+suite runs (`codegen` brings PyYAML and Jinja2 for the codegen and fixture
+tests; `c4z` brings lxml for the Control4 package build test):
 
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev,codegen,c4z]"
 ```
 
 Or run the CLI directly from the checkout without installing:
