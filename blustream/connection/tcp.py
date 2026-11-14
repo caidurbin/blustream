@@ -6,6 +6,7 @@ import re
 from typing import Callable, Optional
 
 import telnetlib3
+from telnetlib3.telopt import SGA
 
 from blustream.base.connection import Connection
 from blustream.base.exceptions import ConnectionError, TimeoutError
@@ -39,6 +40,11 @@ BANNER_SENTINEL = "=\r\n"
 BANNER_SENTINEL_COUNT = 2
 
 LINE_TERMINATOR = "\r\n"
+
+# The DMP168's telnet port, which echoes every command line ahead of its
+# reply. Used to choose echo mode only when the telnet negotiation has not
+# said (see ``TCPConnection.echoes_commands``).
+_ECHOING_PORT = 23
 
 # Welcome-banner pattern. The DMP168 broadcasts this entire block to
 # every currently-connected port-23 client whenever a new client
@@ -75,6 +81,11 @@ class TCPConnection(Connection):
     mid-message pauses, so chunk-boundary heuristics ("got less than full
     buffer, must be done") return premature partial responses and leave
     the tail to bleed into the next command's reply.
+
+    Args:
+        echoes_commands: Whether the device echoes each command line ahead
+            of its reply. None (the default) detects it; see the
+            ``echoes_commands`` property.
     """
 
     def __init__(
@@ -84,16 +95,43 @@ class TCPConnection(Connection):
         timeout: float = 5.0,
         response_timeout: float = 5.0,
         banner_timeout: float = DEFAULT_BANNER_TIMEOUT,
+        echoes_commands: Optional[bool] = None,
     ):
         self.host = host
         self.port = port
         self.timeout = timeout
         self.response_timeout = response_timeout
         self.banner_timeout = banner_timeout
+        self._echoes_commands = echoes_commands
         self._reader: Optional[telnetlib3.TelnetReader] = None
         self._writer: Optional[telnetlib3.TelnetWriter] = None
         self._connected = False
         self._buffer = ""
+
+    @property
+    def echoes_commands(self) -> bool:
+        """Whether the device echoes each command line ahead of its reply.
+
+        The DMP168's telnet port (23) echoes every command, its own and
+        other clients'; its raw port (8000) echoes nothing. In order:
+
+        1. The ``echoes_commands`` constructor argument, when given.
+        2. The telnet negotiation: the telnet port offers Suppress Go Ahead
+           (``WILL SGA``) on connect, so a link where the device enabled
+           SGA echoes.
+        3. Otherwise the port number: port 23 echoes, any other does not.
+
+        The negotiation state is read as it stands, never waited for: the
+        raw port never negotiates, and on the telnet port a peer's banner
+        can arrive before the negotiation does. Until SGA is seen the port
+        number decides, so the answer can turn True a moment after
+        ``connect()`` returns.
+        """
+        if self._echoes_commands is not None:
+            return self._echoes_commands
+        if self._writer is not None and self._writer.remote_option.get(SGA) is True:
+            return True
+        return self.port == _ECHOING_PORT
 
     async def connect(self) -> None:
         """Establish TCP connection to device using telnetlib3.
@@ -231,13 +269,14 @@ class TCPConnection(Connection):
     async def send(self, data: bytes) -> None:
         """Send bytes after draining any unsolicited pending data.
 
-        The DMP168 on port 23 broadcasts its welcome banner to every
-        currently-connected client whenever a new client connects, so a
-        long-lived connection accumulates banner re-broadcasts between
-        the commands it actually issues. Draining the line buffer and
-        any immediately-readable bytes here makes the post-send read
-        deterministic — whatever arrives next is the device's response
-        to the command we just sent, not stale broadcast noise.
+        The DMP168 broadcasts every reply to every connected client, and on
+        port 23 its welcome banner too whenever a new client connects, so a
+        long-lived connection accumulates other clients' output between
+        the commands it actually issues. Draining the line buffer and any
+        immediately-readable bytes here keeps that stale output out of the
+        next read. It does not make the next bytes ours: another client's
+        reply can still arrive after the send. ``BlustreamDevice.send_command``
+        frames the read so that such a reply is not taken as ours.
         """
         if not self._connected or not self._writer:
             raise ConnectionError(

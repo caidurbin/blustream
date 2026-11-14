@@ -23,6 +23,12 @@ and the project follows the `v*` release lane published to PyPI (see
 - Keyword-only arguments on `DMP168.reboot()`: `timeout` (seconds to wait
   for the device after `REBOOT`, 60 by default) and `confirm` (`False` sends
   `REBOOT` and returns on the acknowledgement, without the checks) (#78).
+- `BlustreamDevice.send_command` takes `reply_start` and `make_terminator`
+  keyword arguments: a predicate for the line our reply starts at on a link
+  that does not echo, and a factory that makes a fresh terminator at each
+  start line. `TCPConnection` takes an `echoes_commands` argument and has a
+  read-only `echoes_commands` property; `Connection` reports False by
+  default. (#109)
 
 ### Changed
 
@@ -65,6 +71,21 @@ and the project follows the `v*` release lane published to PyPI (see
   on the device's acknowledgement alone (#78). Firmware MCU V1.5.0
   acknowledges `REBOOT` on the TCP control channel and keeps running; the
   call and the command fail in that case.
+- Another client's reply is no longer taken as ours (#109). The device sends
+  every client's replies to every connected client. On port 23 the reply now
+  starts at our own command echo, and `send_command` returns the text from
+  that echo line on. On both ports `STATUS`, `HELP`, `UPTIME` and `TEMP`
+  replies must also fit their own shape, and STATUS framing restarts at each
+  new dump. A command whose echo or reply never arrives now times out with
+  `CommandError` where it used to return another client's reply. On port 23 an
+  `[ERROR]` line after our echo ends the read for every command, so a rejected
+  `STATUS` or `HELP` raises with the device's message instead of timing out.
+  On port 8000 an `[ERROR]` reply to `UPTIME` or `TEMP` can't be told from
+  another client's, so it no longer ends the read: the command times out with
+  `CommandError`. On port 8000 a write's `[SUCCESS]`/`[ERROR]` line still
+  can't be told from another client's, and an `[ERROR]` read there says that
+  it may belong to another client. Prefer port 23 when other clients share the
+  matrix.
 
 ## [0.3.0] - 2026-06-07
 

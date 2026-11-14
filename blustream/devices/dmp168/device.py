@@ -50,6 +50,11 @@ REBOOT_GRACE = 6.0
 # second second is margin for an unevenly ticking counter.
 REBOOT_UPTIME_TOLERANCE = 2.0
 
+# Title lines of STATUS and HELP. Only that reply carries its title, so on a
+# link that does not echo our reply starts there (each new title restarts it).
+_STATUS_TITLE = "DMP168 Status"
+_HELP_TITLE = "DMP168 Help Info"
+
 
 def _status_terminator() -> Callable[[str], bool]:
     """Stateful predicate that fires on the STATUS footer ``=``-only line.
@@ -99,7 +104,7 @@ def _help_terminator() -> Callable[[str], bool]:
     def predicate(line: str) -> bool:
         nonlocal armed
         if not armed:
-            if "Help Info" in line or "Print Help Information" in line:
+            if _HELP_TITLE in line or "Print Help Information" in line:
                 armed = True
             return False
         stripped = line.rstrip("\r\n")
@@ -112,10 +117,36 @@ def _help_terminator() -> Callable[[str], bool]:
     return predicate
 
 
+# Replies only one query produces. On a link that does not echo, our reply
+# starts at the first line that fits; on one that echoes, the line after our
+# echo must fit. Shapes are hand-written (ADR 0007). Writes and PRESET STATUS
+# have none: their replies end on the default [SUCCESS]/[ERROR] marker.
+_QUERY_REPLY_SHAPES = {
+    "uptime": re.compile(r"\[SUCCESS\]The uptime of the system is \S", re.IGNORECASE),
+    "temp": re.compile(
+        r"\[SUCCESS\]The temperature of the system is \S", re.IGNORECASE
+    ),
+}
+
+
+def _is_status_title(line: str) -> bool:
+    return _STATUS_TITLE in line
+
+
+def _is_help_title(line: str) -> bool:
+    return _HELP_TITLE in line
+
+
+def _fits(shape: re.Pattern[str]) -> Callable[[str], bool]:
+    """Predicate for a line that holds a reply of ``shape``."""
+    return lambda line: shape.search(line) is not None
+
+
 class DMP168(BlustreamDevice):
     """DMP168 digital audio matrix processor device."""
 
     commands: CommandRegistry = CommandRegistry()
+    _echo_prompt = "DMP168> "
 
     def __init__(
         self,
@@ -216,12 +247,14 @@ class DMP168(BlustreamDevice):
             ) from e
 
         # Send command and get response. STATUS streams a long multi-section
-        # reply ending in a "===" footer line; everything else terminates on a
+        # reply from its title line to a "===" footer line; UPTIME and TEMP
+        # have a reply shape of their own; everything else terminates on a
         # single [SUCCESS]/[ERROR] marker line, which is the default.
         if name == "status":
             response = await self.send_command(
                 cmd_str,
-                terminator=_status_terminator(),
+                reply_start=_is_status_title,
+                make_terminator=_status_terminator,
                 timeout=STATUS_RESPONSE_TIMEOUT,
             )
             return self._parser.parse_status(response)
@@ -232,12 +265,20 @@ class DMP168(BlustreamDevice):
             return (
                 await self.send_command(
                     cmd_str,
-                    terminator=_help_terminator(),
+                    reply_start=_is_help_title,
+                    make_terminator=_help_terminator,
                     timeout=STATUS_RESPONSE_TIMEOUT,
                 )
             ).strip("\r\n")
 
-        response = await self.send_command(cmd_str)
+        shape = _QUERY_REPLY_SHAPES.get(name)
+        if shape is not None:
+            fits = _fits(shape)
+            response = await self.send_command(
+                cmd_str, reply_start=fits, terminator=fits
+            )
+        else:
+            response = await self.send_command(cmd_str)
 
         if name == "preset_status":
             # Pass preset number to parser if available
@@ -591,7 +632,9 @@ class DMP168(BlustreamDevice):
 
         A read-only diagnostic: the device's own authoritative record of the
         commands its firmware supports (the published API doc and user manual
-        have been observed to drift from it). Returned verbatim.
+        have been observed to drift from it). Returned verbatim, from the
+        command's echo on a link that echoes (port 23), else from the
+        listing's title line.
         """
         return await self.execute_command("help")
 

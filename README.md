@@ -126,6 +126,27 @@ async def main():
 asyncio.run(main())
 ```
 
+### Several clients on one matrix
+
+The DMP168 sends every client's replies to every connected client, on both
+ports, and tags none of them. The library reads only the reply to its own
+command:
+
+- **Port 23 (telnet, the default)** echoes each command ahead of its reply,
+  so the library reads from its own echo onward. Every command's reply is
+  attributed.
+- **Port 8000 (raw TCP)** has no echo. Query replies (`STATUS`, `UPTIME`,
+  `TEMP`, `HELP`) are still told apart by their shape, but a write's
+  `[SUCCESS]` or `[ERROR]` line is not: another client's marker line that
+  lands first is taken as the reply. An `[ERROR]` read this way says that it
+  may belong to another client.
+
+Prefer port 23 when Home Assistant, Control4 or another client shares the
+matrix. The library chooses echo mode from the telnet negotiation, falling back
+to the port number; `TCPConnection(..., echoes_commands=...)` sets it
+explicitly, for example behind a port forward. See
+[ADR 0016](docs/adr/0016-reply-attribution-on-a-broadcast-bus.md).
+
 ## CLI Usage
 
 Subcommand names are derived from the command registry. Use `blustream --help`

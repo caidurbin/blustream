@@ -15,9 +15,10 @@ there). It reproduces the device quirks the captures showed:
   out-of-range preset are the recorded ones.
 
 Fault switches (``reject_next``, ``corrupt_next_status``,
-``interleave_foreign``, ``broadcast_foreign``, ``drop_connections``,
-``silent``, ``restart_on_reboot``) inject the failure modes the client code
-has to survive.
+``interleave_foreign``, ``interleave_torn``, ``broadcast_foreign``,
+``stall_next_reply``, ``drop_connections``, ``silent``,
+``restart_on_reboot``) inject the failure modes the client code has to
+survive.
 
 REBOOT: by default the simulator acknowledges it and keeps running, as the
 live unit on firmware MCU V1.5.0 does. ``restart_on_reboot()`` makes the next
@@ -119,6 +120,11 @@ def _known_verbs() -> frozenset[str]:
     return frozenset(verbs)
 
 
+def _echo(command: str) -> bytes:
+    """The telnet port's echo of ``command``, as the device sends it."""
+    return command.encode("ascii", "replace") + b"\r\n"
+
+
 def _strip_telnet(data: bytes) -> bytes:
     """Drop telnet IAC commands and subnegotiations from client input."""
     if IAC not in data:
@@ -190,7 +196,10 @@ class SimulatedMatrix:
         self._send_lock = asyncio.Lock()
         self._rejects: deque[bytes] = deque()
         self._corrupt_status = 0
-        self._foreign: deque[str] = deque()
+        self._foreign: deque[tuple[str, int | None]] = deque()
+        self._stall_next = False
+        self._stall_replaces = False
+        self._stalled: tuple[bytes, bytes] | None = None
         # How the next REBOOT restarts the device; None: REBOOT is ignored.
         self._pending_restart: _Restart | None = None
         self._restart_task: asyncio.Task[None] | None = None
@@ -248,7 +257,31 @@ class SimulatedMatrix:
         Reproduces the race the captures showed: a reader that has just sent a
         command gets someone else's reply first.
         """
-        self._foreign.append(command)
+        self._foreign.append((command, None))
+
+    def interleave_torn(self, command: str, length: int) -> None:
+        """Like ``interleave_foreign``, but the foreign reply stops part way.
+
+        Only the first ``length`` bytes of the reply go out (after the echo on
+        the telnet port), with no footer and no prompt, as with the dump the
+        live unit left torn mid-line. The next reply's first line, our echo on
+        the telnet port, then arrives glued onto the torn line
+        (``==========STATUS``).
+        """
+        self._foreign.append((command, length))
+
+    def stall_next_reply(self, *, replace_following: bool = False) -> None:
+        """Hold back the reply to the next command until the command after it.
+
+        Telnet clients get the stalled command's echo at once. Its reply and
+        prompt go out when the following command arrives, ahead of that
+        command's own echo and reply, as the live unit did with write replies
+        that came 16-23 s after the echo. With ``replace_following`` the
+        following command gets no output of its own: only the stalled reply
+        arrives after it, as with the STATUS dump that stalled for 33 s.
+        """
+        self._stall_next = True
+        self._stall_replaces = replace_following
 
     async def broadcast_foreign(self, command: str) -> None:
         """Broadcast the reply to ``command`` as if an unseen client sent it."""
@@ -324,11 +357,24 @@ class SimulatedMatrix:
         if self.silent:
             return
         while self._foreign:
-            await self.broadcast_foreign(self._foreign.popleft())
+            foreign, length = self._foreign.popleft()
+            reply = self._respond(foreign)[:length]
+            await self._broadcast(foreign, reply, prompt=length is None)
+        if self._stalled is not None:
+            telnet, raw = self._stalled
+            self._stalled = None
+            await self._send_all(telnet=telnet, raw=raw)
+            if self._stall_replaces:
+                return
         reply = self._rejects.popleft() if self._rejects else self._respond(command)
         restart = None
         if command.upper().split() == ["REBOOT"]:
             restart, self._pending_restart = self._pending_restart, None
+        if self._stall_next and restart is None:
+            self._stall_next = False
+            self._stalled = (reply + PROMPT, reply)
+            await self._send_all(telnet=_echo(command), raw=b"")
+            return
         if restart is None or restart.acknowledge:
             await self._broadcast(command, reply)
         if restart is not None:
@@ -364,12 +410,16 @@ class SimulatedMatrix:
         days, hrs = divmod(hours, 24)
         return UPTIME_REPLY.format(days, hrs, mins, secs).encode("ascii")
 
-    async def _broadcast(self, command: str, reply: bytes) -> None:
-        echo = command.encode("ascii", "replace") + b"\r\n"
+    async def _broadcast(
+        self, command: str, reply: bytes, *, prompt: bool = True
+    ) -> None:
+        tail = PROMPT if prompt else b""
+        await self._send_all(telnet=_echo(command) + reply + tail, raw=reply)
+
+    async def _send_all(self, *, telnet: bytes, raw: bytes) -> None:
+        """Send ``telnet`` to every telnet client and ``raw`` to every raw one."""
         async with self._send_lock:
-            await self._write(
-                {c: echo + reply + PROMPT if c.telnet else reply for c in self._clients}
-            )
+            await self._write({c: telnet if c.telnet else raw for c in self._clients})
 
     async def _write(self, payloads: dict[_Client, bytes]) -> None:
         """Send each payload to its client, in ``chunk_size`` steps if delayed."""

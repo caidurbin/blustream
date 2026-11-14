@@ -79,12 +79,8 @@ async def test_poll_recovers_once_unreachable_device_is_back(sim, device):
 # -- Broadcast replies and corrupted STATUS ----------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="#109: every reply is broadcast to every client, so a reader takes "
-    "another client's reply that lands first as its own",
-)
 async def test_foreign_reply_is_not_taken_as_ours(sim, device):
+    """#109: another client's reply that lands first is skipped."""
     sim.interleave_foreign("TEMP")
     assert await device.execute_command("uptime") == RECORDED_UPTIME
 

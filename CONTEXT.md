@@ -35,3 +35,13 @@ The MAC address is the unit's only stable identifier; it is unreachable
 over the TCP command protocol and arrives via DHCP discovery or manual
 entry, else the config-entry id. See
 [ADR 0010](docs/adr/0010-ha-integration-device-identity.md).
+
+**Echo**:
+The device's repeat of a command line ahead of that command's reply, on
+port 23 only. It is sent to every connected client, and it starts our reply.
+
+**Foreign reply**:
+A reply to another client's command. The device sends every reply to every
+connected client and tags none, so a client has to tell its own reply from
+foreign ones. See
+[ADR 0016](docs/adr/0016-reply-attribution-on-a-broadcast-bus.md).

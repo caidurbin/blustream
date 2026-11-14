@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from telnetlib3.telopt import SGA
 
 from blustream.base.exceptions import ConnectionError, TimeoutError
 from blustream.connection.tcp import TCPConnection
@@ -664,3 +665,47 @@ class TestStreamingResponseFraming:
         # The STATUS body never bleeds into the second response.
         assert "Power" not in second and "Baud" not in second
         assert "===" not in second
+
+
+class TestEchoesCommands:
+    """How a TCPConnection decides whether the device echoes commands."""
+
+    @staticmethod
+    async def _connected(port: int, sga, **kwargs) -> TCPConnection:
+        """A connection whose telnet negotiation left remote SGA at ``sga``."""
+        reader, writer = _mock_link([BANNER])
+        writer.remote_option = {} if sga is None else {SGA: sga}
+        conn = TCPConnection(host="192.0.2.100", port=port, **kwargs)
+        with patch("telnetlib3.open_connection", return_value=(reader, writer)):
+            await conn.connect()
+        return conn
+
+    async def test_sga_seen_echoes_on_any_port(self):
+        conn = await self._connected(8023, sga=True)
+        assert conn.echoes_commands is True
+
+    async def test_sga_unknown_on_port_23_echoes(self):
+        conn = await self._connected(23, sga=None)
+        assert conn.echoes_commands is True
+
+    async def test_sga_unknown_on_another_port_does_not_echo(self):
+        conn = await self._connected(8000, sga=None)
+        assert conn.echoes_commands is False
+
+    async def test_override_false_wins_over_sga_and_port_23(self):
+        conn = await self._connected(23, sga=True, echoes_commands=False)
+        assert conn.echoes_commands is False
+
+    async def test_override_true_wins_on_a_port_that_negotiates_nothing(self):
+        conn = await self._connected(8000, sga=None, echoes_commands=True)
+        assert conn.echoes_commands is True
+
+    def test_before_connect_the_port_decides(self):
+        assert TCPConnection(host="192.0.2.100", port=23).echoes_commands is True
+        assert TCPConnection(host="192.0.2.100", port=8000).echoes_commands is False
+
+    async def test_sga_negotiated_after_connect_is_picked_up(self):
+        conn = await self._connected(8023, sga=None)
+        assert conn.echoes_commands is False
+        conn._writer.remote_option[SGA] = True
+        assert conn.echoes_commands is True
