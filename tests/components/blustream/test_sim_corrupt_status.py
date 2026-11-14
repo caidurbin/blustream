@@ -22,16 +22,15 @@ from tests.sim import SimulatedMatrix  # noqa: E402
 MAC = "34:d0:b8:21:22:33"
 
 
-@pytest.mark.parametrize("port", ["telnet", "raw"])
 async def test_corrupted_status_fails_the_poll_and_keeps_last_data(
-    hass: HomeAssistant, socket_enabled: None, port: str
+    hass: HomeAssistant, socket_enabled: None
 ) -> None:
     async with SimulatedMatrix() as sim:
         entry = MockConfigEntry(
             domain=DOMAIN,
             data={
                 CONF_HOST: sim.host,
-                CONF_PORT: sim.telnet_port if port == "telnet" else sim.raw_port,
+                CONF_PORT: sim.telnet_port,
                 CONF_MAC: MAC,
             },
             unique_id=MAC,

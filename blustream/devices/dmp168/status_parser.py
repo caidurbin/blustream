@@ -6,6 +6,10 @@ produces under
 ``control4/dmp168/src/status_parser.lua`` for the same shared fixtures under
 ``spec/vectors/fixtures/``.
 
+Before parsing, :func:`parse` rejects a corrupted dump with ``ParseError``
+(:mod:`blustream.devices.dmp168.status_integrity`). The shared fixtures are all
+clean dumps, and the Lua sibling has no such check.
+
 This module is intentionally independent of :class:`blustream.devices.dmp168.parser.DMP168Parser`
 (which produces dataclasses for legacy callers). Cross-language parity is the
 contract here, not Python ergonomics.

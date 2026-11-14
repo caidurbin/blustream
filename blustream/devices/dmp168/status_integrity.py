@@ -24,10 +24,8 @@ _NUMBER = r"-?\d+(?:\.\d+)?"
 _ON_OFF = r"(?:On|Off)"
 # One comma-separated field inside an EQ band, padded with spaces.
 _EQ_FIELD = r" *[^\s\[\],]+ *"
-
-
-def _eq_band(fields: int) -> str:
-    return r"\[" + ",".join([_EQ_FIELD] * fields) + r"\]"
+_EQ_BAND_2 = rf"\[{_EQ_FIELD},{_EQ_FIELD}\]"
+_EQ_BAND_3 = rf"\[{_EQ_FIELD},{_EQ_FIELD},{_EQ_FIELD}\]"
 
 
 # The shapes a channel row takes in a clean dump. Each is matched against the
@@ -46,7 +44,8 @@ _CHANNEL_ROW_SHAPES = (
     # [freq, slope], [freq, gain], four of [freq, gain, Q], [freq, gain],
     # [freq, slope].
     re.compile(
-        r"(?:In|Out)\d+ +[LR]" + "".join(_eq_band(n) for n in (2, 2, 3, 3, 3, 3, 2, 2))
+        rf"(?:In|Out)\d+ +[LR](?:{_EQ_BAND_2}){{2}}(?:{_EQ_BAND_3}){{4}}"
+        rf"(?:{_EQ_BAND_2}){{2}}"
     ),
 )
 
