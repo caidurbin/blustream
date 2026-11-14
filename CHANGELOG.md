@@ -38,9 +38,9 @@ and the project follows the `v*` release lane published to PyPI (see
   instead of returning its values (#110). A dump is corrupted when it holds a
   character outside printable ASCII, tab, CR and LF (the device's interleaved
   `AA 54 …` binary frames), or an `In<n>`/`Out<n>` row that doesn't match a
-  clean row shape. Truncated rows such as `In1 On 50` or `Out1 L` with no
-  source now raise too, where `parse_status` used to skip them. The Home
-  Assistant coordinator treats the error as a failed poll.
+  clean row shape, so truncated rows such as `In1 On 50`, or `Out1 L` with no
+  source, raise too. The Home Assistant coordinator treats the error as a
+  failed poll.
 
 ## [0.3.0] - 2026-06-07
 

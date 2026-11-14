@@ -20,10 +20,12 @@ _NON_TEXT_RE = re.compile(r"[^\t\r\n\x20-\x7e]")
 # A row that belongs to one input or output port.
 _PORT_ROW_RE = re.compile(r"(?:In|Out)\d+")
 
-_NUMBER = r"[-+]?\d+(?:\.\d+)?"
+_NUMBER = r"-?\d+(?:\.\d+)?"
 # A level column. With the level unit set to dB the device may print a signed
-# decimal with a unit; no dump in that mode has been captured.
-_LEVEL = rf"{_NUMBER}(?:dB)?"
+# decimal with a unit; no dump in that mode has been captured. The check lets
+# such levels through so a dB-mode unit polls as it does without the check;
+# reading dB levels is the parsers' job.
+_LEVEL = r"[-+]?\d+(?:\.\d+)?(?:dB)?"
 _ON_OFF = r"(?:On|Off)"
 # One comma-separated field inside an EQ band, padded with spaces.
 _EQ_FIELD = r" *[^\s\[\],]+ *"
