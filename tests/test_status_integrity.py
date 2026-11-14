@@ -57,6 +57,7 @@ def test_clean_broadcast_dump_passes(dump):
 
 
 def test_captures_hold_corrupted_dumps():
+    # Each passive capture holds two broadcast dumps with binary frames.
     assert len(CORRUPTED_PASSIVE) == 4
 
 
@@ -120,6 +121,10 @@ def test_malformed_row_is_rejected(clean, damaged):
         pytest.param("Out1 L        Bus3 L", id="bus-source"),
         pytest.param("Out1 R        BUS7 R", id="bus-uppercase"),
         pytest.param("In1     Off  -20 -20  On  On   -6  -6", id="negative-levels"),
+        pytest.param(
+            "Out1    On   -12.50dB +6.00dB  Off Off  0   0    0     0     0   0",
+            id="db-levels",
+        ),
         pytest.param(
             "Out1    On   75 80  Off On   0   0    0     0     0   0",
             id="output-settings",

@@ -50,10 +50,10 @@ the marker. Each reason names its issue:
 - **[#109](https://github.com/caidurbin/blustream/issues/109):** every reply is
   broadcast to every client, so a reader takes another client's reply that
   lands first as its own.
-- **[#110](https://github.com/caidurbin/blustream/issues/110):** no longer an
-  open bug. A corrupted STATUS dump (binary frames mixed in, bytes missing)
-  raises `ParseError` from both STATUS parsers and from `get_status`. Its tests
-  run without a marker and pin that behaviour; the rule is in
+- **[#110](https://github.com/caidurbin/blustream/issues/110), resolved:** a
+  corrupted STATUS dump (binary frames mixed in, bytes missing) raises
+  `ParseError` from both STATUS parsers and from `get_status`. Its tests run
+  without a marker and pin that behaviour; the rule is in
   `blustream/devices/dmp168/status_integrity.py`.
 
 The Control4 command-queue risk (sends interleaving with a streaming STATUS,
