@@ -26,6 +26,13 @@ and the project follows the `v*` release lane published to PyPI (see
   return that text as a normal response, so a rejected command looked like a
   success. This includes `DMP168.get_preset_status()` on an empty preset,
   which the device answers with `[ERROR]Preset N config status null.` (#107)
+- The client reconnects after the device drops the link (#108). When the
+  device closes or resets the socket, `TCPConnection` closes the transport,
+  clears its reader, writer and buffer, and reports itself disconnected. The
+  command that finds the dead link fails; the next `connect()` (which the
+  Home Assistant coordinator calls on its next poll) opens a new link. A
+  connect the device closes during the welcome banner now fails with
+  `ConnectionError` instead of reporting success on a dead link.
 
 ## [0.3.0] - 2026-06-07
 
