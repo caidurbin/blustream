@@ -21,6 +21,15 @@ class CommandError(BlustreamError):
     pass
 
 
+class RebootNotConfirmedError(CommandError):
+    """Raised when the device acknowledged a reboot but did not restart.
+
+    The link stayed up, or came back, and the device's uptime did not reset.
+    """
+
+    pass
+
+
 class ParseError(BlustreamError):
     """Raised when response parsing fails."""
 

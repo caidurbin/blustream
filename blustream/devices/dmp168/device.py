@@ -1,5 +1,6 @@
 """DMP168 device implementation."""
 
+import asyncio
 import logging
 import re
 from datetime import timedelta
@@ -8,7 +9,14 @@ from typing import Any, Callable, Optional, Union
 from blustream.base.commands import Command, CommandRegistry
 from blustream.base.connection import Connection
 from blustream.base.device import BlustreamDevice
-from blustream.base.exceptions import CommandError, ValidationError
+from blustream.base.exceptions import (
+    CommandError,
+    ConnectionError,
+    ParseError,
+    RebootNotConfirmedError,
+    TimeoutError,
+    ValidationError,
+)
 from blustream.base.validator import validate
 from blustream.connection.tcp import TCPConnection
 from blustream.devices.dmp168 import commands as cmd_module
@@ -21,6 +29,18 @@ logger = logging.getLogger(__name__)
 
 STATUS_RESPONSE_TIMEOUT = 5.0
 STATUS_FOOTER_MIN_WIDTH = 16
+
+# How long ``reboot()`` waits for the device to answer again after REBOOT.
+# No restart of a real DMP168 has been timed. 60 s leaves room for an
+# embedded boot and bounds the wait when the device does not come back.
+REBOOT_CONFIRM_TIMEOUT = 60.0
+# Pause before each check while ``reboot()`` waits.
+REBOOT_POLL_INTERVAL = 2.0
+# How long after REBOOT an unreset uptime still means "not down yet" rather
+# than "did not restart". It gives a device that acknowledges first and
+# restarts a moment later time to go down, and keeps the failure early when
+# the device ignores REBOOT.
+REBOOT_GRACE = 6.0
 
 
 def _status_terminator() -> Callable[[str], bool]:
@@ -165,6 +185,11 @@ class DMP168(BlustreamDevice):
             ValidationError: If parameters are invalid
         """
         validate(self._registry, name, kwargs)
+        if name == "reboot":
+            # The acknowledgement alone does not show that the device
+            # restarted, so the command confirms it (see ``reboot()``).
+            await self.reboot()
+            return None
         command = self._registry.get(name)
 
         # Build command string
@@ -562,9 +587,85 @@ class DMP168(BlustreamDevice):
         """
         return await self.execute_command("help")
 
-    async def reboot(self) -> None:
-        """Reboot the device."""
-        await self.execute_command("reboot")
+    async def reboot(
+        self, *, confirm: bool = True, timeout: float = REBOOT_CONFIRM_TIMEOUT
+    ) -> None:
+        """Reboot the device and confirm that it restarted.
+
+        Reads the uptime, sends REBOOT, then checks every
+        ``REBOOT_POLL_INTERVAL`` seconds. Each check reconnects if the device
+        dropped the link, then reads the uptime. An uptime lower than before
+        means the device restarted, and this returns. An uptime that is not
+        lower once ``REBOOT_GRACE`` seconds have passed means it did not
+        restart, and this raises then instead of waiting out ``timeout``.
+        Firmware MCU V1.5.0 acknowledges REBOOT on the TCP control channel
+        and keeps running, so the acknowledgement alone is no proof of a
+        restart.
+
+        Args:
+            confirm: False sends REBOOT and returns once the device
+                acknowledges it, without checking that it restarted.
+            timeout: Seconds to keep checking for the device after REBOOT.
+                A check that starts before the deadline runs to the end, so
+                the call can overrun it by one connect and one command.
+
+        Raises:
+            RebootNotConfirmedError: The device's uptime had not reset once
+                ``REBOOT_GRACE`` had passed, or at the deadline.
+            TimeoutError: The device did not report its uptime within
+                ``timeout``.
+            CommandError: The device rejected REBOOT, or the uptime read
+                before it failed.
+            ConnectionError: The device is not connected.
+        """
+        if not confirm:
+            await self._send_reboot()
+            return
+
+        before = await self.get_uptime()
+        try:
+            await self._send_reboot()
+        except CommandError as err:
+            if not isinstance(err.__cause__, (ConnectionError, TimeoutError)):
+                raise
+            # The link dropped or went quiet before the acknowledgement,
+            # which a restarting device can do. The checks below decide.
+            logger.debug("No acknowledgement of REBOOT: %s", err)
+
+        loop = asyncio.get_running_loop()
+        sent_at = loop.time()
+        deadline = sent_at + timeout
+        while True:
+            await asyncio.sleep(REBOOT_POLL_INTERVAL)
+            after = await self._uptime_if_answering()
+            now = loop.time()
+            if after is not None:
+                if after < before:
+                    logger.info("Device restarted; uptime is now %s", after)
+                    return
+                if now - sent_at >= REBOOT_GRACE or now >= deadline:
+                    raise RebootNotConfirmedError(
+                        "Device acknowledged REBOOT but did not restart: its "
+                        f"uptime went from {before} to {after} without a reset."
+                    )
+            elif now >= deadline:
+                raise TimeoutError(
+                    f"Device did not report its uptime within {timeout:g} s of "
+                    "REBOOT. It may still be restarting, or it may be unreachable."
+                )
+
+    async def _send_reboot(self) -> None:
+        """Send REBOOT and wait for the device's acknowledgement."""
+        await self.send_command(self._registry.get("reboot").handler())
+
+    async def _uptime_if_answering(self) -> Optional[timedelta]:
+        """Reconnect if needed and read the uptime; None while the device is silent."""
+        try:
+            await self.connect()
+            return await self.get_uptime()
+        except (ConnectionError, TimeoutError, CommandError, ParseError) as err:
+            logger.debug("Device not answering after REBOOT yet: %s", err)
+            return None
 
     async def set_group_volume(
         self,
