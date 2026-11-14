@@ -46,6 +46,20 @@ async def test_unreset_uptime_within_the_grace_keeps_checking(sim, device, monke
     assert sim.received.count("UPTIME") > 2
 
 
+async def test_restart_shortly_after_the_acknowledgement_is_confirmed(
+    sim, device, monkeypatch
+):
+    # The device still answers with its old uptime for a moment after REBOOT,
+    # then restarts within the grace.
+    monkeypatch.setattr(device_module, "REBOOT_GRACE", 5)
+    sim.restart_on_reboot(downtime=0.05, delay=0.1)
+
+    await device.reboot(timeout=5)
+
+    assert sim.received.count("UPTIME") > 2
+    assert await device.get_uptime() < timedelta(seconds=5)
+
+
 async def test_unreset_uptime_at_the_deadline_is_not_a_timeout(
     sim, device, monkeypatch
 ):

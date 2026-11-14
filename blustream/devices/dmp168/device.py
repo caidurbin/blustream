@@ -610,8 +610,8 @@ class DMP168(BlustreamDevice):
                 the call can overrun it by one connect and one command.
 
         Raises:
-            RebootNotConfirmedError: The device answered after REBOOT and
-                its uptime had not reset.
+            RebootNotConfirmedError: The device's uptime had not reset once
+                ``REBOOT_GRACE`` had passed, or at the deadline.
             TimeoutError: The device did not report its uptime within
                 ``timeout``.
             CommandError: The device rejected REBOOT, or the uptime read
@@ -639,15 +639,16 @@ class DMP168(BlustreamDevice):
             await asyncio.sleep(REBOOT_POLL_INTERVAL)
             after = await self._uptime_if_answering()
             now = loop.time()
-            if after is not None and after < before:
-                logger.info("Device restarted; uptime is now %s", after)
-                return
-            if after is not None and (now - sent_at >= REBOOT_GRACE or now >= deadline):
-                raise RebootNotConfirmedError(
-                    "Device acknowledged REBOOT but did not restart: its uptime "
-                    f"went from {before} to {after} without a reset."
-                )
-            if now >= deadline:
+            if after is not None:
+                if after < before:
+                    logger.info("Device restarted; uptime is now %s", after)
+                    return
+                if now - sent_at >= REBOOT_GRACE or now >= deadline:
+                    raise RebootNotConfirmedError(
+                        "Device acknowledged REBOOT but did not restart: its "
+                        f"uptime went from {before} to {after} without a reset."
+                    )
+            elif now >= deadline:
                 raise TimeoutError(
                     f"Device did not report its uptime within {timeout:g} s of "
                     "REBOOT. It may still be restarting, or it may be unreachable."

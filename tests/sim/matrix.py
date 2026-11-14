@@ -143,6 +143,13 @@ def _strip_telnet(data: bytes) -> bytes:
     return bytes(out)
 
 
+@dataclass(frozen=True)
+class _Restart:
+    downtime: float
+    acknowledge: bool
+    delay: float
+
+
 @dataclass(eq=False)
 class _Client:
     writer: asyncio.StreamWriter
@@ -182,8 +189,8 @@ class SimulatedMatrix:
         self._rejects: deque[bytes] = deque()
         self._corrupt_status = 0
         self._foreign: deque[str] = deque()
-        # (downtime, acknowledge) for the next REBOOT; None: REBOOT is ignored.
-        self._pending_restart: tuple[float, bool] | None = None
+        # How the next REBOOT restarts the device; None: REBOOT is ignored.
+        self._pending_restart: _Restart | None = None
         self._restart_task: asyncio.Task[None] | None = None
         # Loop time of the last simulated restart; None: never restarted.
         self._booted_at: float | None = None
@@ -245,20 +252,22 @@ class SimulatedMatrix:
         await self._broadcast(command, self._respond(command))
 
     def restart_on_reboot(
-        self, downtime: float = 0.0, *, acknowledge: bool = True
+        self, downtime: float = 0.0, *, acknowledge: bool = True, delay: float = 0.0
     ) -> None:
         """Make the next REBOOT restart the device instead of being ignored.
 
         After acknowledging REBOOT (or not, with ``acknowledge=False``) the
-        device aborts every client socket and stops listening for
-        ``downtime`` seconds (``math.inf``: it never comes back), then
-        listens again on the same ports with its uptime counting from zero.
+        device keeps answering for ``delay`` seconds, then aborts every client
+        socket and stops listening for ``downtime`` seconds (``math.inf``: it
+        never comes back), then listens again on the same ports with its
+        uptime counting from zero.
         """
-        self._pending_restart = (downtime, acknowledge)
+        self._pending_restart = _Restart(downtime, acknowledge, delay)
 
-    async def _restart(self, downtime: float) -> None:
+    async def _restart(self, restart: _Restart) -> None:
+        await asyncio.sleep(restart.delay)
         await self._stop_listening()
-        await asyncio.sleep(downtime)
+        await asyncio.sleep(restart.downtime)
         await self.start()
         self._booted_at = asyncio.get_running_loop().time()
 
@@ -308,10 +317,10 @@ class SimulatedMatrix:
         restart = None
         if command.upper().split() == ["REBOOT"]:
             restart, self._pending_restart = self._pending_restart, None
-        if restart is None or restart[1]:
+        if restart is None or restart.acknowledge:
             await self._broadcast(command, reply)
         if restart is not None:
-            self._restart_task = asyncio.create_task(self._restart(restart[0]))
+            self._restart_task = asyncio.create_task(self._restart(restart))
 
     def _respond(self, command: str) -> bytes:
         words = command.upper().split()

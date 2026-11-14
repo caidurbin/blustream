@@ -27,7 +27,7 @@ Fault switches:
 | `drop_connections()` | Abort every client socket; the listeners stay up |
 | `stop()`, then `start()` | Abort every client socket and stop listening, then listen again on the same ports |
 | `silent = True` | Accept connections and read commands, but send nothing |
-| `restart_on_reboot(downtime, acknowledge=True)` | Make the next REBOOT restart the device: acknowledge it (unless `acknowledge=False`), abort every client socket, stop listening for `downtime` seconds (`math.inf`: never come back), then listen again with UPTIME counting from zero |
+| `restart_on_reboot(downtime, acknowledge=True, delay=0)` | Make the next REBOOT restart the device: acknowledge it (unless `acknowledge=False`), keep answering for `delay` seconds, abort every client socket, stop listening for `downtime` seconds (`math.inf`: never come back), then listen again with UPTIME counting from zero |
 | `chunk_delay`, `chunk_size` | Stream replies in `chunk_size` pieces with a pause between them |
 
 Only recorded replies are exact. Write commands were never sent to the real
