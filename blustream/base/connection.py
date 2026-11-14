@@ -60,3 +60,15 @@ class Connection(ABC):
     @abstractmethod
     def is_connected(self) -> bool:
         """Check if connection is active."""
+
+    @property
+    def echoes_commands(self) -> bool:
+        """Whether the device echoes each command line ahead of its reply.
+
+        On a link that echoes, ``BlustreamDevice.send_command`` reads our
+        reply from our own echo onward, so a reply the device broadcasts
+        for another client is never taken as ours. The base connection
+        reports False: no echo is expected and replies are matched by
+        their shape only.
+        """
+        return False

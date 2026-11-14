@@ -10,6 +10,9 @@
           "port": "Port",
           "name": "Name",
           "mac": "MAC address (optional)"
+        },
+        "data_description": {
+          "port": "Use 23 (the default) when other clients, such as Control4, also connect to the matrix. The matrix sends every client's replies to all of them, and only on port 23 can every reply be matched to its command."
         }
       },
       "discovery_confirm": {
@@ -23,6 +26,9 @@
           "host": "Host",
           "port": "Port",
           "mac": "MAC address (optional)"
+        },
+        "data_description": {
+          "port": "Use 23 (the default) when other clients, such as Control4, also connect to the matrix. The matrix sends every client's replies to all of them, and only on port 23 can every reply be matched to its command."
         }
       }
     },

@@ -6,10 +6,11 @@ from typing import Callable, Union
 import pytest
 
 from blustream.base.connection import Connection
-from blustream.base.device import BlustreamDevice
+from blustream.base.device import BlustreamDevice, _is_echo_of, is_simple_marker
 from blustream.base.exceptions import CommandError, ConnectionError, TimeoutError
 
 LINE_TERMINATOR = "\r\n"
+PROMPT = "DMP168> "
 
 
 class MockConnection(Connection):
@@ -85,7 +86,35 @@ class MockConnection(Connection):
         return self._connected
 
 
+class EchoingMockConnection(MockConnection):
+    """A mock link that echoes commands, as the DMP168's port 23 does."""
+
+    @property
+    def echoes_commands(self) -> bool:
+        return True
+
+
+def _armed_on(header: str):
+    """Terminator factory: the first ``=====`` line after ``header``."""
+
+    def make():
+        armed = False
+
+        def predicate(line: str) -> bool:
+            nonlocal armed
+            if header in line:
+                armed = True
+                return False
+            return armed and line.startswith("=====")
+
+        return predicate
+
+    return make
+
+
 class ConcreteDevice(BlustreamDevice):
+    _echo_prompt = PROMPT
+
     def get_commands(self):
         return ["test"]
 
@@ -354,3 +383,186 @@ class TestBlustreamDevice:
         assert any(
             "Failed to write command log" in rec.message for rec in caplog.records
         )
+
+
+class TestIsEchoOf:
+    """The echo matcher finds our echo and nothing else."""
+
+    def test_bare_echo(self):
+        assert _is_echo_of("UPTIME", PROMPT)("UPTIME\r\n")
+
+    def test_echo_after_the_prompt(self):
+        assert _is_echo_of("UPTIME", PROMPT)("DMP168> UPTIME\r\n")
+
+    def test_without_a_prompt_a_prompted_line_is_not_the_echo(self):
+        assert not _is_echo_of("UPTIME")("DMP168> UPTIME\r\n")
+
+    def test_echo_after_a_prompt_glued_onto_a_torn_line(self):
+        assert _is_echo_of("UPTIME", PROMPT)("=====DMP168> UPTIME\r\n")
+
+    def test_echo_after_repeated_prompts(self):
+        assert _is_echo_of("PON", PROMPT)("DMP168> DMP168> PON\r\n")
+
+    def test_lowercase_command_matches_its_lowercase_echo(self):
+        assert _is_echo_of("uptime", PROMPT)("DMP168> uptime\r\n")
+
+    def test_case_must_match_the_command_as_sent(self):
+        assert not _is_echo_of("uptime", PROMPT)("UPTIME\r\n")
+
+    def test_echo_with_parameters(self):
+        assert _is_echo_of("PRESET 9 STATUS", PROMPT)("PRESET 9 STATUS\r\n")
+
+    def test_echo_glued_onto_a_torn_rule(self):
+        assert _is_echo_of("STATUS", PROMPT)("23       8000      ==========STATUS\r\n")
+
+    def test_status_row_ending_in_question_mark_is_not_the_help_echo(self):
+        line = "23       8000      34:D0:B8:00:00:01   ?\r\n"
+        assert not _is_echo_of("?", PROMPT)(line)
+
+    def test_echo_glued_onto_a_letter_or_digit_is_not_recognised(self):
+        assert not _is_echo_of("UPTIME", PROMPT)("34:D0:B8:00:0UPTIME\r\n")
+
+    def test_another_command_is_not_our_echo(self):
+        assert not _is_echo_of("OUT 1 FR 1", PROMPT)("OUT 11 FR 1\r\n")
+        assert not _is_echo_of("TEMP", PROMPT)("UPTIME\r\n")
+
+    def test_reply_text_is_not_an_echo(self):
+        assert not _is_echo_of("PON", PROMPT)("[SUCCESS]Set system power on.\r\n")
+
+
+class TestAttributedFraming:
+    """send_command reads our reply from its start line, skipping others'."""
+
+    @staticmethod
+    async def _device(conn: MockConnection, **kwargs) -> ConcreteDevice:
+        device = ConcreteDevice(conn, **kwargs)
+        await device.connect()
+        return device
+
+    async def test_echo_link_skips_a_foreign_reply_before_our_echo(self):
+        conn = EchoingMockConnection()
+        conn.queue(
+            "TEMP\r\n[SUCCESS]The temperature of the system is 38.1C\r\n",
+            "\r\nDMP168> OUT 1 FR 2\r\n[SUCCESS]Set output 1 L/R from input 2 L/R.\r\n",
+        )
+        device = await self._device(conn)
+
+        response = await device.send_command("OUT 1 FR 2")
+        assert response == (
+            "DMP168> OUT 1 FR 2\r\n[SUCCESS]Set output 1 L/R from input 2 L/R.\r\n"
+        )
+
+    async def test_echo_link_foreign_error_before_our_echo_does_not_raise(self):
+        conn = EchoingMockConnection()
+        conn.queue("FOO\r\n[ERROR]Command not found.\r\n\r\nDMP168> ")
+        conn.queue("PON\r\n[SUCCESS]ok\r\n")
+        device = await self._device(conn)
+
+        assert (await device.send_command("PON")).endswith("[SUCCESS]ok\r\n")
+
+    async def test_echo_link_our_error_raises_without_the_attribution_note(self):
+        conn = EchoingMockConnection()
+        conn.queue("PON\r\n[SUCCESS]ok\r\n\r\nDMP168> BAD\r\n[ERROR]nope\r\n")
+        device = await self._device(conn)
+
+        with pytest.raises(CommandError, match="nope") as exc_info:
+            await device.send_command("BAD")
+        assert "another client" not in str(exc_info.value)
+
+    async def test_echo_link_error_after_our_echo_ends_a_custom_terminated_read(
+        self,
+    ):
+        conn = EchoingMockConnection()
+        conn.queue("STATUS\r\n[ERROR]busy\r\n")
+        device = await self._device(conn)
+
+        with pytest.raises(CommandError, match="busy"):
+            await device.send_command(
+                "STATUS", make_terminator=_armed_on("HEADER"), timeout=0.05
+            )
+
+    async def test_echo_link_without_our_echo_times_out(self):
+        conn = EchoingMockConnection()
+        conn.queue("TEMP\r\n[SUCCESS]The temperature of the system is 38.1C\r\n")
+        device = await self._device(conn)
+
+        with pytest.raises(CommandError, match="Command execution failed"):
+            await device.send_command("UPTIME")
+
+    async def test_echo_link_ignores_reply_start(self):
+        conn = EchoingMockConnection()
+        conn.queue("X\r\nSTART\r\n[SUCCESS]theirs\r\nY\r\n[SUCCESS]ours\r\n")
+        device = await self._device(conn)
+
+        response = await device.send_command(
+            "Y", reply_start=lambda line: line.startswith("START")
+        )
+        assert response == "Y\r\n[SUCCESS]ours\r\n"
+
+    async def test_reply_start_skips_lines_before_it(self):
+        conn = MockConnection()
+        conn.queue("[SUCCESS]theirs\r\n[SUCCESS]The uptime is 1\r\n")
+        device = await self._device(conn)
+
+        response = await device.send_command(
+            "UPTIME", reply_start=lambda line: "uptime" in line
+        )
+        assert response == "[SUCCESS]The uptime is 1\r\n"
+
+    async def test_each_start_line_gets_a_fresh_terminator(self):
+        """A torn reply that armed the terminator must not end ours early."""
+        conn = MockConnection()
+        conn.queue(
+            "TITLE\r\nHEADER\r\nhalf a foreign du",
+            "TITLE\r\n=====\r\nHEADER\r\nrow\r\n=====\r\n",
+        )
+        device = await self._device(conn)
+
+        response = await device.send_command(
+            "STATUS",
+            reply_start=lambda line: "TITLE" in line,
+            make_terminator=_armed_on("HEADER"),
+        )
+        assert response == (
+            "half a foreign duTITLE\r\n=====\r\nHEADER\r\nrow\r\n=====\r\n"
+        )
+
+    async def test_make_terminator_takes_precedence_over_terminator(self):
+        conn = MockConnection()
+        conn.queue("[SUCCESS]early\r\nEND\r\n")
+        device = await self._device(conn)
+
+        response = await device.send_command(
+            "X",
+            terminator=is_simple_marker,
+            make_terminator=lambda: lambda line: line.startswith("END"),
+        )
+        assert response == "[SUCCESS]early\r\nEND\r\n"
+
+    async def test_each_read_without_a_start_line_gets_a_fresh_terminator(self):
+        conn = MockConnection()
+        conn.queue("HEADER\r\n=====\r\n", "HEADER\r\n=====\r\n")
+        device = await self._device(conn)
+        make = _armed_on("HEADER")
+
+        assert await device.send_command("A", make_terminator=make)
+        assert await device.send_command("B", make_terminator=make)
+
+    async def test_unanchored_error_says_the_reply_may_be_another_clients(self):
+        conn = MockConnection()
+        conn.queue("[ERROR]Command not found.\r\n")
+        device = await self._device(conn)
+
+        with pytest.raises(CommandError, match="may belong to another client"):
+            await device.send_command("OUT 1 FR 2")
+
+    async def test_anchored_error_has_no_attribution_note(self):
+        conn = MockConnection()
+        conn.queue("[ERROR]Preset 1 config status null.\r\n")
+        device = await self._device(conn)
+
+        with pytest.raises(CommandError) as exc_info:
+            await device.send_command(
+                "PRESET 1 STATUS", reply_start=lambda line: "Preset 1" in line
+            )
+        assert "another client" not in str(exc_info.value)

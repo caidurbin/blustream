@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import math
 import time
 from datetime import timedelta
@@ -155,3 +156,45 @@ async def test_execute_command_reboot_confirms_the_restart(sim, device):
 
     sim.restart_on_reboot(downtime=0.05)
     assert await device.execute_command("reboot") is None
+
+
+async def test_stale_uptime_reply_is_not_taken_for_a_restart(
+    sim, device, port, monkeypatch
+):
+    """A check's UPTIME reply stalls and lands while the next check is in flight.
+
+    The device ignores REBOOT and keeps running. The first check times out;
+    its reply, sampled then, arrives just ahead of the next check's own. Both
+    clocks jump 10 s between the checks, so the stale reply reads 10 s below
+    the uptime a running device would show.
+    """
+    loop = asyncio.get_running_loop()
+    started = loop.time()
+    sim.set_uptime(1000)
+    stalled = False
+    jump = 0.0
+
+    def clock() -> float:
+        # Stall the first check's UPTIME; once it has gone out, jump 10 s.
+        nonlocal stalled, jump
+        uptimes = sim.received.count("UPTIME")
+        if "REBOOT" in sim.received and uptimes == 1 and not stalled:
+            sim.stall_next_reply()
+            stalled = True
+        elif uptimes >= 2 and not jump:
+            jump = 10.0
+            sim.set_uptime(1000 + loop.time() - started + jump)
+        return time.monotonic() + jump
+
+    monkeypatch.setattr(device_module, "monotonic", clock)
+    monkeypatch.setattr(device, "_response_timeout", 0.3)
+
+    if port == sim.telnet_port:
+        # The stale reply arrives before the next check's echo and is skipped.
+        with pytest.raises(RebootNotConfirmedError, match="did not restart"):
+            await device.reboot(timeout=60)
+    else:
+        # Limit (#119): port 8000 has no echo, and the stale reply fits the
+        # UPTIME shape, so it is taken as the next check's answer.
+        await device.reboot(timeout=60)
+    assert sim.received.count("UPTIME") == 3
