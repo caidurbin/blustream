@@ -200,6 +200,25 @@ class TestTCPConnection:
         _assert_link_dropped(conn, mock_writer)
 
     @patch("telnetlib3.open_connection")
+    async def test_send_after_reset_drops_link_and_writes_nothing(
+        self, mock_open_connection
+    ):
+        """A reset found by the pre-send drain drops the link and writes nothing."""
+        mock_reader, mock_writer = _mock_link(
+            [BANNER, ConnectionResetError("Connection reset by peer")]
+        )
+        mock_open_connection.return_value = (mock_reader, mock_writer)
+
+        conn = TCPConnection(host="192.0.2.100", port=23)
+        await conn.connect()
+
+        with pytest.raises(ConnectionError, match="reset"):
+            await conn.send(b"STATUS\r\n")
+
+        mock_writer.write.assert_not_called()
+        _assert_link_dropped(conn, mock_writer)
+
+    @patch("telnetlib3.open_connection")
     async def test_connect_after_drop_opens_new_link(self, mock_open_connection):
         old_reader, old_writer = _mock_link([BANNER, ""])
         new_reader, new_writer = _mock_link([BANNER])

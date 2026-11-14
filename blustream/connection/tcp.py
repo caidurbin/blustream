@@ -266,9 +266,9 @@ class TCPConnection(Connection):
         line buffer so a partial-line tail from a prior abandoned read
         cannot prefix the next response.
 
-        End of stream here means the device closed the socket since the
-        last command: the link is dropped and ``ConnectionError`` raised
-        rather than writing into a dead socket.
+        End of stream or a reset here means the device closed the socket
+        since the last command: the link is dropped and ``ConnectionError``
+        raised rather than writing into a dead socket.
         """
         if not self._reader:
             return
@@ -286,6 +286,11 @@ class TCPConnection(Connection):
                 )
             except asyncio.TimeoutError:
                 break
+            except OSError as e:
+                self._close_lost_link()
+                raise ConnectionError(
+                    f"Connection to the device was lost: {e}. Call connect() to reconnect."
+                ) from e
             except BaseException:
                 # StopAsyncIteration from exhausted AsyncMock side_effect in
                 # tests; treat any non-timeout signal as "no more buffered
