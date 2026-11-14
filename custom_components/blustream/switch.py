@@ -16,7 +16,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .coordinator import BlustreamConfigEntry, BlustreamCoordinator
-from .device import build_device_info
+from .device import build_device_info, command_errors
 
 # The device reports power as one of these tokens in ``get_status()``; "On"
 # is the only awake value, everything else (i.e. "Off(Standby)") is asleep.
@@ -62,10 +62,12 @@ class BlustreamPowerSwitch(CoordinatorEntity[BlustreamCoordinator], SwitchEntity
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Wake the device from standby."""
-        await self.coordinator.device.power_on()
+        with command_errors():
+            await self.coordinator.device.power_on()
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Put the device into standby."""
-        await self.coordinator.device.power_off()
+        with command_errors():
+            await self.coordinator.device.power_off()
         await self.coordinator.async_request_refresh()

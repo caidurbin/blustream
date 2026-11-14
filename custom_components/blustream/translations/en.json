@@ -68,6 +68,9 @@
   "exceptions": {
     "reboot_failed": {
       "message": "Failed to reboot the Blustream device: it is unreachable on its control channel."
+    },
+    "command_failed": {
+      "message": "The Blustream device command failed: {error}"
     }
   },
   "issues": {

@@ -23,6 +23,9 @@ from homeassistant.helpers import entity_registry as er  # noqa: E402
 from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa: E402
 
 from blustream.base.exceptions import (  # noqa: E402
+    CommandError as BlustreamCommandError,
+)
+from blustream.base.exceptions import (  # noqa: E402
     ConnectionError as BlustreamConnectionError,
 )
 from custom_components.blustream.const import DOMAIN  # noqa: E402
@@ -126,3 +129,19 @@ async def test_button_unavailable_when_coordinator_fails(
     coordinator.async_update_listeners()
     await hass.async_block_till_done()
     assert hass.states.get(entity_id).state == STATE_UNAVAILABLE
+
+
+async def test_rejected_reboot_raises_translated_error_with_device_message(
+    hass: HomeAssistant,
+) -> None:
+    device = _setup_device()
+    device.reboot = AsyncMock(
+        side_effect=BlustreamCommandError("Device rejected command: Not allowed.")
+    )
+    await _install(hass, device)
+
+    with pytest.raises(HomeAssistantError) as exc_info:
+        await _press(hass, _entity_id(hass))
+
+    assert exc_info.value.translation_key == "command_failed"
+    assert "Not allowed." in str(exc_info.value)

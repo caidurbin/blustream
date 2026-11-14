@@ -186,14 +186,50 @@ class TestBlustreamDevice:
             await device.send_command("TEST")
 
     @pytest.mark.asyncio
-    async def test_send_command_error_marker(self):
+    async def test_send_command_error_marker_raises_with_device_message(self):
         conn = MockConnection()
         conn.queue("BAD\r\n[ERROR]bad parameter\r\n")
         device = ConcreteDevice(conn)
         await device.connect()
 
-        response = await device.send_command("BAD")
-        assert "[ERROR]bad parameter" in response
+        with pytest.raises(CommandError, match="bad parameter") as exc_info:
+            await device.send_command("BAD")
+        assert "BAD" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_send_command_bare_error_marker_raises(self):
+        conn = MockConnection()
+        conn.queue("[ERROR]\r\n")
+        device = ConcreteDevice(conn)
+        await device.connect()
+
+        with pytest.raises(CommandError, match="no message"):
+            await device.send_command("BAD")
+
+    @pytest.mark.asyncio
+    async def test_send_command_error_text_in_custom_terminated_reply_is_data(self):
+        """A multi-section reply that ends on its own footer is returned whole."""
+        conn = MockConnection()
+        conn.queue("Name [ERROR]x\r\n=====\r\n")
+        device = ConcreteDevice(conn)
+        await device.connect()
+
+        response = await device.send_command(
+            "STATUS", terminator=lambda line: line.startswith("=====")
+        )
+        assert "[ERROR]x" in response
+
+    @pytest.mark.asyncio
+    async def test_send_command_error_does_not_poison_next_command(self):
+        conn = MockConnection()
+        conn.queue("[ERROR]nope\r\n")
+        conn.queue("[SUCCESS]ok\r\n")
+        device = ConcreteDevice(conn)
+        await device.connect()
+
+        with pytest.raises(CommandError):
+            await device.send_command("BAD")
+        assert "[SUCCESS]ok" in await device.send_command("GOOD")
 
     @pytest.mark.asyncio
     async def test_send_command_marker_across_chunks(self):

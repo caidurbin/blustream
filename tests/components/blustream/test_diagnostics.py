@@ -25,6 +25,7 @@ from homeassistant.core import HomeAssistant  # noqa: E402
 from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa: E402
 
 from blustream import __version__ as LIBRARY_VERSION  # noqa: E402, N812
+from blustream.base.exceptions import CommandError  # noqa: E402
 from blustream.devices.dmp168.models import (  # noqa: E402
     InputSettings,
     OutputRouting,
@@ -173,3 +174,17 @@ async def test_diagnostics_freshly_polls_status_and_uptime(
 
     device.get_status.assert_awaited_once()
     device.get_uptime_raw.assert_awaited_once()
+
+
+async def test_diagnostics_reports_the_error_when_the_device_rejects_uptime(
+    hass: HomeAssistant,
+) -> None:
+    device = _patched_device()
+    entry = await _setup_entry(hass, device)
+    device.get_uptime_raw.side_effect = CommandError(
+        "Device rejected command 'UPTIME': Command not found."
+    )
+
+    data = (await async_get_config_entry_diagnostics(hass, entry))["data"]
+
+    assert "Command not found." in data["uptime_raw"]

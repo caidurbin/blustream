@@ -20,10 +20,12 @@ from homeassistant.const import (  # noqa: E402
     STATE_UNAVAILABLE,
 )
 from homeassistant.core import HomeAssistant  # noqa: E402
+from homeassistant.exceptions import HomeAssistantError  # noqa: E402
 from homeassistant.helpers import device_registry as dr  # noqa: E402
 from homeassistant.helpers import entity_registry as er  # noqa: E402
 from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa: E402
 
+from blustream.base.exceptions import CommandError  # noqa: E402
 from blustream.devices.dmp168.models import (  # noqa: E402
     OutputRouting,
     OutputSettings,
@@ -398,3 +400,36 @@ async def test_media_player_unavailable_when_coordinator_fails(
     coordinator.async_update_listeners()
     await hass.async_block_till_done()
     assert hass.states.get(entity_id).state == STATE_UNAVAILABLE
+
+
+@pytest.mark.parametrize(
+    ("service", "data", "device_method"),
+    [
+        ("select_source", {"source": "Input 9"}, "set_output_source"),
+        ("volume_set", {"volume_level": 0.5}, "set_output_volume"),
+        ("volume_up", {}, "set_output_volume"),
+        ("volume_down", {}, "set_output_volume"),
+        ("volume_mute", {"is_volume_muted": True}, "set_output_mute"),
+    ],
+)
+async def test_rejected_command_raises_translated_error_and_skips_refresh(
+    hass: HomeAssistant, service: str, data: dict, device_method: str
+) -> None:
+    device = _setup_device()
+    getattr(device, device_method).side_effect = CommandError(
+        "Device rejected command 'OUT 2 FR 9': Command not found."
+    )
+    await _install(hass, device)
+    device.get_status.reset_mock()
+
+    with pytest.raises(HomeAssistantError) as exc_info:
+        await hass.services.async_call(
+            "media_player",
+            service,
+            {"entity_id": _entity_id(hass, 2), **data},
+            blocking=True,
+        )
+
+    assert exc_info.value.translation_key == "command_failed"
+    assert "Command not found." in str(exc_info.value)
+    device.get_status.assert_not_awaited()

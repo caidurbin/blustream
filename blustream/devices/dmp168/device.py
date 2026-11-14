@@ -159,7 +159,8 @@ class DMP168(BlustreamDevice):
             Command result (type depends on command)
 
         Raises:
-            CommandError: If command execution fails
+            CommandError: If command execution fails, or the device answers
+                with an ``[ERROR]`` line (the message carries its text)
             ValidationError: If parameters are invalid
         """
         validate(self._registry, name, kwargs)
@@ -422,6 +423,11 @@ class DMP168(BlustreamDevice):
 
         Returns:
             PresetStatus object
+
+        Raises:
+            CommandError: If the device answers with an ``[ERROR]`` line. An
+                empty preset is answered that way
+                (``[ERROR]Preset 1 config status null.``).
         """
         return await self.execute_command("preset_status", preset=preset)
 

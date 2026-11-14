@@ -246,6 +246,43 @@ class TestE2EReboot:
         assert "REBOOT" in sent
 
 
+class TestE2EDeviceRejection:
+    """End-to-end: a command the device answers with [ERROR] fails the CLI."""
+
+    @pytest.mark.asyncio
+    async def test_rejected_command_prints_device_message_and_exits_nonzero(
+        self, capsys
+    ):
+        factory, _conn = _factory("[ERROR]Command not found.\r\n")
+        registry = DMP168.commands
+
+        args = _parse(registry, ["output-mute", "--output", "1", "--mute"])
+        args.yes = False
+        args.json = False
+
+        exit_code = await dispatch(args, registry, factory)
+
+        captured = capsys.readouterr()
+        assert exit_code == 1
+        assert "Command not found." in captured.err
+        assert captured.out == ""
+
+    @pytest.mark.asyncio
+    async def test_rejected_preset_status_exits_nonzero(self, capsys):
+        factory, _conn = _factory("[ERROR]Preset 1 config status null.\r\n")
+        registry = DMP168.commands
+
+        args = _parse(registry, ["preset-status", "--preset", "1"])
+        args.yes = False
+        args.json = False
+
+        exit_code = await dispatch(args, registry, factory)
+
+        captured = capsys.readouterr()
+        assert exit_code == 1
+        assert "Preset 1 config status null." in captured.err
+
+
 class TestE2EValidation:
     """End-to-end: invalid combinations trigger pre-connect validation."""
 

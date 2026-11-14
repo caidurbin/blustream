@@ -24,6 +24,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.loader import async_get_integration
 
 from blustream import __version__ as BLUSTREAM_LIBRARY_VERSION  # noqa: N812
+from blustream.base.exceptions import CommandError as BlustreamCommandError
 from blustream.base.exceptions import ParseError
 from blustream.devices.dmp168.uptime_parser import parse as parse_uptime
 
@@ -49,7 +50,11 @@ async def async_get_config_entry_diagnostics(
     device = coordinator.device
 
     status = await device.get_status()
-    raw_uptime = await device.get_uptime_raw()
+    try:
+        raw_uptime = await device.get_uptime_raw()
+    except BlustreamCommandError as err:
+        # Keep the report useful when the device rejects UPTIME.
+        raw_uptime = str(err)
     integration = await async_get_integration(hass, DOMAIN)
 
     device_registry = dr.async_get(hass)

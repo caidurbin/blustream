@@ -41,18 +41,28 @@ async def device(sim, port):
     await dmp.disconnect()
 
 
-# -- B1: [ERROR] replies are reported as success ----------------------------
+# -- B1: an [ERROR] reply raises CommandError -------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="B1 (#107): send_command returns an [ERROR] reply as a normal response, "
-    "so a command the device rejects is reported as a success",
-)
 async def test_rejected_command_raises(sim, device):
     sim.reject_next()
-    with pytest.raises(CommandError):
+    with pytest.raises(CommandError, match="Command not found"):
         await device.route_input_to_output(input_ch=1, output=8)
+
+
+async def test_recorded_error_reply_raises_with_the_device_message(sim, device):
+    # The real unit answers PRESET 1 STATUS on an empty preset with [ERROR].
+    with pytest.raises(CommandError, match=r"Preset 1 config status null\."):
+        await device.get_preset_status(1)
+
+
+async def test_connection_stays_usable_after_a_rejected_command(sim, device):
+    sim.reject_next()
+    with pytest.raises(CommandError):
+        await device.power_on()
+
+    assert await device.execute_command("uptime") == RECORDED_UPTIME
+    assert (await device.get_status()).power == "On"
 
 
 # -- B2: the client never reconnects after the link drops -------------------
